@@ -34,6 +34,10 @@ A rhythm-game vertical slice of the descent, in side view.
   - The audio delay offset (`offsetMs`) is user-set or measured with the Calibrate screen, and saved in localStorage.
 - The chart lives in `CHART`: per layer, `[beat, type, holdBeats]`, with type `t`/`u`/`d`/`h`. `STAIR` is derived from it.
 
+## Reading `index.html` cheaply
+
+The file is ~90 KB of dense one-line code, so don't read it whole. Grep `/\* ----------` to list the sections with line numbers, then read only the range you need. Sections, in order: utils · chart · world constants · lighting · pit wall · instancing · rim · path platforms · signs · obstacles/ziplines/swoopers · layers 0–4 decor · glow points · light shafts · particles · creatures · explorer (`drawPose`, `POSES`) · sparkles · audio (`clock`, `musicBeat`) · action cues · game state (judging, `setupRun`, `start`, `finish`) · input + calibration · gauge · next-action marker + beat flashes · rhythm track (`drawTrack`) · frame loop (`frame`).
+
 ## Conventions
 
 - Keep the game a single HTML file unless it grows past the point of being workable. Prefer small, surgical edits.
