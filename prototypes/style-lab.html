@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body>
+<title>Abyss Style Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one narrow column descending like the pit; 3D viewport first, pixel comparisons below */
+:root{
+  --bg:#0f0b16; --panel:#1a1424; --line:#2e2540; --fg:#efe8f6; --muted:#a99cbc;
+  --accent:#f0a030; --glow:#38e0d0;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",ui-sans-serif,system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;line-height:1.6}
+main{max-width:920px;margin:0 auto;padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-direction:column;gap:6px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(30px,6vw,48px);line-height:1.05;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:500;font-size:22px;margin:0;text-wrap:balance}
+p{margin:0;max-width:65ch;color:var(--muted)}
+.stage{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#000}
+#view{display:block;width:100%;height:min(62vh,460px);touch-action:none}
+.hud{position:absolute;left:12px;top:12px;font-family:var(--mono);font-size:12px;color:#fff;background:rgba(10,6,16,.6);padding:4px 8px;border-radius:6px;pointer-events:none}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button{font-family:var(--body);font-size:15px;font-weight:700;color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:9px 16px;cursor:pointer}
+button[aria-pressed="true"]{background:var(--accent);color:#24140a;border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
+.depth{display:flex;align-items:center;gap:10px;flex:1 1 240px;min-width:0}
+.depth label{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+.depth input{flex:1;min-width:0;accent-color:var(--accent)}
+.err{padding:24px;color:var(--fg)}
+.lbl{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px}
+.card{display:flex;flex-direction:column;gap:6px;min-width:0}
+.card canvas{width:100%;image-rendering:pixelated;border-radius:8px;display:block}
+.card strong{font-family:var(--display);font-weight:500;font-size:16px}
+.card span{font-size:14px;color:var(--muted)}
+.strip{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.strip canvas{width:100%;image-rendering:pixelated;border-radius:6px;display:block}
+.strip span{font-family:var(--mono);font-size:11px;color:var(--muted)}
+section{display:flex;flex-direction:column;gap:14px}
+hr{border:0;border-top:1px solid var(--line);margin:0}
+</style>
+
+<main>
+  <header>
+    <span class="eyebrow">Style test · 3D world, pixel characters</span>
+    <h1>The pit in the middle of town</h1>
+    <p>A rough mock to judge the look on your phone. The world is 3D and the characters are pixel sprites; switch either one to compare. Drag to rotate, switch cameras, and use the depth slider to ride down the spiral path.</p>
+  </header>
+
+  <section>
+    <div class="stage">
+      <canvas id="view" aria-label="Low-poly 3D scene of a chibi explorer at the rim of a giant pit in a city"></canvas>
+      <div class="hud" id="hud">Surface · 0 m</div>
+    </div>
+    <div class="controls">
+      <button id="m-play" aria-pressed="true">Gameplay camera</button>
+      <button id="m-pit" aria-pressed="false">Look into the pit</button>
+      <div class="depth">
+        <label for="depth">Descend</label>
+        <input id="depth" type="range" min="0" max="100" value="0">
+      </div>
+    </div>
+    <div class="controls">
+      <span class="lbl">Characters</span>
+      <button id="c-pix" aria-pressed="true">Pixel sprites</button>
+      <button id="c-3d" aria-pressed="false">3D models</button>
+      <span class="lbl">World</span>
+      <button id="w-smooth" aria-pressed="true">Smooth</button>
+      <button id="w-pix" aria-pressed="false">Pixelated</button>
+    </div>
+  </section>
+
+  <hr>
+
+  <section>
+    <h2>For comparison: the 2D pixel options</h2>
+    <p>Same scene drawn flat. Useful if the group wants something closer to the older games.</p>
+    <div class="grid">
+      <div class="card"><canvas id="a" width="64" height="40"></canvas><strong>16-bit pixel art</strong><span>Classic handheld RPG feel</span></div>
+      <div class="card"><canvas id="b" width="64" height="40"></canvas><strong>4-color retro</strong><span>Old handheld screen</span></div>
+      <div class="card"><canvas id="c" width="64" height="40"></canvas><strong>2 colors + accent</strong><span>Stark and moody</span></div>
+    </div>
+    <div class="strip">
+      <div><canvas id="l0" width="64" height="40"></canvas><span>Surface</span></div>
+      <div><canvas id="l1" width="64" height="40"></canvas><span>Metro</span></div>
+      <div><canvas id="l2" width="64" height="40"></canvas><span>Catacombs</span></div>
+      <div><canvas id="l3" width="64" height="40"></canvas><span>Fungal</span></div>
+      <div><canvas id="l4" width="64" height="40"></canvas><span>Depths</span></div>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ---------- 2D pixel samples ---------- */
+(function(){
+function h(x,y){let n=x*374761393+y*668265263;n=(n^(n>>13))*1274126177;return ((n^(n>>16))>>>0)%100}
+function draw(id,P){const cv=document.getElementById(id),x=cv.getContext('2d');
+ const px=(a,b,c)=>{x.fillStyle=P[c];x.fillRect(a,b,1,1)};
+ const r=(a,b,w,hh,c)=>{x.fillStyle=P[c];x.fillRect(a,b,w,hh)};
+ for(let i=0;i<64;i++)for(let j=0;j<40;j++)px(i,j,h(i,j)<18?'g2':'g');
+ for(let k=0;k<5;k++){const bx=2+k*13;r(bx,0,11,9,'wall');r(bx,0,11,2,'roof');for(let w=0;w<3;w++){r(bx+1+w*3,3,2,2,'win');r(bx+1+w*3,6,2,2,'win')}}
+ r(0,10,64,3,'road');
+ const cx=34,cy=26;for(let i=0;i<64;i++)for(let j=13;j<40;j++){const d=((i-cx)/18)**2+((j-cy)/10)**2;if(d<1)px(i,j,d>0.75?'edge':d>0.3?'dark':'deep')}
+ [[1,0,'hair'],[2,0,'hair'],[3,0,'hair'],[1,1,'skin'],[2,1,'skin'],[3,1,'skin'],[1,2,'body'],[2,2,'body'],[3,2,'body'],[0,3,'body'],[1,3,'body'],[2,3,'body'],[3,3,'body'],[4,3,'body'],[1,4,'body'],[2,4,'body'],[3,4,'body'],[1,5,'leg'],[3,5,'leg'],[1,6,'leg'],[3,6,'leg']].forEach(([a,b,c])=>px(9+a,24+b,c));
+ for(let i=0;i<6;i++)for(let j=0;j<5;j++){if((i==0||i==5)&&j==0)continue;px(52+i,30+j,'acc')}
+ px(53,31,'eye');px(56,31,'eye');
+}
+const A={g:'#6aa84f',g2:'#5a9440',wall:'#c9b79c',roof:'#a0522d',win:'#4a6fa5',road:'#8a8a8a',edge:'#5b4636',dark:'#2b1f2e',deep:'#0e0a14',hair:'#3b2a1a',skin:'#f1c27d',body:'#d64545',leg:'#2d3a6b',acc:'#9b59b6',eye:'#ffffff'};
+draw('a',A);
+const g=['#0f380f','#306230','#8bac0f','#9bbc0f'];
+draw('b',{g:g[2],g2:g[3],wall:g[3],roof:g[1],win:g[0],road:g[1],edge:g[1],dark:g[0],deep:g[0],hair:g[0],skin:g[3],body:g[1],leg:g[0],acc:g[1],eye:g[3]});
+const k='#111111',w='#f2efe6';
+draw('c',{g:w,g2:'#e4e0d4',wall:w,roof:k,win:k,road:k,edge:k,dark:k,deep:k,hair:k,skin:w,body:k,leg:k,acc:'#e03b3b',eye:w});
+[A,
+{...A,g:'#55606e',g2:'#4a5462',wall:'#7a8290',roof:'#c8a400',win:'#f5e663',road:'#30363f',edge:'#2a2f38',dark:'#14171c',deep:'#05070a'},
+{...A,g:'#b8a98a',g2:'#a6967a',wall:'#e6dcc4',roof:'#6b5a44',win:'#2c2418',road:'#8c7c62',edge:'#4d3f2e',dark:'#241b12',deep:'#0c0805',acc:'#c0392b'},
+{...A,g:'#2f5a4a',g2:'#3f7a5f',wall:'#7fd1a5',roof:'#e07ab8',win:'#f7c6e4',road:'#244638',edge:'#163428',dark:'#0b1e17',deep:'#030a07',acc:'#f0a030'},
+{...A,g:'#2a1c40',g2:'#3a2858',wall:'#6a4fa0',roof:'#38e0d0',win:'#b0fff6',road:'#1c1230',edge:'#120a20',dark:'#08040f',deep:'#000000',acc:'#ff4d6d'}
+].forEach((p,i)=>draw('l'+i,p));
+})();
+
+/* ---------- 3D scene ---------- */
+(function(){
+const cv=document.getElementById('view');
+if(!window.THREE){cv.outerHTML='<div class="err">The 3D engine could not load. Check your connection and reload the page.</div>';return}
+let R;
+try{R=new THREE.WebGLRenderer({canvas:cv,antialias:true})}catch(e){cv.outerHTML='<div class="err">This browser could not start 3D graphics (WebGL).</div>';return}
+R.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+const S=new THREE.Scene();
+const C=new THREE.PerspectiveCamera(45,1,0.1,300);
+const hemi=new THREE.HemisphereLight(0xffffff,0x887766,0.75);S.add(hemi);
+const sun=new THREE.DirectionalLight(0xffffff,0.85);sun.position.set(10,20,8);S.add(sun);
+const T=c=>new THREE.MeshToonMaterial({color:c});
+
+/* ground with a hole */
+const sh=new THREE.Shape();sh.moveTo(-60,-60);sh.lineTo(60,-60);sh.lineTo(60,60);sh.lineTo(-60,60);sh.lineTo(-60,-60);
+const ho=new THREE.Path();ho.absarc(0,0,8,0,Math.PI*2,true);sh.holes.push(ho);
+const gr=new THREE.Mesh(new THREE.ShapeGeometry(sh,64),T('#d8cdb8'));gr.rotation.x=-Math.PI/2;S.add(gr);
+const road=new THREE.Mesh(new THREE.PlaneGeometry(50,4),T('#9a948a'));road.rotation.x=-Math.PI/2;road.position.set(34,0.02,0);S.add(road);
+
+/* pit walls with depth gradient */
+const DEPTH=48;
+const stops=[['#9c7b5a',0],['#55606e',0.2],['#8c7c62',0.42],['#2f6a52',0.64],['#3a2858',0.84],['#05020a',1]].map(([c,t])=>[new THREE.Color(c),t]);
+const colAt=t=>{for(let i=1;i<stops.length;i++){if(t<=stops[i][1]){const a=stops[i-1],b=stops[i];return a[0].clone().lerp(b[0],(t-a[1])/(b[1]-a[1]))}}return stops[stops.length-1][0].clone()};
+const pg=new THREE.CylinderGeometry(8,8,DEPTH,48,40,true);const cols=[];const pp=pg.attributes.position;
+for(let i=0;i<pp.count;i++){const c=colAt((DEPTH/2-pp.getY(i))/DEPTH);cols.push(c.r,c.g,c.b)}
+pg.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
+const pit=new THREE.Mesh(pg,new THREE.MeshToonMaterial({vertexColors:true,side:THREE.BackSide}));pit.position.y=-DEPTH/2;S.add(pit);
+const cap=new THREE.Mesh(new THREE.CircleGeometry(8,32),new THREE.MeshBasicMaterial({color:'#000000'}));cap.rotation.x=-Math.PI/2;cap.position.y=-DEPTH+0.05;S.add(cap);
+
+/* spiral ledge */
+const STEP_A=0.33,STEP_Y=0.5,N=90;
+for(let i=0;i<N;i++){const a=i*STEP_A,y=-i*STEP_Y-0.3;const c=colAt(Math.min(1,-y/DEPTH)).offsetHSL(0,0,0.1);
+ const m=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.3,1.4),T(c));m.position.set(Math.cos(a)*7.2,y,Math.sin(a)*7.2);m.rotation.y=-a;S.add(m)}
+
+/* glowing things deep down */
+let sd=7;const rnd=()=>{sd=(sd*16807)%2147483647;return sd/2147483647};
+const glow=['#ff4d6d','#38e0d0','#f0a030','#b0fff6','#e07ab8'];
+for(let i=0;i<26;i++){const a=rnd()*6.28,r=rnd()*6;const m=new THREE.Mesh(new THREE.SphereGeometry(0.18+rnd()*0.35,10,8),new THREE.MeshBasicMaterial({color:glow[i%5]}));m.position.set(Math.cos(a)*r,-12-rnd()*34,Math.sin(a)*r);S.add(m)}
+
+/* city */
+const pal=['#e8b07a','#d9805f','#f2d7a6','#c96f4a','#e9e1cf','#b9c7a3'];
+for(let i=0;i<110;i++){const a=rnd()*6.28,r=12+rnd()*34;const x=Math.cos(a)*r,z=Math.sin(a)*r;if(Math.abs(z)<3.5&&x>0)continue;
+ const w=2+rnd()*2.5,d=2+rnd()*2.5,h=2+rnd()*6;const col=new THREE.Color(pal[i%pal.length]);
+ const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),T(col));b.position.set(x,h/2,z);S.add(b);
+ const rf=new THREE.Mesh(new THREE.BoxGeometry(w+0.3,0.4,d+0.3),T(col.clone().offsetHSL(0,0,-0.2)));rf.position.set(x,h+0.2,z);S.add(rf);
+ for(let wy=1.2;wy<h-0.5;wy+=1.4){const win=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.6,0.05),T('#4a6fa5'));win.position.set(x,wy,z+d/2+0.03);S.add(win)}}
+
+/* railing */
+for(let k=0;k<48;k++){const a=k/48*6.28;const po=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,0.8,6),T('#5b4636'));po.position.set(Math.cos(a)*8.4,0.4,Math.sin(a)*8.4);S.add(po)}
+const rail=new THREE.Mesh(new THREE.TorusGeometry(8.4,0.06,6,64),T('#5b4636'));rail.rotation.x=Math.PI/2;rail.position.y=0.8;S.add(rail);
+
+/* chibi maker: stands in for the player and friends */
+function chibi(body,hair,skin,extra){const g=new THREE.Group();
+ const b=new THREE.Mesh(new THREE.CylinderGeometry(0.32,0.42,0.75,12),T(body));b.position.y=0.38;g.add(b);
+ const hd=new THREE.Mesh(new THREE.SphereGeometry(0.5,16,12),T(skin));hd.position.y=1.2;g.add(hd);
+ const hr=new THREE.Mesh(new THREE.SphereGeometry(0.54,16,8,0,Math.PI*2,0,Math.PI/2),T(hair));hr.position.y=1.25;g.add(hr);
+ [-0.17,0.17].forEach(z=>{const e=new THREE.Mesh(new THREE.SphereGeometry(0.07,8,6),new THREE.MeshBasicMaterial({color:'#111'}));e.position.set(-0.46,1.2,z);g.add(e)});
+ if(extra==='bag'){const bg=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.5,0.5),T('#7a5a3a'));bg.position.set(0.35,0.55,0);g.add(bg)}
+ if(extra==='glasses'){const gl=new THREE.Mesh(new THREE.TorusGeometry(0.11,0.025,6,12),T('#111'));gl.position.set(-0.47,1.22,0.17);gl.rotation.y=Math.PI/2;g.add(gl.clone());const g2=gl.clone();g2.position.z=-0.17;g.add(g2);g.add(gl)}
+ if(extra==='hat'){const hat=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.36,0.4,12),T('#2d3a6b'));hat.position.y=1.75;g.add(hat);const br=new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,0.05,16),T('#2d3a6b'));br.position.y=1.56;g.add(br)}
+ return g}
+const hero=chibi('#d64545','#3b2a1a','#f1c27d','bag');hero.position.set(10,0,0);S.add(hero);
+const f1=chibi('#3f7a5f','#e0b040','#e8b48a','glasses');f1.position.set(13,0,-2.2);f1.rotation.y=0.5;S.add(f1);
+const f2=chibi('#6a4fa0','#1a1a1a','#c68a5e','hat');f2.position.set(13.5,0,2.4);f2.rotation.y=-0.6;S.add(f2);
+
+/* creature on the ledge */
+const blob=new THREE.Mesh(new THREE.SphereGeometry(0.5,12,10),T('#9b59b6'));blob.scale.y=0.7;
+const bi=14,ba=bi*STEP_A,by=-bi*STEP_Y;blob.position.set(Math.cos(ba)*7.2,by,Math.sin(ba)*7.2);S.add(blob);
+
+/* pixel sprites (Black/White style: 2D characters in a 3D world) */
+const SPR=[
+"................",
+".....HHHHHH.....",
+"....HHHHHHHH....",
+"...HHHHHHHHHH...",
+"...HHHHHHHHHH...",
+"...HSSSSSSSSH...",
+"...SSSSSSSSSS...",
+"...SSKSSSSKSS...",
+"...SSKSSSSKSS...",
+"...SSSSSSSSSS...",
+"....SSSMMSSS....",
+".....SSSSSS.....",
+"....BBBBBBBB....",
+"...BBBBBBBBBB...",
+"..SBBBBBBBBBBS..",
+"..SBBBBBBBBBBS..",
+"..SBBBBBBBBBBS..",
+"...BBBBBBBBBB...",
+"...BBBBBBBBBB...",
+"....LLL..LLL....",
+"....LLL..LLL....",
+"....LLL..LLL....",
+"....DDD..DDD....",
+"................"];
+const BLOB=[
+"...PPPPPP...",
+"..PPPPPPPP..",
+".PPPPPPPPPP.",
+".PPWPPPPWPP.",
+"PPPKPPPPKPPP",
+"PPPPPPPPPPPP",
+"PPPPPMMPPPPP",
+"PPPPPPPPPPPP",
+".PPPPPPPPPP.",
+"..PP.PP.PP.."];
+function pixTex(rows,P){const H=rows.length,W=rows[0].length;const cvs=document.createElement('canvas');cvs.width=W+2;cvs.height=H+2;const x=cvs.getContext('2d');
+ const map=Object.assign({K:'#120a18',M:'#7a2c3c',O:'#120a18',A:'#7a5a3a',W:'#ffffff',D:'#1a1020'},P);
+ x.fillStyle='#120a18';
+ rows.forEach((r,j)=>r.forEach((c,i)=>{if(c!=='.'){[[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>x.fillRect(i+1+dx,j+1+dy,1,1))}}));
+ rows.forEach((r,j)=>r.forEach((c,i)=>{if(c!=='.'){x.fillStyle=map[c];x.fillRect(i+1,j+1,1,1)}}));
+ const t=new THREE.CanvasTexture(cvs);t.magFilter=THREE.NearestFilter;t.minFilter=THREE.NearestFilter;t.generateMipmaps=false;return {t,W:W+2,H:H+2}}
+function person(P,extra){const rows=SPR.map(r=>r.split(''));
+ if(extra==='glasses'){[4,5,6,9,10,11].forEach(c=>{rows[6][c]='O';rows[9][c]='O'});[7,8].forEach(r=>[4,6,9,11].forEach(c=>rows[r][c]='O'));rows[7][7]='O';rows[7][8]='O'}
+ if(extra==='hat'){for(let c=5;c<=10;c++)rows[0][c]='T';for(let r=1;r<=2;r++)for(let c=4;c<=11;c++)rows[r][c]='T';for(let c=2;c<=13;c++)rows[3][c]='T'}
+ if(extra==='bag'){for(let r=12;r<=17;r++){rows[r][13]='A';rows[r][14]='A'}}
+ const {t,W,H}=pixTex(rows,P);const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,alphaTest:0.5}));
+ const h=1.9;sp.scale.set(h*W/H,h,1);sp.position.y=h/2;return sp}
+hero.add(person({H:'#3b2a1a',S:'#f1c27d',B:'#d64545',L:'#2d3a6b'},'bag'));
+f1.add(person({H:'#e0b040',S:'#e8b48a',B:'#3f7a5f',L:'#3a3a3a'},'glasses'));
+f2.add(person({H:'#1a1a1a',S:'#c68a5e',B:'#6a4fa0',L:'#2a2a2a',T:'#2d3a6b'},'hat'));
+const bt=pixTex(BLOB.map(r=>r.split('')),{P:'#9b59b6'});
+const blobSp=new THREE.Sprite(new THREE.SpriteMaterial({map:bt.t,alphaTest:0.5}));blobSp.scale.set(1.2,1.2*bt.H/bt.W,1);S.add(blobSp);
+
+let pixelChars=true,pixelWorld=false;
+function applyChars(){[hero,f1,f2].forEach(g=>g.children.forEach(c=>c.visible=(!!c.isSprite===pixelChars)));blob.visible=!pixelChars;blobSp.visible=pixelChars;
+ document.getElementById('c-pix').setAttribute('aria-pressed',pixelChars);document.getElementById('c-3d').setAttribute('aria-pressed',!pixelChars)}
+document.getElementById('c-pix').onclick=()=>{pixelChars=true;applyChars()};
+document.getElementById('c-3d').onclick=()=>{pixelChars=false;applyChars()};
+document.getElementById('w-smooth').onclick=()=>{pixelWorld=false;applyWorld()};
+document.getElementById('w-pix').onclick=()=>{pixelWorld=true;applyWorld()};
+function applyWorld(){document.getElementById('w-smooth').setAttribute('aria-pressed',!pixelWorld);document.getElementById('w-pix').setAttribute('aria-pressed',pixelWorld);resize()}
+applyChars();
+
+/* camera + controls */
+const sky=new THREE.Color('#bfe3f5');S.background=sky.clone();S.fog=new THREE.Fog(sky.clone(),60,160);
+let mode='play',yaw=0,depth=0,drag=null,auto=true;
+const cp=new THREE.Vector3(18,9,4),cl=new THREE.Vector3(8,0,0),tp=new THREE.Vector3(),tl=new THREE.Vector3();
+const hud=document.getElementById('hud');const names=['Surface','Metro','Catacombs','Fungal','Depths'];
+const bPlay=document.getElementById('m-play'),bPit=document.getElementById('m-pit'),slider=document.getElementById('depth');
+function setMode(m){mode=m;bPlay.setAttribute('aria-pressed',m==='play');bPit.setAttribute('aria-pressed',m==='pit');auto=true}
+bPlay.onclick=()=>{setMode('play');slider.value=0;depth=0};
+bPit.onclick=()=>setMode('pit');
+slider.oninput=()=>{depth=slider.value/100;if(depth>0)mode='descend';else setMode('play');bPlay.setAttribute('aria-pressed',false);bPit.setAttribute('aria-pressed',false)};
+cv.addEventListener('pointerdown',e=>{drag={x:e.clientX,y0:yaw};auto=false;cv.setPointerCapture(e.pointerId)});
+cv.addEventListener('pointermove',e=>{if(drag)yaw=drag.y0+(e.clientX-drag.x)*0.008});
+cv.addEventListener('pointerup',()=>drag=null);cv.addEventListener('pointercancel',()=>drag=null);
+
+function resize(){const w=cv.clientWidth,h=cv.clientHeight;R.setPixelRatio(pixelWorld?Math.max(0.25,240/Math.max(h,1)):Math.min(window.devicePixelRatio||1,2));cv.style.imageRendering=pixelWorld?'pixelated':'auto';R.setSize(w,h,false);C.aspect=w/h;C.updateProjectionMatrix()}
+window.addEventListener('resize',resize);resize();
+
+const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+const v=new THREE.Vector3();
+let last=0;
+function frame(t){requestAnimationFrame(frame);const dt=Math.min(0.05,(t-last)/1000||0);last=t;
+ if(mode==='play'){
+   const r=Math.hypot(8,4);v.set(10+Math.cos(yaw+0.46)*r,9,Math.sin(yaw+0.46)*r);tp.copy(v);tl.set(9,0.6,0);
+ }else if(mode==='pit'){
+   if(auto&&!reduce)yaw+=dt*0.15;tp.set(Math.cos(yaw)*5,18,Math.sin(yaw)*5);tl.set(0,-34,0);
+ }else{
+   const i=depth*(N-4),a=i*STEP_A,y=-i*STEP_Y+2.2;
+   tp.set(Math.cos(a)*6.4,y,Math.sin(a)*6.4);
+   tl.set(Math.cos(a+Math.PI+yaw*0.6)*8,y-2.5,Math.sin(a+Math.PI+yaw*0.6)*8);
+ }
+ const k=reduce?1:0.06;cp.lerp(tp,k);cl.lerp(tl,k);C.position.copy(cp);C.lookAt(cl);
+
+ const dd=Math.max(0,Math.min(1,-C.position.y/DEPTH));
+ const fc=dd<0.02?sky.clone():colAt(dd).clone().lerp(new THREE.Color('#000'),0.35);
+ S.background.copy(fc);S.fog.color.copy(fc);S.fog.near=dd<0.02?60:6;S.fog.far=dd<0.02?160:40;
+ hemi.intensity=0.75-dd*0.45;sun.intensity=0.85*(1-dd);
+ const li=Math.min(4,Math.floor(dd*5));hud.textContent=names[li]+' · '+Math.round(dd*1200)+' m';
+
+ const s=reduce?0:1;hero.position.y=Math.abs(Math.sin(t/300))*0.08*s;
+ f1.position.y=Math.abs(Math.sin(t/340+1))*0.06*s;f2.position.y=Math.abs(Math.sin(t/320+2))*0.06*s;
+ blob.position.y=by+0.15+Math.sin(t/400)*0.1*s;
+ blobSp.position.set(blob.position.x,by-0.15+blobSp.scale.y/2+Math.sin(t/400)*0.1*s,blob.position.z);
+ R.render(S,C)}
+requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
