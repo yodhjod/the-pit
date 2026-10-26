@@ -645,17 +645,18 @@ function onSwipe(dir,t){const n=curNote();if(!n||G.state!=='play'||n.j)return;co
 /* ---------- run flow: newRun → nodes (descent / vendor / boss); death ends the run ---------- */
 /* dev switches for testing: ?autoplay plays perfectly, ?node=N starts the run at RUN[N], ?coins=N starts rich */
 const DEV=(()=>{const q=new URLSearchParams(location.search);return{auto:q.has('autoplay'),node:parseInt(q.get('node'))||0,coins:parseInt(q.get('coins'))||0}})();
-let best=0;try{best=parseInt(localStorage.getItem('pitBest'))||0}catch(e){}
+let best=0;try{best=Math.min(RUN.length,parseInt(localStorage.getItem('pitBest'))||0)}catch(e){}
 function saveBest(i){if(i>best&&!DEV.auto&&!DEV.node){best=i;try{localStorage.setItem('pitBest',best)}catch(e){}}}
 function bestUI(){$('tBest').textContent=best>0?'Deepest so far: '+nodeName(best):''}
 const OVERLAYS=['start','end','fail','clear','shop'];
-function showOnly(id){OVERLAYS.forEach(o=>$(o).hidden=o!==id);if(id){const b=$(id).querySelector('.btn');if(b)b.focus()}}
+/* no autofocus: a Space meant for the last step must not press the menu button. Enter/Space work after a short delay (see keydown) */
+function showOnly(id){OVERLAYS.forEach(o=>$(o).hidden=o!==id);const a=document.activeElement;if(a&&a!==document.body&&a.blur)a.blur();G.ovT=performance.now()}
 function resetNotes(arr){arr.forEach(n=>{n.j=null;n.hj=null;n.bonk=0;if(n.obj)n.obj.userData.hitT=0})}
 function newRun(){audioInit();showOnly(null);$('boss').hidden=true;resetNotes(NOTES);
  Object.assign(G,{node:0,coins:0,up:{},hearts:5,maxH:5,windUsed:false,p:0,g:0,m:0,max:0});W_P=0.07;W_G=0.14;W_S=0.18;G.node=Math.min(DEV.node,RUN.length-1);G.coins=DEV.coins;coinsUI();
  $('gauge').hidden=false;$('depth').hidden=false;startNode(G.node===0)}
-function startNode(first){const nd=RUN[G.node];saveBest(G.node);if(nd.kind==='descent')startLevel(nd.L,first);else if(nd.kind==='vendor')openVendor(nd);else startBoss()}
-function nextNode(){G.node++;startNode(false)}
+function startNode(first){const nd=RUN[G.node];if(!nd)return;saveBest(G.node);if(nd.kind==='descent')startLevel(nd.L,first);else if(nd.kind==='vendor')openVendor(nd);else startBoss()}
+function nextNode(){if(G.state!=='clear'&&G.state!=='vendor')return;showOnly(null);G.node=Math.min(G.node+1,RUN.length-1);startNode(false)}
 function relight(){G.hearts=Math.min(G.maxH,G.hearts+(G.up.oil?2:1))}
 /* anchor the song so beat goB lands after a 4-beat count-in (8 on the first level, under the camera intro) */
 function beginPlay(aB,goB,intro){G.errs=[];G.jtxt='';Object.assign(G,{state:'play',trip:-9,zip:null,combo:0,pullT:-99,shake:0,cd:0,duck:-9,hurt:-9,atk:-9,jump:-9,hatUsed:false,lvCoins:0,lvMax:0});
@@ -705,8 +706,11 @@ function ptrEnd(e,cancel){const p=pend[e.pointerId];delete pend[e.pointerId];
  if(G.zip&&G.zip.state==='ride'&&G.holdPtr===e.pointerId)holdRelease(nowIn(e.timeStamp))}
 gameEl.addEventListener('pointerup',e=>ptrEnd(e,false));gameEl.addEventListener('pointercancel',e=>ptrEnd(e,true));
 gameEl.addEventListener('touchmove',e=>{if(!e.target.closest('.overlay'))e.preventDefault()},{passive:false});
+/* menus: Enter or Space presses the visible screen's main button, once it has been up long enough not to catch a gameplay key */
+function menuKey(e){if(e.repeat||(e.code!=='Enter'&&e.code!=='Space'))return;const a=document.activeElement;if(a&&a.tagName==='BUTTON'&&!a.disabled)return;
+ const o=OVERLAYS.find(id=>!$(id).hidden);if(!o||performance.now()-(G.ovT||0)<700)return;e.preventDefault();$(o).querySelector('.btn').click()}
 const UPK=['ArrowUp','KeyW'],DNK=['ArrowDown','KeyS'];
-addEventListener('keydown',e=>{if(e.repeat||G.state!=='play')return;if(['Tab','Escape','MetaLeft','MetaRight','AltLeft','AltRight','ControlLeft','ControlRight'].includes(e.code))return;G.kb=true;const t=nowIn(e.timeStamp);{const [px,py]=markerXY();newFx(px,py);if(UPK.includes(e.code))G.fx.swipe='up';else if(DNK.includes(e.code))G.fx.swipe='down'}
+addEventListener('keydown',e=>{if(G.state!=='play'){menuKey(e);return}if(e.repeat)return;if(['Tab','Escape','MetaLeft','MetaRight','AltLeft','AltRight','ControlLeft','ControlRight'].includes(e.code))return;G.kb=true;const t=nowIn(e.timeStamp);{const [px,py]=markerXY();newFx(px,py);if(UPK.includes(e.code))G.fx.swipe='up';else if(DNK.includes(e.code))G.fx.swipe='down'}
  if(UPK.includes(e.code))onSwipe('up',t);else if(DNK.includes(e.code))onSwipe('down',t);else{G.holdPtr='key';onPress(t)}e.preventDefault()});
 addEventListener('keyup',e=>{if(G.zip&&G.zip.state==='ride'&&G.holdPtr==='key'&&!UPK.includes(e.code)&&!DNK.includes(e.code))holdRelease(nowIn(e.timeStamp))});
 /* calibration: 16 clicks at 100 bpm, the median gap between click and tap becomes the audio delay */
