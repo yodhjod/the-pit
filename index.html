@@ -450,14 +450,14 @@ const JN=16;let JELLY,jellyGlow;const jInfo=[];
 
 /* ---------- the explorer: a rigged pixel-art sprite, one pose per moment of the jump ---------- */
 const SW=44,SH=56,HIPX=20,HIPY=36;
-const HC={coat:'#2f5d7c',coatL:'#3f78a0',coatD:'#22465e',pants:'#4a4468',pantsD:'#2e2a46',boot:'#6b4428',bootD:'#45291a',skin:'#f3cfaa',skinD:'#d9a982',hat:'#8a5a34',hatD:'#5e3c22',band:'#c0392b',lampC:'#ffe08a',scarf:'#e2483d',scarfD:'#a8302a',pack:'#a0743f',packD:'#6e4a26',roll:'#d9c39a',hair:'#6b4a2b',eye:'#1a1018',blush:'#e89a8a',ol:'#170d14'};
+const HC={coat:'#2f5d7c',coatL:'#3f78a0',coatD:'#22465e',pants:'#5d5690',pantsD:'#221e36',boot:'#8a5a32',bootD:'#2e1a10',skin:'#f3cfaa',skinD:'#d9a982',hat:'#8a5a34',hatD:'#5e3c22',band:'#c0392b',lampC:'#ffe08a',scarf:'#e2483d',scarfD:'#a8302a',pack:'#a0743f',packD:'#6e4a26',roll:'#d9c39a',hair:'#6b4a2b',eye:'#1a1018',blush:'#e89a8a',ol:'#170d14'};
 function drawPose(P,swap){const c=document.createElement('canvas');c.width=SW;c.height=SH;const x=c.getContext('2d');
  const px=(a,b,col)=>{x.fillStyle=col;x.fillRect(Math.round(a),Math.round(b),1,1)};
  const rect=(a,b,w,h,col)=>{x.fillStyle=col;x.fillRect(Math.round(a),Math.round(b),w,h)};
  const line=(x0,y0,x1,y1,w,col)=>{const n=Math.max(1,Math.ceil(Math.max(Math.abs(x1-x0),Math.abs(y1-y0))*2));x.fillStyle=col;for(let i=0;i<=n;i++){const t=i/n;x.fillRect(Math.round(x0+(x1-x0)*t-(w-1)/2),Math.round(y0+(y1-y0)*t-(w-1)/2),w,w)}};
  const disc=(cx,cy,r,col)=>{x.fillStyle=col;for(let j=-r;j<=r;j++)for(let i=-r;i<=r;i++)if(i*i+j*j<=r*r+r*0.6)x.fillRect(Math.round(cx+i),Math.round(cy+j),1,1)};
  const hip=[HIPX,HIPY+P.y],neck=[hip[0]+P.lean,hip[1]-12],sh=[neck[0],neck[1]+2],hc=[neck[0]+1+(P.headX||0),neck[1]-6+(P.headY||0)];
- const legs=swap?[P.legB,P.legF]:[P.legF,P.legB];const arms=[P.armF,P.armB];
+ const legs=swap?[P.legB,P.legF]:[P.legF,P.legB];const arms=swap&&P.armSwap?[P.armB,P.armF]:[P.armF,P.armB];
  function leg(L,front){const k=[hip[0]+L[0],hip[1]+L[1]],f=[hip[0]+L[2],hip[1]+L[3]];line(hip[0],hip[1],k[0],k[1],3,front?HC.pants:HC.pantsD);line(k[0],k[1],f[0],f[1],3,front?HC.pants:HC.pantsD);
   const toe=L[4]===undefined?1:L[4];if(toe===2){rect(f[0]-1,f[1]-3,3,3,front?HC.boot:HC.bootD);rect(f[0]+1,f[1]-1,2,2,front?HC.boot:HC.bootD);px(f[0]+2,f[1],HC.bootD);return}rect(f[0]-2,f[1]-2,5,3,front?HC.boot:HC.bootD);if(toe)rect(f[0]+2,f[1]-1,1,2,front?HC.boot:HC.bootD);rect(f[0]-2,f[1],5+(toe?1:0),1,HC.bootD)}
  function arm(A,front){const e=[sh[0]+A[0],sh[1]+A[1]],h=[sh[0]+A[2],sh[1]+A[3]];const col=front?HC.coatL:HC.coatD;line(sh[0],sh[1],e[0],e[1],2,col);line(e[0],e[1],h[0],h[1],2,col);rect(h[0]-1,h[1]-1,2,2,front?HC.skin:HC.skinD);if(P.limp){px(h[0]+1,h[1],front?HC.skin:HC.skinD);px(h[0]+1,h[1]+1,front?HC.skin:HC.skinD);px(h[0]+2,h[1]+2,front?HC.skinD:HC.skinD)}}
@@ -502,18 +502,20 @@ const POSES={
  duck:{y:9,lean:6,headY:1,legF:[6,3,3,7],legB:[1,4,-4,7],armF:[6,-3,8,-9],armB:[-4,0,-7,3],wave:1,eye:1},
  hang:{y:0,lean:0,legF:[2,8,4,15],legB:[-1,8,-2,16],armF:[7,-6,5,-18],armB:[-5,-6,-3,-18],wave:2,lift:2},
  hang2:{y:0,lean:0,legF:[3,8,1,16],legB:[0,8,2,15],armF:[7,-6,5,-18],armB:[-5,-6,-3,-18],wave:0,lift:1},
- sneakIdle:{y:2,lean:4,headX:1,legF:[4,6,3,14,2],legB:[-1,7,-3,14,2],armF:[5,2,9,-2],armB:[3,0,7,-5],limp:1,wave:0,brow:1},
- sneakIdle2:{y:3,lean:4,headX:1,legF:[5,6,3,13,2],legB:[-1,6,-3,13,2],armF:[5,3,9,-1],armB:[3,1,7,-4],limp:1,wave:1,eye:2,brow:1},
- sneakLift:{y:-1,lean:2,headX:1,legF:[8,0,8,7,2],legB:[0,8,-1,17,2],armF:[5,1,9,-3],armB:[3,-1,7,-6],limp:1,wave:1,lift:1,eye:1,brow:1},
- sneakReach:{y:1,lean:5,headX:1,legF:[7,4,11,16,2],legB:[-2,7,-4,15,2],armF:[5,2,10,-1],armB:[3,0,8,-4],limp:1,wave:2,lift:1,eye:1},
- sneakPlant:{y:3,lean:3,headX:1,legF:[5,6,6,13,2],legB:[-3,5,-7,10,2],armF:[5,2,9,-2],armB:[3,0,7,-5],limp:1,wave:-1},
- sneakSettle:{y:3,lean:4,headX:1,legF:[5,6,4,13,2],legB:[0,6,-3,13,2],armF:[5,3,9,-1],armB:[3,1,7,-4],limp:1,wave:0,brow:1},
+/* sneak cycle (after a cartoon sneak reference): deep forward hunch, tiptoe, wide stance; arms swing low and opposite to the legs,
+    like a march, with dangling hands. armSwap: the B (other-foot) frame swaps the arms too */
+ sneakIdle:{y:6,lean:7,headX:1,headY:2,legF:[7,3,6,10,2],legB:[-3,6,-9,10,2],armF:[-3,5,-8,9],armB:[3,5,7,5],limp:1,armSwap:1,wave:0,brow:1},
+ sneakIdle2:{y:7,lean:7,headX:1,headY:2,legF:[7,3,6,9,2],legB:[-3,5,-9,9,2],armF:[-3,5,-8,9],armB:[3,5,7,5],limp:1,armSwap:1,wave:1,eye:2,brow:1},
+ sneakLift:{y:-1,lean:5,headX:1,legF:[8,-3,7,5,2],legB:[1,8,-1,17,2],armF:[-2,5,-4,10],armB:[1,5,3,9],limp:1,armSwap:1,wave:1,lift:1,brow:1},
+ sneakReach:{y:2,lean:7,headX:1,headY:1,legF:[8,3,13,10,2],legB:[-2,7,-6,14,2],armF:[-5,3,-11,5],armB:[4,3,9,1],limp:1,armSwap:1,wave:2,lift:1,eye:1},
+ sneakPlant:{y:5,lean:7,headX:1,headY:2,legF:[7,4,9,11,2],legB:[-3,6,-9,11,2],armF:[-4,4,-10,6],armB:[3,4,8,3],limp:1,armSwap:1,wave:-1,eye:1},
+ sneakSettle:{y:7,lean:8,headX:1,headY:2,legF:[7,3,7,9,2],legB:[-3,5,-9,9,2],armF:[-4,4,-9,8],armB:[3,4,7,4],limp:1,armSwap:1,wave:0,eye:1,brow:1},
  stepReach:{y:1,lean:3,legF:[4,7,7,16],legB:[0,7,-2,15],armF:[-1,5,-4,9],armB:[2,5,5,9],wave:1},
  stepPlant:{y:2,lean:2,legF:[4,7,3,14],legB:[-3,6,-6,11],armF:[1,5,2,10],armB:[-1,5,-3,9],wave:-1},
  settle:{y:1,lean:2,legF:[3,7,3,15],legB:[-1,7,-2,15],armF:[2,5,3,10],armB:[-2,5,-2,10],wave:0},
  trip:{y:1,lean:6,legF:[5,6,9,10],legB:[-1,7,-3,15],armF:[5,1,9,-1],armB:[-3,1,-7,-2],wave:3,lift:2,mouth:1,eye:1},
  hurt:{y:2,lean:-4,headX:-1,legF:[5,5,9,8],legB:[-3,7,-2,14],armF:[4,-2,7,-6],armB:[-2,-3,-4,-8],wave:3,lift:2,mouth:1,eye:1}};
-const FR={};for(const k in POSES){FR[k]=drawPose(POSES[k],false);if(['push','rise','fall','land','vault','stepReach','stepPlant','settle','sneakLift','sneakReach','sneakPlant','sneakSettle'].includes(k))FR[k+'B']=drawPose(POSES[k],true)}
+const FR={};for(const k in POSES){FR[k]=drawPose(POSES[k],false);if(['push','rise','fall','land','vault','stepReach','stepPlant','settle','sneakIdle','sneakIdle2','sneakLift','sneakReach','sneakPlant','sneakSettle'].includes(k))FR[k+'B']=drawPose(POSES[k],true)}
 const HERO=new THREE.Sprite(new THREE.SpriteMaterial({map:FR.idle,alphaTest:0.5}));HERO.center.set(0.5,3/SH);const HH=2.35;HERO.scale.set(HH*SW/SH,HH,1);S.add(HERO);
 const HSH=new THREE.Mesh(new THREE.CircleGeometry(0.55,18),new THREE.MeshBasicMaterial({color:'#000',transparent:true,opacity:0.35,depthWrite:false}));HSH.rotation.x=-Math.PI/2;S.add(HSH);
 const HGLOW=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:'#ffd58a',transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,opacity:0}));HGLOW.scale.set(2.2,2.2,1);S.add(HGLOW);
@@ -816,7 +818,7 @@ function frame(){requestAnimationFrame(frame);const pn=performance.now(),rdt=Mat
  const u=timed&&i<lastI?clamp((tn-ta)/L,0,1):0;const altA=i%2?'B':'',altB=(i+1)%2?'B':'';
  G.beatNow=STAIR[i].b+(i<NPLAT-1?(STAIR[i+1].b-STAIR[i].b)*u:0);
  const at=(p,th,y)=>{hTh=th;hx=Math.cos(th)*HR;hz=Math.sin(th)*HR;hy=y};
- if(!timed||tn<ta||i>=lastI){at(0,A.th,A.y);shY=A.y;pose=Math.floor(tt/0.45)%2?'sneakIdle2':'sneakIdle'}
+ if(!timed||tn<ta||i>=lastI){at(0,A.th,A.y);shY=A.y;pose=(Math.floor(tt/0.45)%2?'sneakIdle2':'sneakIdle')+(timed?altA:'')}
  else if(na&&na.type==='hold'&&i+1===na.se){const c=cablePt(na,u);let th=c.th,y=c.y-1.7;
   if(u<0.12){const k=smooth(u/0.12);th=A.th+(c.th-A.th)*k;y=A.y+(y-A.y)*k}else if(u>0.9){const k=smooth((u-0.9)/0.1);y=y+(B.y-y)*k}
   hTh=th;hx=Math.cos(th)*(u<0.12||u>0.9?HR:CABR);hz=Math.sin(th)*(u<0.12||u>0.9?HR:CABR);hy=y;shY=-999;pose=na.j==='m'?'hurt':(Math.floor(tt/0.22)%2?'hang':'hang2');if(u>0.9)pose='land'+altB}
@@ -824,7 +826,7 @@ function frame(){requestAnimationFrame(frame);const pn=performance.now(),rdt=Mat
   if(ok||bad){const th=A.th+(B.th-A.th)*u,y=A.y+(B.y-A.y)*u+Math.sin(Math.PI*u)*(ok?1.7:0.35);at(0,th,y);shY=u<0.5?A.y:B.y;pose=bad?'hurt':(u<0.15?'push'+altB:u<0.8?'vault'+altB:'fall'+altB)}
   else{at(0,A.th,A.y);shY=A.y;pose='crouch'}}
  else{const g=Math.min(0.36,L*0.62),ld=Math.min(0.22,L*0.3),left=tb-tn;
-  if(left>g+ld){at(0,A.th,A.y);shY=A.y;pose=tn-ta<0.14?'sneakSettle'+altA:(Math.floor(tt/0.45)%2?'sneakIdle2':'sneakIdle')}
+  if(left>g+ld){at(0,A.th,A.y);shY=A.y;pose=(tn-ta<0.14?'sneakSettle':Math.floor(tt/0.45)%2?'sneakIdle2':'sneakIdle')+altA}
   else if(left>g){at(0,A.th,A.y);shY=A.y;pose='sneakLift'+altB}
   else{const v=1-left/g;const th=A.th+(B.th-A.th)*smooth(v);const y=A.y+(B.y-A.y)*smooth(clamp((v-0.3)/0.7,0,1))+Math.sin(Math.PI*Math.min(1,v/0.55))*0.12;at(0,th,y);shY=v<0.5?A.y:B.y;pose=v<0.55?'sneakReach'+altB:'sneakPlant'+altB}}
  const ducking=now-G.duck<0.42,hurt=now-G.hurt<0.5;

@@ -41,7 +41,7 @@ A small gameplay prototype of one chapter, in side view. The real game will be q
 - **Layers:** Rim, Drowned Metro, Ossuary, Spore Gardens, Depths. Each has its own palette, decor, obstacle, creature, music mode and BPM (88, 96, 100, 108, 84). The boss runs at 112 on beats 80+.
 - **Stakes:** 5 lanterns (hearts). One is relit per new level.
 - **Feedback:** the rhythm track at the bottom is the main timing UI, with an early/late meter. There's also a ring under the finger, a fixed marker on the stair of the next action, and a flash when its beat hits.
-- **Explorer:** a rigged pixel-art sprite generated in code (`drawPose` and `POSES`). Its walk is a comedic sneaky tiptoe: the knee lifts before the beat, then a long toe-first stride lands on the beat. Poses are skeleton coordinates, so friends can be built later by swapping hat, hair, glasses and colours.
+- **Explorer:** a rigged pixel-art sprite generated in code (`drawPose` and `POSES`). Its walk is a cartoon sneak (modelled on a classic sneak-cycle reference): hunched forward and low on tiptoe, arms swinging low and opposite to the legs like a march, hands dangling, swapping with each step (`armSwap`); the far leg and arm are drawn much darker so the alternation reads at small size. The knee lifts high before the beat, then a long toe-first stride lands on the beat. Poses are skeleton coordinates, so friends can be built later by swapping hat, hair, glasses and colours.
 
 ## Tech
 
