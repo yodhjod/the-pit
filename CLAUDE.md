@@ -68,9 +68,20 @@ The file is ~125 KB of dense one-line code, so don't read it whole. Grep `/\* --
 ## Conventions
 
 - Keep the game a single HTML file unless it grows past the point of being workable. Prefer small, surgical edits.
-- Test in a headless Chromium (Playwright with `--use-gl=swiftshader`), or in the desktop app's browser pane via the `the-pit` server in `.claude/launch.json` (serves the folder on http://localhost:8123). Software rendering is slow, so judge visuals from screenshots, not timing accuracy. The pane's tools run in an isolated world: to reach the game's debug hook `window.__pit` (analyse, makeChart, playCustom, CU, LV, G, S, C), inject a `<script>` and pass results back through the DOM. When the pane is hidden its frames are throttled, so `?autoplay` misses notes there.
+- Test in a headless Chromium (Playwright with `--use-gl=swiftshader`), or in the desktop app's browser pane via the `the-pit` server in `.claude/launch.json` (serves the folder on http://localhost:8123). Software rendering is slow, so judge visuals from screenshots, not timing accuracy. The pane's tools run in an isolated world: to reach the game's debug hook `window.__pit` (analyse, makeChart, playCustom, CU, LV, G, S, C), inject a `<script>` and pass results back through the DOM. Test helpers live there too (section "dev test helpers"): `synth(o)` renders a drum loop with a steady tone, `song(buf,o)` analyses it and starts a custom level, `measure(o)` reports clean vs during-mistake loudness and spectrum peaks on a music bus, `report(x)` writes a short JSON to `document.body.dataset.test`, `errs` collects errors. Audio needs one real click in the pane first. When the pane is hidden its frames are throttled, so `?autoplay` misses notes there.
 - Dev switches in the URL: `?autoplay` plays every note perfectly, `?node=N` starts the run at `RUN[N]` (7 = boss), `?coins=N` starts with coins. Runs with `autoplay` or `node` don't update the saved best.
 - Keep timing logic driven by audio time. Never move gameplay forward based on input arrival.
+
+## Token budget
+
+Everything in the conversation is re-read on every later step, so what goes in early costs the most.
+
+- Read narrow line ranges (`grep -n` first); never dump whole sections of `index.html` into the conversation. Print only the lines a change touches.
+- Edit with exact small replacements. Don't re-read a file to confirm an edit that already succeeded.
+- Verify with text, not pictures: `read_console_messages`, `get_page_text`, or a small injected script that returns a short JSON summary. Take a screenshot only when the change is visual, at `scale` 0.5 or less, and only one per check.
+- Don't retype long test scripts: reuse helpers already on `window.__pit`, and add new reusable ones there instead of pasting big harnesses.
+- Skip verification steps that can't prove anything (for example, frame-driven checks while the browser pane is hidden); say what wasn't checked instead.
+- Keep replies and wrap-ups short; no recaps of what the user just read.
 
 ## Other files
 
