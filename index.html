@@ -1097,9 +1097,9 @@ window.__pit={analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV
 const gameEl=$('game'),pend={};const nowIn=ts=>clockAt(ts)-offsetMs/1000;
 /* gestures: a swipe counts at the moment the finger has clearly moved, in any roughly vertical direction */
 let W_S=0.18;const SW_DIST=16;
-/* the axis the next move expects wins diagonal swipes */
+/* the axis the next move expects wins diagonal swipes (up to ~63° off it: a thumb's sideways swipe arcs); the other axis needs a longer, clearly straight move */
 function swipeDir(dx,dy){const ax=Math.abs(dx),ay=Math.abs(dy),n=curNote(),hz=n&&(n.type==='kick'||n.type==='brace'),v=dy<0?'up':'down',h=dx>0?'right':'left';
- if(hz)return ax>=SW_DIST&&ax>=ay*0.7?h:ay>=SW_DIST?v:null;return ay>=SW_DIST&&ay>=ax*0.7?v:ax>=SW_DIST?h:null}
+ const [a,o,da,dO]=hz?[ax,ay,h,v]:[ay,ax,v,h];return a>=SW_DIST&&a>=o*0.5?da:o>=SW_DIST*1.5&&o>a*2?dO:null}
 function resolveSwipe(p,dir,ts){p.done=true;if(G.fx&&!G.fx.done)G.fx.swipe=dir;onSwipe(dir,nowIn(ts)-0.02)}
 gameEl.addEventListener('pointerdown',e=>{if(e.target.closest('.overlay,#pauseB,#skipB'))return;e.preventDefault();if(G.state!=='play'||G.paused)return;G.kb=false;const t=nowIn(e.timeStamp);const n=curNote();{const r=gameEl.getBoundingClientRect();newFx(e.clientX-r.left,e.clientY-r.top)}
  try{gameEl.setPointerCapture(e.pointerId)}catch(_){}
