@@ -92,6 +92,7 @@ body{background:var(--ink);color:var(--paper);font-family:var(--serif);-webkit-u
 #pauseB{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));left:max(12px,env(safe-area-inset-left,0px));width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:rgba(13,10,18,.55);color:var(--paper);font-size:15px;letter-spacing:-.1em;cursor:pointer;z-index:5}
 #autoTag{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:20;pointer-events:none;font-family:var(--mono);font-weight:700;font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:#fff;background:#c0262d;border:2px solid #fff;border-radius:8px;padding:6px 14px;box-shadow:0 2px 14px rgba(0,0,0,.6);white-space:nowrap;animation:autoBl 1.6s ease-in-out infinite}
 @keyframes autoBl{50%{opacity:.6}}
+#set{background:rgba(13,10,18,.8)}#set .panel{gap:12px}.setH{margin-top:8px;color:var(--muted)}
 #pauseB:focus-visible{outline:2px solid var(--paper);outline-offset:3px}
 .vol{display:grid;grid-template-columns:auto 1fr 3.5ch;gap:10px 12px;align-items:center;width:min(100%,320px);font-family:var(--mono);font-size:12px;color:var(--muted);text-align:left}
 .vol input{width:100%;accent-color:var(--gold);height:28px;margin:0}
@@ -121,8 +122,20 @@ body{background:var(--ink);color:var(--paper);font-family:var(--serif);-webkit-u
       <button class="btn" id="go">Begin the descent</button>
       <button class="btn ghost" id="songB">Play your own song</button>
       <span class="hint" id="tBest"></span>
-      <div class="cal">Audio delay <button id="offM" aria-label="Decrease audio delay">−</button><span id="offV">0 ms</span><button id="offP" aria-label="Increase audio delay">+</button><button class="sideb" id="calB">Calibrate</button></div>
+      <button class="lnk" id="setB">Settings</button>
       <span class="hint">Tap · swipe up · swipe down · hold<br>Keyboard: Space · ↑ · ↓ · hold Space</span>
+    </div>
+  </div>
+  <div class="overlay" id="set" hidden>
+    <div class="panel">
+      <span class="eb">Before you go down</span>
+      <h1 style="font-size:clamp(42px,11vw,68px)">Settings</h1>
+      <span class="eb setH">Volume</span>
+      <div id="setV"></div>
+      <span class="eb setH">Audio delay</span>
+      <div class="cal"><button id="offM" aria-label="Decrease audio delay">−</button><span id="offV">0 ms</span><button id="offP" aria-label="Increase audio delay">+</button><button class="sideb" id="calB">Calibrate</button></div>
+      <span class="hint">If your taps feel late or early, calibrate with the headphones you play with.</span>
+      <button class="btn" id="setGo">Done</button>
     </div>
   </div>
   <div class="overlay" id="calO" hidden>
@@ -632,7 +645,25 @@ function audioInit(){try{if(AC){if(AC.state==='suspended')AC.resume();return}con
  nbuf=AC.createBuffer(1,AC.sampleRate*0.6,AC.sampleRate);const nd=nbuf.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;OUT=VG.fx;musP=mkBus(VG.mu);musT=mkBus(VG.muT);musP.mk.gain.value=0.05}catch(e){AC=null}}
 /* volume: master, music, effects, 0–1 each, saved; a squared curve so the slider feels even */
 const VOL={m:1,mu:1,fx:1},VG={};try{Object.assign(VOL,JSON.parse(localStorage.getItem('pitVol'))||{})}catch(e){}
-function applyVol(){if(!VG.out)return;const t=AC.currentTime,s=(g,v)=>g.gain.setTargetAtTime(v*v,t,0.02);s(VG.out,VOL.m);s(VG.mu,VOL.mu);s(VG.muT,VOL.mu);s(VG.fx,VOL.fx)}
+function applyVol(){pvVol();if(!VG.out)return;const t=AC.currentTime,s=(g,v)=>g.gain.setTargetAtTime(v*v,t,0.02);s(VG.out,VOL.m);s(VG.mu,VOL.mu);s(VG.muT,VOL.mu);s(VG.fx,VOL.fx)}
+/* slider previews play in their own small AudioContext, so they work while the game's clock is suspended (pause menu).
+   Music: the paused song from where you stopped (or the layer's chord), held while you drag; effects and master: the tap sound */
+const PV={};
+function pvInit(){if(PV.ac){if(PV.ac.state==='suspended')PV.ac.resume();return true}const A=window.AudioContext||window.webkitAudioContext;if(!A)return false;try{const a=PV.ac=new A();
+ const comp=a.createDynamicsCompressor();comp.threshold.value=-16;comp.ratio.value=3.5;comp.connect(a.destination);PV.out=a.createGain();PV.out.connect(comp);
+ PV.mu=a.createGain();PV.mu.connect(PV.out);PV.fx=a.createGain();PV.fx.connect(PV.out);pvVol();return true}catch(e){PV.ac=null;return false}}
+function pvVol(){if(!PV.ac)return;const t=PV.ac.currentTime,s=(g,v)=>g.gain.setTargetAtTime(v*v,t,0.02);s(PV.out,VOL.m);s(PV.mu,VOL.mu);s(PV.fx,VOL.fx)}
+function pvTap(){if(!pvInit())return;const a=PV.ac,t=a.currentTime+0.01,n=a.createBufferSource(),b=a.createBuffer(1,a.sampleRate*0.08,a.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+ n.buffer=b;const f=a.createBiquadFilter();f.type='bandpass';f.frequency.value=1500;f.Q.value=1.5;const g=a.createGain();g.gain.setValueAtTime(0.32*0.8,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.07);n.connect(f);f.connect(g);g.connect(PV.fx);n.start(t);
+ const o=a.createOscillator(),og=a.createGain();o.type='triangle';o.frequency.setValueAtTime(190,t);o.frequency.exponentialRampToValueAtTime(90,t+0.05);og.gain.setValueAtTime(0.0001,t);og.gain.exponentialRampToValueAtTime(0.12*0.8,t+0.002);og.gain.exponentialRampToValueAtTime(0.0001,t+0.1);o.connect(og);og.connect(PV.fx);o.start(t);o.stop(t+0.12)}
+function pvMusic(on){if(!on&&!PV.m)return;if(!pvInit())return;const a=PV.ac,t=a.currentTime;
+ if(!on){if(PV.m){const m=PV.m;PV.m=null;m.g.gain.cancelScheduledValues(t);m.g.gain.setValueAtTime(m.g.gain.value,t);m.g.gain.linearRampToValueAtTime(0.0001,t+1.2);m.src.forEach(x=>x.stop(t+1.25))}return}
+ if(PV.m){const g=PV.m.g.gain;g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);g.linearRampToValueAtTime(PV.m.v,t+0.1);return}
+ const g=a.createGain(),src=[];let v;g.connect(PV.mu);const sg=G.paused&&LV&&LV.song;
+ if(sg&&sg.buf){const b=a.createBufferSource();b.buffer=sg.buf;b.loop=true;b.connect(g);b.start(t,clamp((sg.from||0)+Math.max(0,G.pzLt||0),0,sg.buf.duration-0.1));src.push(b);v=0.9}
+ else{const L=sg?LV.L:0,mu=MUSIC[clamp(L,0,MUSIC.length-1)],f=a.createBiquadFilter();f.type='lowpass';f.frequency.value=mu.cut*1.4;f.connect(g);
+  [...mu.ch[0],mu.bass[0]].forEach((n,i)=>[-7,7].forEach(dt=>{const o=a.createOscillator();o.type=i<4?'sawtooth':'triangle';o.frequency.value=mtof(n);o.detune.value=dt;o.connect(f);o.start(t);src.push(o)}));v=0.07}
+ g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(v,t+0.15);PV.m={g,src,v}}
 const ctxNow=()=>AC?AC.currentTime:performance.now()/1000;
 /* the time of the sound currently reaching your ears: compensates output latency, smoothed against the frame clock */
 const CK={ref:0,perf:0,last:0,ok:false};
@@ -881,7 +912,7 @@ if(DEV.auto){const b=document.createElement('div');b.id='autoTag';b.textContent=
 let best=0;try{best=Math.min(RUN.length,parseInt(localStorage.getItem('pitBest'))||0)}catch(e){}
 function saveBest(i){if(i>best&&!DEV.auto&&!DEV.node&&!G.custom){best=i;try{localStorage.setItem('pitBest',best)}catch(e){}}}
 function bestUI(){$('tBest').textContent=best>0?'Deepest so far: '+nodeName(best):''}
-const OVERLAYS=['start','end','fail','clear','shop','song','pause'];
+const OVERLAYS=['start','end','fail','clear','shop','song','pause','set'];
 /* no autofocus: a Space meant for the last move must not press the menu button. Enter/Space work after a short delay (see keydown) */
 function showOnly(id){OVERLAYS.forEach(o=>$(o).hidden=o!==id);const a=document.activeElement;if(a&&a!==document.body&&a.blur)a.blur();G.ovT=performance.now()}
 function resetRun(){Object.assign(G,{coins:0,up:{},hearts:5,maxH:5,windUsed:false,p:0,g:0,m:0,max:0,pathEnd:null,camp:null,freezeLt:null});W_P=0.07;W_G=0.14;W_S=0.18;
@@ -972,7 +1003,7 @@ $('sgFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)r
  catch(err){console.warn(err);$('sgInfo').textContent='Could not read that file. Try an MP3, M4A, WAV or OGG.'}};
 [['sgDiff','diff',Number],['sgLen','len',String],['sgTheme','theme',Number]].forEach(([id,key,cv])=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{
  CU[key]=cv(b.dataset.v);$(id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(CU.T)cuInfo()}));
-window.__pit={analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},get WARPS(){return WARPS},warpRate,levelAt,G,S,C,CUT};
+window.__pit={analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},PV,get WARPS(){return WARPS},warpRate,levelAt,G,S,C,CUT};
 /* ---------- dev test helpers on window.__pit (the browser pane's tools run in an isolated world: inject a <script> and read results back from the DOM) ---------- */
 /* synth(o): a drum loop with a steady tone, rendered offline. song(buf,o): analyse it and start a custom level. measure(o): watch a music bus and
    report clean vs during-mistake loudness and spectrum peaks. report(x): put a short JSON on document.body.dataset.test. errs: errors since load */
@@ -1022,19 +1053,21 @@ addEventListener('keydown',e=>{if(G.state==='play'&&!e.repeat&&(e.code==='Escape
 addEventListener('keyup',e=>{if(!G.paused&&G.zip&&G.zip.state==='ride'&&G.holdPtr==='key'&&!UPK.includes(e.code)&&!DNK.includes(e.code))holdRelease(nowIn(e.timeStamp))});
 /* pause: the audio clock stops (AC.suspend), and with it the level, the music and the judging. Resume counts in 3-2-1 first */
 let pzCd=null;
-function pauseGame(){if(G.state!=='play')return;if(pzCd){clearInterval(pzCd);pzCd=null}if(!G.paused){CK.hold=clock();G.paused=true;if(AC)AC.suspend()}
- $('pzE').textContent='Paused';$('pzH').textContent='Catch your breath';$('pzH').classList.remove('cd');$('pzV').hidden=$('pzGo').hidden=$('pzQ').hidden=false;showOnly('pause')}
-function unpause(){G.paused=false;pzCd=null;$('pause').hidden=true;const go=()=>{CK.ok=false;CK.hold=null};if(AC)AC.resume().then(go,go);else go()}
-function resumeGame(){if(!G.paused||pzCd)return;let n=3;$('pzE').textContent='Get ready';$('pzH').classList.add('cd');$('pzH').textContent=n;$('pzV').hidden=$('pzGo').hidden=$('pzQ').hidden=true;
+function pauseGame(){if(G.state!=='play')return;if(pzCd){clearInterval(pzCd);pzCd=null}if(!G.paused){CK.hold=clock();G.pzLt=LV?levelAt(CK.hold-offsetMs/1000):0;G.paused=true;if(AC)AC.suspend()}
+ $('pzE').textContent='Paused';$('pzH').textContent='Catch your breath';$('pzH').classList.remove('cd');$('pzV').hidden=$('pzGo').hidden=$('pzQ').hidden=false;$('pzGo').before($('pzV'));showOnly('pause')}
+function unpause(){pvMusic(false);G.paused=false;pzCd=null;$('pause').hidden=true;const go=()=>{CK.ok=false;CK.hold=null};if(AC)AC.resume().then(go,go);else go()}
+function resumeGame(){if(!G.paused||pzCd)return;pvMusic(false);let n=3;$('pzE').textContent='Get ready';$('pzH').classList.add('cd');$('pzH').textContent=n;$('pzV').hidden=$('pzGo').hidden=$('pzQ').hidden=true;
  pzCd=setInterval(()=>{if(--n>0)$('pzH').textContent=n;else{clearInterval(pzCd);unpause()}},450)}
 $('pauseB').onclick=pauseGame;$('pzGo').onclick=resumeGame;$('pzQ').onclick=()=>{unpause();toTitle()};
+$('setB').onclick=()=>{audioInit();$('setV').append($('pzV'));showOnly('set')};$('setGo').onclick=()=>{pvMusic(false);showOnly('start')};
 document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseGame()});
 [['vM','m'],['vMu','mu'],['vFx','fx']].forEach(([id,k])=>{const el=$(id),show=()=>$(id+'o').textContent=Math.round(VOL[k]*100);el.value=Math.round(VOL[k]*100);show();
- el.oninput=()=>{VOL[k]=el.value/100;show();applyVol()};el.onchange=()=>{try{localStorage.setItem('pitVol',JSON.stringify(VOL))}catch(e){}}});
+ el.oninput=()=>{VOL[k]=el.value/100;show();applyVol();const n=performance.now();if(k==='mu')pvMusic(true);else if(n-(VG.pv||0)>160){VG.pv=n;pvTap()}};
+ el.addEventListener('pointerdown',()=>{if(k==='mu')pvMusic(true)});el.onchange=()=>{if(k==='mu')pvMusic(false);else pvTap();try{localStorage.setItem('pitVol',JSON.stringify(VOL))}catch(e){}}});
 /* calibration: 16 clicks at 100 bpm, the median gap between click and tap becomes the audio delay */
 const CAL={on:false,clicks:[],taps:[]};
-$('calB').onclick=()=>{audioInit();$('start').hidden=true;$('calO').hidden=false;$('calT').textContent='Listen to 16 clicks and tap anywhere on each one. Use the headphones you will play with.';$('calGo').textContent='Start';$('calGo').hidden=false};
-$('calGo').onclick=e=>{e.stopPropagation();if($('calGo').textContent==='Done'){$('calO').hidden=true;$('start').hidden=false;return}if(!AC)return;audioInit();CAL.on=true;CAL.taps=[];CAL.clicks=[];$('calGo').hidden=true;$('calT').textContent='Tap on every click…';
+$('calB').onclick=()=>{audioInit();$('set').hidden=true;$('calO').hidden=false;$('calT').textContent='Listen to 16 clicks and tap anywhere on each one. Use the headphones you will play with.';$('calGo').textContent='Start';$('calGo').hidden=false};
+$('calGo').onclick=e=>{e.stopPropagation();if($('calGo').textContent==='Done'){$('calO').hidden=true;$('set').hidden=false;return}if(!AC)return;audioInit();CAL.on=true;CAL.taps=[];CAL.clicks=[];$('calGo').hidden=true;$('calT').textContent='Tap on every click…';
  const t0=ctxNow()+0.6,sp=0.6;for(let i=0;i<16;i++){const t=t0+i*sp;CAL.clicks.push(t);nz(t,0.05,0.5,'bandpass',i%4?1800:2600,5);voice('sine',i%4?880:1320,t,0.002,0.08,0.12)}
  const end=t0+16*sp+0.5;const tick=()=>{const h=clock();const i=CAL.clicks.findIndex(c=>Math.abs(h-c)<0.06);$('calDot').style.background=i>=0?'rgba(242,196,109,.7)':'transparent';if(ctxNow()<end+0.3)requestAnimationFrame(tick);else calDone()};tick()};
 $('calO').addEventListener('pointerdown',e=>{if(!CAL.on||e.target.id==='calGo')return;CAL.taps.push(clockAt(e.timeStamp));$('calDot').style.transform='scale(1.2)';setTimeout(()=>$('calDot').style.transform='',90)});
