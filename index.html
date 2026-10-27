@@ -89,6 +89,14 @@ body{background:var(--ink);color:var(--paper);font-family:var(--serif);-webkit-u
 .seg button{font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--paper);background:rgba(13,10,18,.6);border:1px solid var(--line);border-radius:999px;padding:7px 12px;cursor:pointer}
 .seg button.on{background:var(--gold);color:#24160a;border-color:var(--gold)}
 #song .panel{gap:10px}
+#pauseB{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));left:max(12px,env(safe-area-inset-left,0px));width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:rgba(13,10,18,.55);color:var(--paper);font-size:15px;letter-spacing:-.1em;cursor:pointer;z-index:5}
+#autoTag{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:20;pointer-events:none;font-family:var(--mono);font-weight:700;font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:#fff;background:#c0262d;border:2px solid #fff;border-radius:8px;padding:6px 14px;box-shadow:0 2px 14px rgba(0,0,0,.6);white-space:nowrap;animation:autoBl 1.6s ease-in-out infinite}
+@keyframes autoBl{50%{opacity:.6}}
+#pauseB:focus-visible{outline:2px solid var(--paper);outline-offset:3px}
+.vol{display:grid;grid-template-columns:auto 1fr 3.5ch;gap:10px 12px;align-items:center;width:min(100%,320px);font-family:var(--mono);font-size:12px;color:var(--muted);text-align:left}
+.vol input{width:100%;accent-color:var(--gold);height:28px;margin:0}
+.vol output{text-align:right;color:var(--paper)}
+#pause h1.cd{font-style:normal;font-size:clamp(80px,22vw,130px)}
 </style>
 </head>
 <body>
@@ -103,6 +111,7 @@ body{background:var(--ink);color:var(--paper);font-family:var(--serif);-webkit-u
   <div id="hint"></div>
   <div id="card"><small id="cO">Edge of the Pit</small><h2 id="cN">The Rim</h2><span id="cD">0 m</span></div>
   <div id="fx"></div>
+  <button id="pauseB" hidden aria-label="Pause">&#10074;&#10074;</button>
   <canvas id="trk" aria-hidden="true"></canvas>
   <div class="overlay" id="start">
     <div class="panel">
@@ -162,6 +171,19 @@ body{background:var(--ink);color:var(--paper);font-family:var(--serif);-webkit-u
       <p id="eP"></p>
       <div class="stats"><span>Perfect<b id="sP">0</b></span><span>Good<b id="sG">0</b></span><span>Stumble<b id="sM">0</b></span><span>Combo<b id="sC">0</b></span></div>
       <button class="btn" id="again">Descend again</button>
+    </div>
+  </div>
+  <div class="overlay" id="pause" hidden>
+    <div class="panel">
+      <span class="eb" id="pzE">Paused</span>
+      <h1 id="pzH" style="font-size:clamp(42px,11vw,68px)">Catch your breath</h1>
+      <div class="vol" id="pzV">
+        <label for="vM">Master</label><input type="range" id="vM" min="0" max="100" step="1"><output id="vMo"></output>
+        <label for="vMu">Music</label><input type="range" id="vMu" min="0" max="100" step="1"><output id="vMuo"></output>
+        <label for="vFx">Effects</label><input type="range" id="vFx" min="0" max="100" step="1"><output id="vFxo"></output>
+      </div>
+      <button class="btn" id="pzGo">Resume</button>
+      <button class="lnk" id="pzQ">Abandon the run</button>
     </div>
   </div>
   <div class="overlay" id="song" hidden>
@@ -603,26 +625,29 @@ function burst(p,n,col){SPARK.material.color.set(col);let k=0;for(let i=0;i<SPN&
 /* ---------- audio ---------- */
 const SPB=SPBL[0];let AC=null,master,rev,dly,nbuf;let offsetMs=0;try{offsetMs=parseInt(localStorage.getItem('pitDescOff'))||0}catch(e){}
 function audioInit(){try{if(AC){if(AC.state==='suspended')AC.resume();return}const A=window.AudioContext||window.webkitAudioContext;if(!A)return;AC=new A();
- const comp=AC.createDynamicsCompressor();comp.threshold.value=-16;comp.ratio.value=3.5;comp.connect(AC.destination);master=AC.createGain();master.gain.value=0.8;master.connect(comp);
+ const comp=AC.createDynamicsCompressor();comp.threshold.value=-16;comp.ratio.value=3.5;VG.out=AC.createGain();comp.connect(VG.out);VG.out.connect(AC.destination);master=AC.createGain();master.gain.value=0.8;master.connect(comp);VG.fx=AC.createGain();VG.fx.connect(master);VG.mu=AC.createGain();VG.mu.connect(master);VG.muT=AC.createGain();VG.muT.connect(VG.out);applyVol();
  const len=AC.sampleRate*3.4,ib=AC.createBuffer(2,len,AC.sampleRate);for(let c=0;c<2;c++){const d=ib.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.8)}
  rev=AC.createConvolver();rev.buffer=ib;const rg=AC.createGain();rg.gain.value=0.5;rev.connect(rg);rg.connect(master);
  dly=AC.createDelay(2);dly.delayTime.value=SPB*0.75;const fb=AC.createGain();fb.gain.value=0.36;const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2400;dly.connect(lp);lp.connect(fb);fb.connect(dly);const dg=AC.createGain();dg.gain.value=0.32;lp.connect(dg);dg.connect(master);dg.connect(rev);
- nbuf=AC.createBuffer(1,AC.sampleRate*0.6,AC.sampleRate);const nd=nbuf.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;OUT=master;musP=mkBus(master);musT=mkBus(AC.destination);musP.mk.gain.value=0.05}catch(e){AC=null}}
+ nbuf=AC.createBuffer(1,AC.sampleRate*0.6,AC.sampleRate);const nd=nbuf.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;OUT=VG.fx;musP=mkBus(VG.mu);musT=mkBus(VG.muT);musP.mk.gain.value=0.05}catch(e){AC=null}}
+/* volume: master, music, effects, 0–1 each, saved; a squared curve so the slider feels even */
+const VOL={m:1,mu:1,fx:1},VG={};try{Object.assign(VOL,JSON.parse(localStorage.getItem('pitVol'))||{})}catch(e){}
+function applyVol(){if(!VG.out)return;const t=AC.currentTime,s=(g,v)=>g.gain.setTargetAtTime(v*v,t,0.02);s(VG.out,VOL.m);s(VG.mu,VOL.mu);s(VG.muT,VOL.mu);s(VG.fx,VOL.fx)}
 const ctxNow=()=>AC?AC.currentTime:performance.now()/1000;
 /* the time of the sound currently reaching your ears: compensates output latency, smoothed against the frame clock */
 const CK={ref:0,perf:0,last:0,ok:false};
 function heardRaw(){let t;try{if(AC.getOutputTimestamp){const ts=AC.getOutputTimestamp();if(ts&&ts.contextTime>0&&ts.performanceTime>0)t=ts.contextTime+(performance.now()-ts.performanceTime)/1000}}catch(e){}
  if(t===undefined)t=AC.currentTime-(AC.outputLatency||0)-(AC.baseLatency||0);return t}
-function clock(){if(!AC||AC.state!=='running')return AC?AC.currentTime:performance.now()/1000;const pn=performance.now();const raw=heardRaw();
+function clock(){if(CK.hold!=null)return CK.hold;if(!AC||AC.state!=='running')return AC?AC.currentTime:performance.now()/1000;const pn=performance.now();const raw=heardRaw();
  if(!CK.ok){CK.ref=raw;CK.perf=pn;CK.ok=true}let est=CK.ref+(pn-CK.perf)/1000;const err=raw-est;
  if(Math.abs(err)>0.04){CK.ref=raw;CK.perf=pn;est=raw}else{CK.ref+=err*0.04}est=Math.max(est,CK.last);CK.last=est;return est}
 /* the heard-time at which an input event actually happened (uses the event's own timestamp, not when we got round to handling it) */
 function clockAt(ts){const c=clock();if(!AC||AC.state!=='running'||!CK.ok||!(ts>0))return c;const t=CK.ref+(ts-CK.perf)/1000;return Math.abs(t-c)<0.25?Math.min(t,c):c}
 const mtof=m=>440*Math.pow(2,(m-69)/12);
-function voice(type,f,t,a,d,peak,sends,f2){const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d*0.6);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+a+d);if(OUT!==master)LIVE.push({o,b:0,end:t+a+d+0.05});o.connect(g);g.connect(OUT);(sends||[]).forEach(s=>g.connect(s));o.start(t);o.stop(t+a+d+0.05)}
+function voice(type,f,t,a,d,peak,sends,f2){const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d*0.6);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+a+d);if(OUT===musP.in)LIVE.push({o,b:0,end:t+a+d+0.05});o.connect(g);g.connect(OUT);(sends||[]).forEach(s=>g.connect(s));o.start(t);o.stop(t+a+d+0.05)}
 function nz(t,d,peak,type,freq,q,sends){const s=AC.createBufferSource();s.buffer=nbuf;const f=AC.createBiquadFilter();f.type=type;f.frequency.value=freq;if(q)f.Q.value=q;const g=AC.createGain();g.gain.setValueAtTime(peak,t);g.gain.exponentialRampToValueAtTime(0.0001,t+d);s.connect(f);f.connect(g);g.connect(OUT);(sends||[]).forEach(x=>g.connect(x));s.start(t);s.stop(t+d+0.02)}
 function pad(notes,t,dur,cut,vol){const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.setValueAtTime(cut*0.6,t);f.frequency.linearRampToValueAtTime(cut,t+dur*0.5);const g=AC.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(vol,t+dur*0.35);g.gain.linearRampToValueAtTime(0.0001,t+dur*1.15);f.connect(g);g.connect(OUT);g.connect(rev);
- notes.forEach(n=>[-7,7].forEach(dt=>{const o=AC.createOscillator();o.type='sawtooth';o.frequency.value=mtof(n);o.detune.value=dt;if(OUT!==master)LIVE.push({o,b:dt,end:t+dur*1.2});o.connect(f);o.start(t);o.stop(t+dur*1.2)}))}
+ notes.forEach(n=>[-7,7].forEach(dt=>{const o=AC.createOscillator();o.type='sawtooth';o.frequency.value=mtof(n);o.detune.value=dt;if(OUT===musP.in)LIVE.push({o,b:dt,end:t+dur*1.2});o.connect(f);o.start(t);o.stop(t+dur*1.2)}))}
 const MUSIC=[
  {ch:[[62,66,69,73],[59,62,66,69],[55,59,62,66],[57,61,64,69]],bass:[50,47,43,45],cut:1500,arp:'bell',shk:true},
  {ch:[[57,60,64,71],[53,57,60,64],[55,60,64,67],[55,59,62,67]],bass:[45,41,48,43],cut:1000,arp:'pluck',shk:true},
@@ -631,7 +656,7 @@ const MUSIC=[
  {ch:[[48,55,60,63],[48,55,60,63],[44,51,56,60],[46,53,58,62]],bass:[36,36,32,34],cut:900,arp:'sparse',shk:false},
  {ch:[[57,60,64,69],[53,57,60,65],[55,58,62,67],[52,56,59,64]],bass:[45,41,43,40],cut:2200,arp:'pluck',shk:true}];
 /* music voices go through the procedural music bus, so mistakes can bend them */
-function musicBeat(L,k,t){if(LIVE.length>300){const now=AC.currentTime;for(let i=LIVE.length-1;i>=0;i--)if(LIVE[i].end<now)LIVE.splice(i,1)}OUT=musP.in;try{musicBeat0(L,k,t)}finally{OUT=master}}
+function musicBeat(L,k,t){if(LIVE.length>300){const now=AC.currentTime;for(let i=LIVE.length-1;i>=0;i--)if(LIVE[i].end<now)LIVE.splice(i,1)}OUT=musP.in;try{musicBeat0(L,k,t)}finally{OUT=VG.fx}}
 function musicBeat0(L,k,t){const sp=SPBL[L],mu=MUSIC[L],rel=((k%16)+16)%16,ci=Math.floor(rel/4),chord=mu.ch[ci];
  if(rel===0&&dly)dly.delayTime.setValueAtTime(sp*0.75,t);
  if(rel%4===0)pad(chord,t,sp*4.2,mu.cut,L===4?0.03:0.022);
@@ -851,10 +876,12 @@ function onSwipe(dir,t){const n=curNote();if(!n||G.state!=='play'||n.j)return;co
 /* ---------- run flow: newRun → nodes (descent / vendor / boss); death ends the run ---------- */
 /* dev switches for testing: ?autoplay plays perfectly, ?node=N starts the run at RUN[N], ?coins=N starts rich */
 const DEV=(()=>{const q=new URLSearchParams(location.search);return{auto:q.has('autoplay'),node:parseInt(q.get('node'))||0,coins:parseInt(q.get('coins'))||0}})();
+/* a loud badge so an autoplay link is never mistaken for a real run */
+if(DEV.auto){const b=document.createElement('div');b.id='autoTag';b.textContent='Autoplay mode';$('game').appendChild(b)}
 let best=0;try{best=Math.min(RUN.length,parseInt(localStorage.getItem('pitBest'))||0)}catch(e){}
 function saveBest(i){if(i>best&&!DEV.auto&&!DEV.node&&!G.custom){best=i;try{localStorage.setItem('pitBest',best)}catch(e){}}}
 function bestUI(){$('tBest').textContent=best>0?'Deepest so far: '+nodeName(best):''}
-const OVERLAYS=['start','end','fail','clear','shop','song'];
+const OVERLAYS=['start','end','fail','clear','shop','song','pause'];
 /* no autofocus: a Space meant for the last move must not press the menu button. Enter/Space work after a short delay (see keydown) */
 function showOnly(id){OVERLAYS.forEach(o=>$(o).hidden=o!==id);const a=document.activeElement;if(a&&a!==document.body&&a.blur)a.blur();G.ovT=performance.now()}
 function resetRun(){Object.assign(G,{coins:0,up:{},hearts:5,maxH:5,windUsed:false,p:0,g:0,m:0,max:0,pathEnd:null,camp:null,freezeLt:null});W_P=0.07;W_G=0.14;W_S=0.18;
@@ -975,13 +1002,13 @@ const gameEl=$('game'),pend={};const nowIn=ts=>clockAt(ts)-offsetMs/1000;
 let W_S=0.18;const SW_DIST=16;
 function swipeDir(dx,dy){return Math.abs(dy)>=SW_DIST&&Math.abs(dy)>=Math.abs(dx)*0.7?(dy<0?'up':'down'):null}
 function resolveSwipe(p,dir,ts){p.done=true;if(G.fx&&!G.fx.done)G.fx.swipe=dir;onSwipe(dir,nowIn(ts)-0.02)}
-gameEl.addEventListener('pointerdown',e=>{if(e.target.closest('.overlay'))return;e.preventDefault();if(G.state!=='play')return;G.kb=false;const t=nowIn(e.timeStamp);const n=curNote();{const r=gameEl.getBoundingClientRect();newFx(e.clientX-r.left,e.clientY-r.top)}
+gameEl.addEventListener('pointerdown',e=>{if(e.target.closest('.overlay,#pauseB'))return;e.preventDefault();if(G.state!=='play'||G.paused)return;G.kb=false;const t=nowIn(e.timeStamp);const n=curNote();{const r=gameEl.getBoundingClientRect();newFx(e.clientX-r.left,e.clientY-r.top)}
  try{gameEl.setPointerCapture(e.pointerId)}catch(_){}
  if(n&&!n.j&&(n.type==='up'||n.type==='duck')&&n.time-t<0.6&&t-n.time<W_S){pend[e.pointerId]={x:e.clientX,y:e.clientY,t,done:false};return}
  pend[e.pointerId]={x:e.clientX,y:e.clientY,t,done:true};G.holdPtr=e.pointerId;onPress(t)});
 gameEl.addEventListener('pointermove',e=>{const p=pend[e.pointerId];if(!p||p.done)return;let evs=e.getCoalescedEvents?e.getCoalescedEvents():[];if(!evs||!evs.length)evs=[e];
  for(const ev of evs){const dir=swipeDir(ev.clientX-p.x,ev.clientY-p.y);if(dir){resolveSwipe(p,dir,ev.timeStamp||e.timeStamp);break}}});
-function ptrEnd(e,cancel){const p=pend[e.pointerId];delete pend[e.pointerId];
+function ptrEnd(e,cancel){const p=pend[e.pointerId];delete pend[e.pointerId];if(G.paused)return;
  if(p&&!p.done){const dir=swipeDir(e.clientX-p.x,e.clientY-p.y);if(dir)resolveSwipe(p,dir,e.timeStamp);else if(!cancel){G.holdPtr=e.pointerId;onPress(p.t)}}
  if(G.zip&&G.zip.state==='ride'&&G.holdPtr===e.pointerId)holdRelease(nowIn(e.timeStamp))}
 gameEl.addEventListener('pointerup',e=>ptrEnd(e,false));gameEl.addEventListener('pointercancel',e=>ptrEnd(e,true));
@@ -990,9 +1017,20 @@ gameEl.addEventListener('touchmove',e=>{if(!e.target.closest('.overlay'))e.preve
 function menuKey(e){if(e.repeat||(e.code!=='Enter'&&e.code!=='Space'))return;const a=document.activeElement;if(a&&a.tagName==='BUTTON'&&!a.disabled)return;
  const o=OVERLAYS.find(id=>!$(id).hidden);if(!o||performance.now()-(G.ovT||0)<700)return;e.preventDefault();$(o).querySelector('button.btn').click()}
 const UPK=['ArrowUp','KeyW'],DNK=['ArrowDown','KeyS'];
-addEventListener('keydown',e=>{if(G.state!=='play'){menuKey(e);return}if(e.repeat)return;if(['Tab','Escape','MetaLeft','MetaRight','AltLeft','AltRight','ControlLeft','ControlRight'].includes(e.code))return;G.kb=true;const t=nowIn(e.timeStamp);{const [px,py]=markerXY();newFx(px,py);if(UPK.includes(e.code))G.fx.swipe='up';else if(DNK.includes(e.code))G.fx.swipe='down'}
+addEventListener('keydown',e=>{if(G.state==='play'&&!e.repeat&&(e.code==='Escape'||e.code==='KeyP')){G.paused?resumeGame():pauseGame();e.preventDefault();return}if(G.state!=='play'||G.paused){menuKey(e);return}if(e.repeat)return;if(['Tab','Escape','MetaLeft','MetaRight','AltLeft','AltRight','ControlLeft','ControlRight'].includes(e.code))return;G.kb=true;const t=nowIn(e.timeStamp);{const [px,py]=markerXY();newFx(px,py);if(UPK.includes(e.code))G.fx.swipe='up';else if(DNK.includes(e.code))G.fx.swipe='down'}
  if(UPK.includes(e.code))onSwipe('up',t);else if(DNK.includes(e.code))onSwipe('down',t);else{G.holdPtr='key';onPress(t)}e.preventDefault()});
-addEventListener('keyup',e=>{if(G.zip&&G.zip.state==='ride'&&G.holdPtr==='key'&&!UPK.includes(e.code)&&!DNK.includes(e.code))holdRelease(nowIn(e.timeStamp))});
+addEventListener('keyup',e=>{if(!G.paused&&G.zip&&G.zip.state==='ride'&&G.holdPtr==='key'&&!UPK.includes(e.code)&&!DNK.includes(e.code))holdRelease(nowIn(e.timeStamp))});
+/* pause: the audio clock stops (AC.suspend), and with it the level, the music and the judging. Resume counts in 3-2-1 first */
+let pzCd=null;
+function pauseGame(){if(G.state!=='play')return;if(pzCd){clearInterval(pzCd);pzCd=null}if(!G.paused){CK.hold=clock();G.paused=true;if(AC)AC.suspend()}
+ $('pzE').textContent='Paused';$('pzH').textContent='Catch your breath';$('pzH').classList.remove('cd');$('pzV').hidden=$('pzGo').hidden=$('pzQ').hidden=false;showOnly('pause')}
+function unpause(){G.paused=false;pzCd=null;$('pause').hidden=true;const go=()=>{CK.ok=false;CK.hold=null};if(AC)AC.resume().then(go,go);else go()}
+function resumeGame(){if(!G.paused||pzCd)return;let n=3;$('pzE').textContent='Get ready';$('pzH').classList.add('cd');$('pzH').textContent=n;$('pzV').hidden=$('pzGo').hidden=$('pzQ').hidden=true;
+ pzCd=setInterval(()=>{if(--n>0)$('pzH').textContent=n;else{clearInterval(pzCd);unpause()}},450)}
+$('pauseB').onclick=pauseGame;$('pzGo').onclick=resumeGame;$('pzQ').onclick=()=>{unpause();toTitle()};
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pauseGame()});
+[['vM','m'],['vMu','mu'],['vFx','fx']].forEach(([id,k])=>{const el=$(id),show=()=>$(id+'o').textContent=Math.round(VOL[k]*100);el.value=Math.round(VOL[k]*100);show();
+ el.oninput=()=>{VOL[k]=el.value/100;show();applyVol()};el.onchange=()=>{try{localStorage.setItem('pitVol',JSON.stringify(VOL))}catch(e){}}});
 /* calibration: 16 clicks at 100 bpm, the median gap between click and tap becomes the audio delay */
 const CAL={on:false,clicks:[],taps:[]};
 $('calB').onclick=()=>{audioInit();$('start').hidden=true;$('calO').hidden=false;$('calT').textContent='Listen to 16 clicks and tap anywhere on each one. Use the headphones you will play with.';$('calGo').textContent='Start';$('calGo').hidden=false};
@@ -1074,7 +1112,7 @@ function envAt(y,L){let lf=layerF(y);if(L!==undefined)lf=clamp(lf,L,L+0.999);con
  hemi.color.copy(a.skyC).lerp(b.skyC,f);hemi.groundColor.copy(a.gndC).lerp(b.gndC,f);hemi.intensity=a.hemi+(b.hemi-a.hemi)*f;sun.intensity=a.sun+(b.sun-a.sun)*f;under.intensity=a.up+(b.up-a.up)*f;under.color.copy(a.skyC).lerp(b.skyC,f);
  lamp.intensity=a.lamp+(b.lamp-a.lamp)*f;HERO.material.color.copy(a.tintC).lerp(b.tintC,f);HGLOW.material.opacity=Math.min(0.55,(a.lamp+(b.lamp-a.lamp)*f)*0.4)}
 const introPose=a=>[new THREE.Vector3(Math.cos(a)*6,55,Math.sin(a)*6),new THREE.Vector3(Math.cos(a)*-3,-80,Math.sin(a)*-3)];
-function frame(){requestAnimationFrame(frame);const pn=performance.now(),rdt=Math.min(0.5,(pn-last)/1000),dt=Math.min(0.05,rdt);last=pn;const now=clock(),tn=now-offsetMs/1000,tt=pn/1000;
+function frame(){requestAnimationFrame(frame);{const h=G.state!=='play'||G.paused;if($('pauseB').hidden!==h)$('pauseB').hidden=h}const pn=performance.now(),rdt=Math.min(0.5,(pn-last)/1000),dt=Math.min(0.05,rdt);last=pn;const now=clock(),tn=now-offsetMs/1000,tt=pn/1000;
  const sg=LV&&LV.song,lt=levelAt(tn),sp=spbNow();
  /* music files fade out as the level nears its end */
  if(TRK&&G.mode==='descent'&&G.state==='play'&&lt>sg.end-1.4)trackStop(1.8);
