@@ -45,6 +45,10 @@ body{background:var(--ink);color:var(--paper);font-family:var(--serif);-webkit-u
 .streak.down{background:linear-gradient(to bottom,currentColor,transparent);transform-origin:top}
 .streak.p{color:#f2c46d}.streak.g{color:#bfe6ef}.streak.m{color:#f08a8a}
 @keyframes stk{from{transform:scaleY(.2);opacity:1}to{transform:scaleY(1);opacity:0}}
+.streak.right,.streak.left{width:120px;height:12px;margin-left:0;margin-top:-6px;animation-name:stkX}
+.streak.right{background:linear-gradient(to right,currentColor,transparent);transform-origin:left}
+.streak.left{margin-left:-120px;background:linear-gradient(to left,currentColor,transparent);transform-origin:right}
+@keyframes stkX{from{transform:scaleX(.2);opacity:1}to{transform:scaleX(1);opacity:0}}
 .sideb{width:auto!important;border-radius:999px!important;padding:0 14px;font-family:var(--mono)!important;font-size:12px!important}
 #card{position:absolute;left:0;right:0;top:17%;text-align:center;pointer-events:none;opacity:0;transition:opacity .9s ease;text-shadow:0 2px 22px rgba(0,0,0,.6);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 #card.show{opacity:1}
@@ -248,10 +252,11 @@ const toonGrad=(()=>{const d=new Uint8Array([70,150,215,255]);const t=new THREE.
 const toon=(o)=>new THREE.MeshToonMaterial(Object.assign({gradientMap:toonGrad},o));
 
 /* ---------- chart: built-in levels, used when a level has no music file ---------- */
-/* t = whack a critter (tap), u = jump a gap or an obstacle (swipe up), d = duck a swooper (swipe down), h = ride a zipline (hold). [beat, type, holdBeats] */
-const BPMS=[88,96,100,108,84,112],SPBL=BPMS.map(b=>60/b),TYPES={t:'tap',u:'up',d:'duck',h:'hold'};
+/* t = whack a critter (tap), u = jump a gap or an obstacle (swipe up), d = duck a swooper (swipe down), h = ride a zipline (hold),
+   k = kick through a barricade (swipe forward), b = brace for a falling rock (swipe back), w = shove a cart with both thumbs (two-finger tap). [beat, type, holdBeats] */
+const BPMS=[88,96,100,108,84,112],SPBL=BPMS.map(b=>60/b),TYPES={t:'tap',u:'up',d:'duck',h:'hold',k:'kick',b:'brace',w:'both'};
 const CHART=[
- [[2,'u'],[6,'u'],[8,'t'],[10,'t'],[12,'u'],[14,'t'],[16,'d'],[18,'t'],[20,'u'],[22,'d'],[24,'t'],[25,'t'],[26,'u'],[28,'h',2],[31,'t']],
+ [[2,'u'],[6,'u'],[8,'k'],[10,'t'],[12,'u'],[14,'t'],[16,'b'],[18,'w'],[20,'u'],[22,'d'],[24,'k'],[25,'t'],[26,'w'],[28,'h',2],[31,'b']],
  [[0,'t'],[2,'u'],[4,'h',3],[8,'t'],[9,'t'],[10,'d'],[12,'u'],[14,'t'],[16,'h',3],[20,'d'],[21,'t'],[22,'u'],[24,'t'],[24.5,'t'],[25,'t'],[26,'d'],[28,'u'],[30,'t']],
  [[0,'t'],[1,'t'],[2,'d'],[4,'t'],[5,'u'],[6,'d'],[7,'d'],[8,'t'],[8.5,'t'],[9,'t'],[10,'u'],[12,'d'],[13,'t'],[14,'u'],[16,'t'],[17,'d'],[18,'t'],[18.5,'t'],[19,'u'],[20,'h',2],[23,'t'],[24,'d'],[25,'u'],[26,'t'],[27,'t'],[28,'d'],[29,'u'],[30,'t'],[31,'t']],
  [[0,'t'],[1,'u'],[2,'d'],[3,'t'],[3.5,'t'],[4,'h',2],[7,'u'],[8,'d'],[9,'t'],[9.5,'t'],[10,'u'],[11,'d'],[12,'h',3],[16,'t'],[17,'u'],[18,'d'],[19,'t'],[19.5,'t'],[20,'u'],[21,'t'],[22,'d'],[23,'u'],[24,'h',2],[27,'t'],[27.5,'t'],[28,'d'],[29,'u'],[30,'t'],[31,'d']],
@@ -306,7 +311,7 @@ const LAYERS=[
  {ord:'Fourth Layer',name:'The Depths',m:900,wall:['#3e2e5c','#2c2148','#4e3c72','#221838'],fog:'#170c2c',dens:0.017,sky:'#c2a6ff',gnd:'#0c0618',hemi:0.45,sun:0,lamp:1.1,up:0.7,tint:'#d8cdf6'}];
 /* per layer: the ledge's look, how often each move shows up in generated charts (mix), the share of jumps that are missing steps rather than obstacles (gap), the sign at the top */
 const LSTYLE=[
- {path:'stairs',mix:{tap:1,up:1.1,duck:0.7,hold:0.4},gap:0.35,sign:'NO REFUNDS'},
+ {path:'stairs',mix:{tap:1,up:1.1,duck:0.7,hold:0.4,kick:0.4,brace:0.6,both:0.12},gap:0.35,sign:'NO REFUNDS'},
  {path:'planks',mix:{tap:1,up:1,duck:0.8,hold:1.2},gap:0.7,sign:'MIND THE GAP'},
  {path:'slabs',mix:{tap:1.4,up:0.9,duck:1,hold:0.5},gap:0.4,sign:'QUIET, PLEASE'},
  {path:'caps',mix:{tap:1,up:1.1,duck:1.2,hold:0.8},gap:0.5,sign:'DO NOT LICK'},
@@ -414,6 +419,9 @@ function buildLevel(L,sg,th0,y0){if(LVG)dropGroup(LVG);const g=LVG=new THREE.Gro
    [[a,2.85],[b,2.35]].forEach(([p,h])=>{const post=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.1,h,6),toon({color:'#5b3d22'}));post.position.set(Math.cos(p.th)*(CABR-0.1),p.y+h/2,Math.sin(p.th)*(CABR-0.1));g.add(post);
     const cap=new THREE.Mesh(new THREE.SphereGeometry(0.14,8,6),new THREE.MeshBasicMaterial({color:'#ffd58a'}));cap.position.set(post.position.x,p.y+h,post.position.z);g.add(cap);glowAt(g,cap.position,'#ffbe6a',1.6)})}
   else if(n.type==='duck'){const b=new THREE.Sprite(new THREE.SpriteMaterial({map:BATTEX[L],alphaTest:0.5}));b.scale.set(1.5,0.75,1);b.visible=false;g.add(b);n.bat=b}
+  else if(n.type==='kick'||n.type==='both'){n.fpos=pathPt(P,s+(n.type==='kick'?0.6:0.75));const o=n.type==='kick'?barricade():cart(),p=n.fpos;o.position.set(p.x,p.y,p.z);o.lookAt(0,p.y,0);g.add(o);n[n.type==='kick'?'wall':'cart']=o}
+  else if(n.type==='brace'){const r=new THREE.Mesh(new THREE.DodecahedronGeometry(0.42,0),toon({color:ROCKCOL[L]}));r.visible=false;g.add(r);n.rock=r;
+   const sh=new THREE.Mesh(new THREE.CircleGeometry(0.5,12),new THREE.MeshBasicMaterial({color:'#000',transparent:true,opacity:0,depthWrite:false}));sh.rotation.x=-Math.PI/2;sh.position.set(n.pos.x,n.pos.y+0.08,n.pos.z);g.add(sh);n.rsh=sh}
   else{const f=new THREE.Sprite(new THREE.SpriteMaterial({map:FOETEX[L],transparent:true,alphaTest:0.1}));f.center.set(0.5,1/15);f.scale.set(1.2,1,1);n.fpos=pathPt(P,s+0.8);f.position.set(n.fpos.x,n.fpos.y,n.fpos.z);g.add(f);n.foe=f}});
  return P}
 /* the camp at the bottom, where the boss waits */
@@ -438,6 +446,18 @@ function obstacle(L){const g=new THREE.Group();
  else if(L===3){const c=new THREE.Mesh(new THREE.IcosahedronGeometry(0.42,0),new THREE.MeshBasicMaterial({color:'#2fd6b8'}));c.position.y=0.55;g.add(c);for(let k=0;k<10;k++){const d=new THREE.Vector3(rnd()-0.5,rnd()*0.8,rnd()-0.5).normalize();const s=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.5,5),new THREE.MeshBasicMaterial({color:'#ff7ac8'}));s.position.copy(d.clone().multiplyScalar(0.55));s.position.y+=0.55;s.quaternion.copy(qFrom(d));g.add(s)}}
  else{const c=new THREE.Mesh(new THREE.OctahedronGeometry(0.4,0),new THREE.MeshBasicMaterial({color:'#b48cff'}));c.scale.set(0.8,2.2,0.8);c.position.y=0.8;g.add(c);const c2=c.clone();c2.scale.set(0.5,1.3,0.5);c2.position.set(0.35,0.5,0);c2.rotation.z=-0.4;g.add(c2)}
  return g}
+/* barricade: kick it off the ledge (swipe forward); its boards fly into the pit. cart: shove it over the edge with both thumbs. rockfall: brace (swipe back) and it bounces off */
+const ROCKCOL=['#8a7358','#5d6466','#cfc2a0','#5c8a6e','#6a5a8a'];
+function barricade(){const g=new THREE.Group(),wd=['#8a5a32','#6b4424','#a06a3a'];let i=0;
+ const bit=(geo,col,x,y,rz)=>{const m=new THREE.Mesh(geo,toon({color:col}));m.position.set(x,y,0);m.rotation.z=rz;m.userData={p0:m.position.clone(),r0:m.rotation.clone(),v:new THREE.Vector3((rnd()-0.5)*3,2+rnd()*2.5,3+rnd()*3)};g.add(m)};
+ for(const x of[-0.5,0.5])bit(new THREE.BoxGeometry(0.16,1.7,0.16),'#4a2f1a',x,0.85,0);
+ for(const rz of[0.9,-0.9])bit(new THREE.BoxGeometry(1.45,0.2,0.08),wd[i++],0,0.85,rz);bit(new THREE.BoxGeometry(1.2,0.22,0.1),wd[2],0,1.35,0.05);
+ const st=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.1,0.11),toon({color:'#d63a2f'}));st.position.set(0,0.42,0.01);st.userData={p0:st.position.clone(),r0:st.rotation.clone(),v:new THREE.Vector3(1,3,4)};g.add(st);return g}
+const CARTTX=canvasTex(128,40,(x,w,h)=>{x.fillStyle='#f2c46d';x.fillRect(0,0,w,h);x.fillStyle='#24160a';x.font='bold 22px Georgia,serif';x.textAlign='center';x.textBaseline='middle';x.fillText('SOUVENIRS',w/2,h/2+1)});
+function cart(){const g=new THREE.Group(),body=new THREE.Mesh(new THREE.BoxGeometry(1.3,0.75,1),toon({color:'#b8402e'}));body.position.y=0.62;g.add(body);
+ const lb=new THREE.Mesh(new THREE.PlaneGeometry(1.1,0.34),new THREE.MeshBasicMaterial({map:CARTTX}));lb.position.set(0,0.64,0.51);g.add(lb);
+ for(const x of[-0.42,0.42])for(const z of[-0.45,0.45]){const w=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,0.1,10),toon({color:'#2a2a2a'}));w.rotation.x=Math.PI/2;w.position.set(x,0.2,z);g.add(w)}
+ [['#7fe8ff',-0.3],['#ff7ac8',0.05],['#f2c46d',0.35]].forEach(([c,x],k)=>{const b=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.3+k*0.08,0.3),toon({color:c}));b.position.set(x,1.12+k*0.04,0);b.rotation.y=k;g.add(b)});return g}
 /* critters: whack them on the beat (tap) or they bite */
 const FOEROWS=["......KKKK......",".....KHHHHK.....","....KHHHHHHK....","...KKKKKKKKKK...","..KBBBBBBBBBBK..",".KBBWWBBBBWWBBK.",".KBBWEBBBBWEBBK.","KBBBBBBBBBBBBBBK","KBBBMTMTMTMMBBBK","KBBBBMMMMMMBBBBK",".KBBBBBBBBBBBBK.","..KKBKKKKKKBKK..","..K.K......K.K.."];
 const FOETEX=['#9bb46a','#6fa3a8','#d9cba8','#ff7ac8','#b48cff'].map(bc=>{const c=document.createElement('canvas');c.width=18;c.height=15;const x=c.getContext('2d'),P={K:'#1a0f16',B:bc,H:'#c0392b',W:'#f6ead2',E:'#1a0f16',M:'#5a1a2a',T:'#f6ead2'};
@@ -608,6 +628,9 @@ const POSES={
  settle:{y:1,lean:2,legF:[3,7,3,15],legB:[-1,7,-2,15],armF:[2,5,3,10],armB:[-2,5,-2,10],wave:0},
  windup:{y:2,lean:2,legF:[5,6,6,14],legB:[-3,7,-6,14],armF:[-2,-4,-5,-9],armB:[2,5,4,9],tool:[-6,-6],wave:1,brow:1},
  strike:{y:3,lean:7,headX:1,legF:[7,5,10,12],legB:[-3,7,-8,13],armF:[6,1,11,3],armB:[-3,4,-6,7],tool:[6,7],wave:-2,lift:1,mouth:1,eye:1},
+ kick:{y:0,lean:-3,legF:[7,3,13,2],legB:[-2,8,-3,16],armF:[-3,4,-7,7],armB:[3,3,7,5],wave:-2,mouth:1,brow:1},
+ brace:{y:3,lean:-5,headX:-1,legF:[5,6,8,14],legB:[-4,7,-7,15],armF:[3,-4,4,-10],armB:[1,-4,2,-10],wave:1,eye:1,brow:1},
+ heave:{y:4,lean:8,legF:[5,5,6,13],legB:[-4,6,-9,13],armF:[7,-1,12,-2],armB:[6,0,11,0],wave:2,mouth:1,brow:1},
  trip:{y:1,lean:6,legF:[5,6,9,10],legB:[-1,7,-3,15],armF:[5,1,9,-1],armB:[-3,1,-7,-2],wave:3,lift:2,mouth:1,eye:1},
  hurt:{y:2,lean:-4,headX:-1,legF:[5,5,9,8],legB:[-3,7,-2,14],armF:[4,-2,7,-6],armB:[-2,-3,-4,-8],wave:3,lift:2,mouth:1,eye:1}};
 const FR={};for(const k in POSES){FR[k]=drawPose(POSES[k],false);if(['push','rise','fall','land','vault','stepReach','stepPlant','settle','sneakIdle','sneakIdle2','sneakLift','sneakReach','sneakPlant','sneakSettle'].includes(k))FR[k+'B']=drawPose(POSES[k],true)}
@@ -744,6 +767,8 @@ function warp(){if(!AC||G.state!=='play'||!LV)return;const t=AC.currentTime,D=GL
 /* move sounds: short and unpitched, so they never clash with a song */
 function sfx(type){if(!AC)return;const t=AC.currentTime;
  if(type==='tap'){nz(t,0.07,0.32,'bandpass',1500,1.5);voice('triangle',190,t,0.002,0.09,0.12,null,90)}
+ else if(type==='kick'){nz(t,0.18,0.4,'bandpass',900,2);voice('triangle',140,t,0.002,0.12,0.14,null,60)}else if(type==='brace')nz(t,0.12,0.35,'lowpass',500);
+ else if(type==='both'){nz(t,0.35,0.3,'lowpass',380);voice('sawtooth',110,t,0.01,0.3,0.06,null,55)}
  else if(type==='up')nz(t,0.2,0.14,'bandpass',700,1.2);else if(type==='duck')nz(t,0.14,0.12,'highpass',3200);else nz(t,0.25,0.08,'bandpass',2600,4)}
 
 /* ---------- music analysis: finds a track's tempo, beats, accents and loud parts ---------- */
@@ -842,6 +867,11 @@ function makeChart(A,o){const d=clamp(o.diff,0,1),mix=o.mix,B=A.beats,spb=60/A.b
   if(k&&n.type!=='tap'&&n.type===N[k-1].type){if(++run>3){n.type='tap';run=0}}else run=n.type==='tap'?0:1});
  if(mix.hold>0)N.forEach((n,k)=>{const nt=k<N.length-1?N[k+1].t:to-spb;if(nt-n.t<Math.max(2.5*spb,1.3)||H(k,9)>Math.min(0.95,0.6*mix.hold))return;
   const lim=nt-Math.max(spb,0.6);let e=n.t;for(let i=n.i+1;i<B.length&&B[i]<=lim;i++)e=B[i];if(e-n.t>=Math.max(1.5*spb,0.8)){n.type='hold';n.len=e-n.t}});
+ /* the newer moves, where the layer's mix asks for them: some critters become barricades to kick, some swoopers rockfalls to brace for,
+    and the heaviest accents carts to shove with both thumbs. Each needs room on both sides, like the other swipes */
+ if(mix.kick||mix.brace||mix.both){const ss=N.filter(n=>n.type!=='hold').map(n=>n.s).sort((a,b)=>b-a),top=ss[Math.floor(ss.length*(mix.both||0))];
+  N.forEach((n,k)=>{if(n.type==='hold')return;const gp=k?n.t-(N[k-1].t+N[k-1].len):9,gn=k<N.length-1?N[k+1].t-n.t:9;if(gp<0.34||gn<0.3)return;
+   if(mix.both&&n.s>top&&n.type!=='duck')n.type='both';else if(n.type==='tap'&&H(k,13)<(mix.kick||0))n.type='kick';else if(n.type==='duck'&&H(k,14)<(mix.brace||0))n.type='brace'})}
  N.forEach((n,k)=>n.gap=n.type==='up'&&H(k,11)<o.gap);
  const i0=bIdx(B,from-4*spb)+(B[bIdx(B,from-4*spb)]<from-4*spb-1e-6?1:0),last=N[N.length-1];
  return{notes:N.map(n=>({at:n.t-from,type:n.type,len:n.len,gap:n.gap})),beats:B.slice(i0).filter(t=>t<=to+spb).map(t=>t-from),bar0:((A.bar0-i0)%4+4)%4,
@@ -859,14 +889,18 @@ function trackSong(T,ch){return{buf:T.buf,from:ch.from,bpm:ch.bpm,spb:ch.spb,bea
 function iconTex(kind){return canvasTex(96,64,(x,w,h)=>{x.lineCap='round';x.lineJoin='round';
  if(kind==='hold'){x.fillStyle='rgba(0,0,0,.45)';x.beginPath();x.arc(30,34,22,Math.PI/2,Math.PI*1.5);x.arc(66,34,22,-Math.PI/2,Math.PI/2);x.fill();x.fillStyle='#f2c46d';x.beginPath();x.arc(30,32,20,Math.PI/2,Math.PI*1.5);x.arc(66,32,20,-Math.PI/2,Math.PI/2);x.fill();
   x.fillStyle='#24160a';x.font='bold 22px Georgia,serif';x.textAlign='center';x.textBaseline='middle';x.fillText('HOLD',48,33);return}
- const col=kind==='up'?'#7fe8ff':'#ff7ac8';const P=kind==='up'?[[26,44],[48,20],[70,44]]:[[26,20],[48,44],[70,20]];
+ if(kind==='both'){x.fillStyle='rgba(0,0,0,.45)';x.beginPath();x.arc(30,34,22,0,7);x.arc(66,34,22,0,7);x.fill();x.fillStyle='#c9b4ff';[30,66].forEach(c=>{x.beginPath();x.arc(c,32,19,0,7);x.fill()});x.fillStyle='#1a1018';[30,66].forEach(c=>{x.beginPath();x.arc(c,32,7,0,7);x.fill()});return}
+ const col=CUECOL[kind==='down'?'duck':kind],P={up:[[26,44],[48,20],[70,44]],down:[[26,20],[48,44],[70,20]],kick:[[38,12],[60,32],[38,52]],brace:[[58,12],[36,32],[58,52]]}[kind];
  const line=(lw,c,dy)=>{x.strokeStyle=c;x.lineWidth=lw;x.beginPath();x.moveTo(P[0][0],P[0][1]+dy);x.lineTo(P[1][0],P[1][1]+dy);x.lineTo(P[2][0],P[2][1]+dy);x.stroke()};line(16,'rgba(0,0,0,.5)',3);line(10,col,0)})}
-const ICONTEX={up:iconTex('up'),duck:iconTex('down'),hold:iconTex('hold')};
+const CUECOL={tap:'#f2c46d',up:'#7fe8ff',duck:'#ff7ac8',hold:'#f2c46d',kick:'#ffa24a',brace:'#a6f07a',both:'#c9b4ff'};
+const ICONTEX={up:iconTex('up'),duck:iconTex('down'),hold:iconTex('hold'),kick:iconTex('kick'),brace:iconTex('brace'),both:iconTex('both')};
 const ICON=new THREE.Sprite(new THREE.SpriteMaterial({map:ICONTEX.up,transparent:true,depthTest:false,opacity:0,fog:false}));ICON.scale.set(1.35,0.9,1);ICON.renderOrder=10;S.add(ICON);
-const CUECOL={tap:'#f2c46d',up:'#7fe8ff',duck:'#ff7ac8',hold:'#f2c46d'};
 
 /* ---------- game state ---------- */
-const G={errs:[],jtxt:'',jcol:'#fff',jsub:'',state:'title',mode:'descent',node:0,coins:0,lvCoins:0,lvMax:0,up:{},maxH:5,ni:0,zip:null,duck:-9,hurt:-9,atk:-9,jump:-9,trip:-9,combo:0,max:0,p:0,g:0,m:0,pullT:-99,endT:0,startT:0,hearts:5,seen:{},shake:0,cd:0,intro:false,goT:0,holdPtr:null,kb:false,custom:false,pathEnd:null,camp:null};
+const G={errs:[],jtxt:'',jcol:'#fff',jsub:'',state:'title',mode:'descent',node:0,coins:0,lvCoins:0,lvMax:0,up:{},maxH:5,ni:0,zip:null,duck:-9,hurt:-9,atk:-9,jump:-9,trip:-9,kick:-9,brace:-9,heave:-9,both:null,combo:0,max:0,p:0,g:0,m:0,pullT:-99,endT:0,startT:0,hearts:5,seen:{},shake:0,cd:0,intro:false,goT:0,holdPtr:null,kb:false,custom:false,pathEnd:null,camp:null};
+/* swipes per move. The explorer walks to the right of the screen, so forward is a swipe right. both = a two-finger tap: the second finger must land within BOTHW of the first */
+const FWD='right',BACK='left',SWT={up:'up',duck:'down',kick:FWD,brace:BACK},isSw=n=>!!(n&&SWT[n.type]),BOTHW=0.12;
+const WRONG={up:'swipe up',duck:'swipe down',kick:'swipe '+FWD,brace:'swipe '+BACK,both:'both thumbs',hold:'hold',tap:'tap'};
 /* LV: the level being played ({L, song, path, nd}); ACT: its notes. Note times (at, len) are level seconds */
 let LV=null,anchorT=0,nextBeat=0,W_P=0.07,W_G=0.14,ACT=[];
 /* level time ↔ AudioContext time, through any slowdowns (warps). timeOf solves T = anchorT + lt + lag(T); the lag grows slower than time, so it converges */
@@ -884,6 +918,7 @@ function fxResult(q,hold){const now=clock();const f=G.fx;if(f&&now-f.t<0.6&&!f.d
 function holdFxEnd(q){const e=G.holdFx;if(!e)return;G.holdFx=null;e.classList.remove('hold','p','g','m');e.classList.add(q,'out');setTimeout(()=>e.remove(),500)}
 function heartsUI(){const h=$('hearts');h.innerHTML='';for(let i=0;i<G.maxH;i++){const d=document.createElement('i');d.className='ht'+(i<G.hearts?'':' off');h.appendChild(d)}}
 const HINTS={tap:['Tap to whack the critter','Press Space to whack the critter'],up:['Swipe up to jump','Press ↑ to jump'],duck:['Swipe down to duck','Press ↓ to duck'],hold:['Press and hold to ride the line. Let go as you land.','Hold Space to ride the line. Let go as you land.'],
+ kick:['Swipe '+FWD+' to kick it down','Press '+(FWD==='right'?'→':'←')+' to kick it down'],brace:['Rock! Swipe '+BACK+' to brace','Rock! Press '+(BACK==='left'?'←':'→')+' to brace'],both:['Tap with both thumbs at once to shove it','Press two keys at once to shove it'],
  bosstap:['Tap on the beat to strike','Press Space on the beat to strike'],bossup:['It sweeps low: swipe up to jump','It sweeps low: press ↑ to jump'],bossduck:['It swipes high: swipe down to duck','It swipes high: press ↓ to duck'],bosshold:['Hold to charge a big strike. Let go on the ring.','Hold Space to charge a big strike. Let go on the ring.']};
 function showHint(key){const tx=HINTS[key][G.kb?1:0];
  const el=$('hint');el.textContent=tx;el.classList.add('show');clearTimeout(showHint.t);showHint.t=setTimeout(()=>el.classList.remove('show'),3600)}
@@ -902,21 +937,24 @@ function score(n,q){if(q==='g'&&G.up.fork)q='p';addErr(G.lastSd||0,q);n.j=q;G[q]
  if(n.boss&&n.type!=='up'&&n.type!=='duck')bossDamage(n.type==='hold'?3:q==='p'?1.5:1);chime(n);sfx(n.type);praise(q);fxResult(q)}
 function loseHeart(){if(G.up.hat&&!G.hatUsed){G.hatUsed=true;G.jsub='the hat took it';return}
  G.hearts=Math.max(0,G.hearts-1);if(G.hearts<=0&&G.up.wind&&!G.windUsed){G.windUsed=true;G.hearts=2;G.jsub='second wind'}heartsUI();if(G.hearts<=0)setTimeout(fallOut,450)}
-function hit(n,q){score(n,q);n.jt=clock();if(n.type==='tap')G.atk=clock();else if(n.type==='up'&&n.boss)G.jump=clock();else if(n.type==='duck')G.duck=clock();
+function hit(n,q){score(n,q);n.jt=clock();if(n.type==='tap')G.atk=clock();else if(n.type==='up'&&n.boss)G.jump=clock();else if(n.type==='duck')G.duck=clock();else if(n.type==='kick')G.kick=clock();else if(n.type==='brace')G.brace=clock();else if(n.type==='both')G.heave=clock();
  if(n.fpos)burst(new THREE.Vector3(n.fpos.x,n.fpos.y+0.5,n.fpos.z),q==='p'?12:7,'#ffe2a0');G.ni++}
 function fail(n,why){n.j='m';n.jt=clock();G.m++;G.combo=0;thud();glitch();fxResult('m');G.shake=0.35;judgeShow(why||'Missed','#f08a8a','','m');addErr(G.lastSd==null?0.25:G.lastSd,'m');G.lastSd=null;G.ni++;
- if(n.type==='tap'){if(n.boss){G.trip=clock();creak()}else G.hurt=clock()}else if(n.type==='up'){if(n.obj)n.obj.userData.hitT=clock();G.hurt=clock()}else if(n.type==='duck'){G.hurt=clock();n.bonk=clock()}
- if(G.up.cape&&(n.type==='up'||n.type==='duck')){G.jsub='the cape caught you';return}loseHeart()}
+ if(n.type==='tap'){if(n.boss){G.trip=clock();creak()}else G.hurt=clock()}else if(n.type==='up'){if(n.obj)n.obj.userData.hitT=clock();G.hurt=clock()}else if(n.type==='duck'){G.hurt=clock();n.bonk=clock()}else G.hurt=clock();
+ if(G.up.cape&&n.type!=='tap'&&n.type!=='hold'){G.jsub='the cape caught you';return}loseHeart()}
 function holdStart(n,q){n.hj=q;G.zip={n,state:'ride'};chime(n);fxResult(q,true);addErr(G.lastSd||0,q);judgeShow('Hold…',q==='p'?'#f2c46d':'#bfe6ef','let go on the ring',q)}
 function holdRelease(t){const z=G.zip;if(!z||z.state!=='ride')return;const n=z.n;const d=t-n.endTime;
  if(d<-W_G){G.zip=null;n.j='m';G.m++;G.combo=0;thud();glitch();fxResult('m');holdFxEnd('m');G.shake=0.3;judgeShow('Let go too early','#f08a8a','','m');G.ni++;loseHeart()}
  else{G.lastSd=d;const q=(Math.abs(d)<=W_P&&n.hj==='p')?'p':'g';if(n.boss)G.atk=clock();score(n,q);holdFxEnd(q);G.zip=null;G.ni++}}
 function curNote(){return ACT[G.ni]}
 function tooEarly(n,t){const ahead=n.time-t;if(ahead>W_G&&ahead<0.5){judgeShow('Too early','#cdbfa8','wait for the marker','e');addErr(-ahead,'e');if(G.fx&&!G.fx.done){G.fx.done=true;G.fx.el.style.borderColor='#9a8fae'}}}
-function onPress(t){const n=curNote();if(!n||G.state!=='play'||n.j)return;const d=Math.abs(n.time-t);G.lastSd=t-n.time;if(d>W_G){tooEarly(n,t);return}const q=d<=W_P?'p':'g';
- if(n.type==='tap')hit(n,q);else if(n.type==='hold')holdStart(n,q);else fail(n,n.type==='up'?'Wrong move · swipe up':'Wrong move · swipe down')}
-function onSwipe(dir,t){const n=curNote();if(!n||G.state!=='play'||n.j)return;const sw=n.type==='up'||n.type==='duck';const d=Math.abs(n.time-t);G.lastSd=t-n.time;if(d>(sw?W_S:W_G)){tooEarly(n,t);return}const q=d<=W_P+(sw?0.02:0)?'p':'g';
- if(n.type==='tap'||(n.type==='up'&&dir==='up')||(n.type==='duck'&&dir==='down'))hit(n,q);else if(n.type==='hold')holdStart(n,q);else fail(n,n.type==='up'?'Wrong move · swipe up':'Wrong move · swipe down')}
+/* id tells fingers (pointerId) and keys (code) apart, for two-finger notes */
+function onPress(t,id){const n=curNote();if(!n||G.state!=='play'||n.j)return;
+ if(n.type==='both'){const b=G.both;if(b&&b.n===n&&b.id!==id&&t-b.t<=BOTHW){G.both=null;const m=(b.t+t)/2;G.lastSd=m-n.time;hit(n,Math.abs(m-n.time)<=W_P+0.02?'p':'g');return}}
+ const d=Math.abs(n.time-t);G.lastSd=t-n.time;if(d>W_G){tooEarly(n,t);return}const q=d<=W_P?'p':'g';
+ if(n.type==='tap')hit(n,q);else if(n.type==='hold')holdStart(n,q);else if(n.type==='both'){G.both={n,t,id}}else fail(n,'Wrong move · '+WRONG[n.type])}
+function onSwipe(dir,t){const n=curNote();if(!n||G.state!=='play'||n.j)return;const sw=isSw(n);const d=Math.abs(n.time-t);G.lastSd=t-n.time;if(d>(sw?W_S:W_G)){tooEarly(n,t);return}const q=d<=W_P+(sw?0.02:0)?'p':'g';
+ if(n.type==='tap'||SWT[n.type]===dir)hit(n,q);else if(n.type==='hold')holdStart(n,q);else fail(n,'Wrong move · '+WRONG[n.type])}
 
 /* ---------- run flow: newRun → nodes (descent / vendor / boss); death ends the run ---------- */
 /* dev switches for testing: ?autoplay plays perfectly, ?node=N starts the run at RUN[N], ?coins=N starts rich */
@@ -937,7 +975,7 @@ function startNode(first){const nd=RUN[G.node];if(!nd)return;saveBest(G.node);if
 function nextNode(){if(G.state!=='clear'&&G.state!=='vendor')return;if(G.custom){playCustom();return}showOnly(null);G.node=Math.min(G.node+1,RUN.length-1);startNode(false)}
 function relight(){G.hearts=Math.min(G.maxH,G.hearts+(G.up.oil?2:1))}
 /* anchor the level: level time 0 plays a moment from now; music files start there, built-in songs count in first */
-function beginPlay(intro){const sg=LV.song;G.errs=[];G.jtxt='';Object.assign(G,{state:'play',trip:-9,zip:null,combo:0,pullT:-99,shake:0,cd:0,duck:-9,hurt:-9,atk:-9,jump:-9,hatUsed:false,lvCoins:0,lvMax:0,ni:0,freezeLt:null});
+function beginPlay(intro){const sg=LV.song;G.errs=[];G.jtxt='';Object.assign(G,{state:'play',trip:-9,zip:null,combo:0,pullT:-99,shake:0,cd:0,duck:-9,hurt:-9,atk:-9,jump:-9,kick:-9,brace:-9,heave:-9,both:null,hatUsed:false,lvCoins:0,lvMax:0,ni:0,freezeLt:null});
  anchorT=ctxNow()+(intro?0.45:0.55);WARPS=[];nextBeat=0;ACT=sg.notes;retime();G.goT=timeOf(sg.first);G.startT=clock();G.intro=intro;heartsUI();judgeShow('','#fff','');if(sg.buf)trackPlay(sg,anchorT)}
 /* a level plays its music file when it has one; otherwise (or if the file fails) the built-in chart and procedural music */
 async function songFor(nd,first){
@@ -1011,8 +1049,8 @@ titleLevel();
 /* your own song: pick a file, the pit analyses it and builds one level from it */
 const CU={T:null,name:'',diff:1,len:'full',theme:0};
 function cuChart(){const A=CU.T.A,st=LSTYLE[CU.theme],w=CU.len==='best'?bestWindow(A,60):[0,A.dur];return makeChart(A,{from:w[0],to:w[1],diff:[0.2,0.45,0.7,0.92][CU.diff],mix:st.mix,gap:st.gap})}
-function cuInfo(){const A=CU.T.A,ch=cuChart(),c={tap:0,up:0,duck:0,hold:0};ch.notes.forEach(n=>c[n.type]++);const sec=Math.round(ch.end);
- $('sgInfo').innerHTML=Math.round(A.bpm)+' bpm · '+(A.steady?'steady beat':'loose beat')+' · '+Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0')+' level<br>'+ch.notes.length+' moves: '+c.tap+' critters, '+c.up+' jumps, '+c.duck+' swoopers, '+c.hold+' ziplines'}
+function cuInfo(){const A=CU.T.A,ch=cuChart(),c={tap:0,up:0,duck:0,hold:0,kick:0,brace:0,both:0};ch.notes.forEach(n=>c[n.type]++);const sec=Math.round(ch.end);
+ $('sgInfo').innerHTML=Math.round(A.bpm)+' bpm · '+(A.steady?'steady beat':'loose beat')+' · '+Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0')+' level<br>'+ch.notes.length+' moves: '+c.tap+' critters, '+c.up+' jumps, '+c.duck+' swoopers, '+c.hold+' ziplines'+(c.kick?', '+c.kick+' barricades':'')+(c.brace?', '+c.brace+' rockfalls':'')+(c.both?', '+c.both+' carts':'')}
 function playCustom(){if(!CU.T)return;audioInit();trackStop();showOnly(null);G.custom=true;resetRun();startLevel({kind:'descent',L:CU.theme,custom:true},false)}
 $('songB').onclick=()=>{audioInit();showOnly('song')};$('sgBack').onclick=()=>showOnly('start');$('sgGo').onclick=playCustom;$('clBack').onclick=toTitle;$('fBack').onclick=toTitle;
 $('sgFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;$('sgGo').disabled=true;CU.T=null;const name=f.name.replace(/\.[^.]+$/,'');CU.name=name;$('sgInfo').textContent='Listening to '+name+'…';
@@ -1020,7 +1058,7 @@ $('sgFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)r
  catch(err){console.warn(err);$('sgInfo').textContent='Could not read that file. Try an MP3, M4A, WAV or OGG.'}};
 [['sgDiff','diff',Number],['sgLen','len',String],['sgTheme','theme',Number]].forEach(([id,key,cv])=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{
  CU[key]=cv(b.dataset.v);$(id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(CU.T)cuInfo()}));
-window.__pit={analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},PV,get WARPS(){return WARPS},warpRate,levelAt,G,S,C,CUT};
+window.__pit={analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},PV,get WARPS(){return WARPS},warpRate,levelAt,clock,onPress,onSwipe,G,S,C,CUT};
 /* ---------- dev test helpers on window.__pit (the browser pane's tools run in an isolated world: inject a <script> and read results back from the DOM) ---------- */
 /* synth(o): a drum loop with a steady tone, rendered offline. song(buf,o): analyse it and start a custom level. measure(o): watch a music bus and
    report clean vs during-mistake loudness and spectrum peaks. report(x): put a short JSON on document.body.dataset.test. errs: errors since load */
@@ -1057,26 +1095,28 @@ window.__pit={analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV
 const gameEl=$('game'),pend={};const nowIn=ts=>clockAt(ts)-offsetMs/1000;
 /* gestures: a swipe counts at the moment the finger has clearly moved, in any roughly vertical direction */
 let W_S=0.18;const SW_DIST=16;
-function swipeDir(dx,dy){return Math.abs(dy)>=SW_DIST&&Math.abs(dy)>=Math.abs(dx)*0.7?(dy<0?'up':'down'):null}
+/* the axis the next move expects wins diagonal swipes */
+function swipeDir(dx,dy){const ax=Math.abs(dx),ay=Math.abs(dy),n=curNote(),hz=n&&(n.type==='kick'||n.type==='brace'),v=dy<0?'up':'down',h=dx>0?'right':'left';
+ if(hz)return ax>=SW_DIST&&ax>=ay*0.7?h:ay>=SW_DIST?v:null;return ay>=SW_DIST&&ay>=ax*0.7?v:ax>=SW_DIST?h:null}
 function resolveSwipe(p,dir,ts){p.done=true;if(G.fx&&!G.fx.done)G.fx.swipe=dir;onSwipe(dir,nowIn(ts)-0.02)}
 gameEl.addEventListener('pointerdown',e=>{if(e.target.closest('.overlay,#pauseB'))return;e.preventDefault();if(G.state!=='play'||G.paused)return;G.kb=false;const t=nowIn(e.timeStamp);const n=curNote();{const r=gameEl.getBoundingClientRect();newFx(e.clientX-r.left,e.clientY-r.top)}
  try{gameEl.setPointerCapture(e.pointerId)}catch(_){}
- if(n&&!n.j&&(n.type==='up'||n.type==='duck')&&n.time-t<0.6&&t-n.time<W_S){pend[e.pointerId]={x:e.clientX,y:e.clientY,t,done:false};return}
- pend[e.pointerId]={x:e.clientX,y:e.clientY,t,done:true};G.holdPtr=e.pointerId;onPress(t)});
+ if(n&&!n.j&&isSw(n)&&n.time-t<0.6&&t-n.time<W_S){pend[e.pointerId]={x:e.clientX,y:e.clientY,t,done:false};return}
+ pend[e.pointerId]={x:e.clientX,y:e.clientY,t,done:true};G.holdPtr=e.pointerId;onPress(t,e.pointerId)});
 gameEl.addEventListener('pointermove',e=>{const p=pend[e.pointerId];if(!p||p.done)return;let evs=e.getCoalescedEvents?e.getCoalescedEvents():[];if(!evs||!evs.length)evs=[e];
  for(const ev of evs){const dir=swipeDir(ev.clientX-p.x,ev.clientY-p.y);if(dir){resolveSwipe(p,dir,ev.timeStamp||e.timeStamp);break}}});
 function ptrEnd(e,cancel){const p=pend[e.pointerId];delete pend[e.pointerId];if(G.paused)return;
- if(p&&!p.done){const dir=swipeDir(e.clientX-p.x,e.clientY-p.y);if(dir)resolveSwipe(p,dir,e.timeStamp);else if(!cancel){G.holdPtr=e.pointerId;onPress(p.t)}}
+ if(p&&!p.done){const dir=swipeDir(e.clientX-p.x,e.clientY-p.y);if(dir)resolveSwipe(p,dir,e.timeStamp);else if(!cancel){G.holdPtr=e.pointerId;onPress(p.t,e.pointerId)}}
  if(G.zip&&G.zip.state==='ride'&&G.holdPtr===e.pointerId)holdRelease(nowIn(e.timeStamp))}
 gameEl.addEventListener('pointerup',e=>ptrEnd(e,false));gameEl.addEventListener('pointercancel',e=>ptrEnd(e,true));
 gameEl.addEventListener('touchmove',e=>{if(!e.target.closest('.overlay'))e.preventDefault()},{passive:false});
 /* menus: Enter or Space presses the visible screen's main button, once it has been up long enough not to catch a gameplay key */
 function menuKey(e){if(e.repeat||(e.code!=='Enter'&&e.code!=='Space'))return;const a=document.activeElement;if(a&&a.tagName==='BUTTON'&&!a.disabled)return;
  const o=OVERLAYS.find(id=>!$(id).hidden);if(!o||performance.now()-(G.ovT||0)<700)return;e.preventDefault();$(o).querySelector('button.btn').click()}
-const UPK=['ArrowUp','KeyW'],DNK=['ArrowDown','KeyS'];
-addEventListener('keydown',e=>{if(G.state==='play'&&!e.repeat&&(e.code==='Escape'||e.code==='KeyP')){G.paused?resumeGame():pauseGame();e.preventDefault();return}if(G.state!=='play'||G.paused){menuKey(e);return}if(e.repeat)return;if(['Tab','Escape','MetaLeft','MetaRight','AltLeft','AltRight','ControlLeft','ControlRight'].includes(e.code))return;G.kb=true;const t=nowIn(e.timeStamp);{const [px,py]=markerXY();newFx(px,py);if(UPK.includes(e.code))G.fx.swipe='up';else if(DNK.includes(e.code))G.fx.swipe='down'}
- if(UPK.includes(e.code))onSwipe('up',t);else if(DNK.includes(e.code))onSwipe('down',t);else{G.holdPtr='key';onPress(t)}e.preventDefault()});
-addEventListener('keyup',e=>{if(!G.paused&&G.zip&&G.zip.state==='ride'&&G.holdPtr==='key'&&!UPK.includes(e.code)&&!DNK.includes(e.code))holdRelease(nowIn(e.timeStamp))});
+const UPK=['ArrowUp','KeyW'],DNK=['ArrowDown','KeyS'],RTK=['ArrowRight','KeyD'],LTK=['ArrowLeft','KeyA'],kdir=c=>UPK.includes(c)?'up':DNK.includes(c)?'down':RTK.includes(c)?'right':LTK.includes(c)?'left':null;
+addEventListener('keydown',e=>{if(G.state==='play'&&!e.repeat&&(e.code==='Escape'||e.code==='KeyP')){G.paused?resumeGame():pauseGame();e.preventDefault();return}if(G.state!=='play'||G.paused){menuKey(e);return}if(e.repeat)return;if(['Tab','Escape','MetaLeft','MetaRight','AltLeft','AltRight','ControlLeft','ControlRight'].includes(e.code))return;G.kb=true;const t=nowIn(e.timeStamp);const kd=kdir(e.code);{const [px,py]=markerXY();newFx(px,py);G.fx.swipe=kd}
+ if(kd)onSwipe(kd,t);else{G.holdPtr='key';onPress(t,e.code)}e.preventDefault()});
+addEventListener('keyup',e=>{if(!G.paused&&G.zip&&G.zip.state==='ride'&&G.holdPtr==='key'&&!kdir(e.code))holdRelease(nowIn(e.timeStamp))});
 /* pause: the audio clock stops (AC.suspend), and with it the level, the music and the judging. Resume counts in 3-2-1 first */
 let pzCd=null;
 function pauseGame(){if(G.state!=='play')return;if(pzCd){clearInterval(pzCd);pzCd=null}if(!G.paused){CK.hold=clock();G.pzLt=LV?levelAt(CK.hold-offsetMs/1000):0;G.paused=true;if(AC)AC.suspend()}
@@ -1128,6 +1168,8 @@ function glyph(type,x,y,r,alpha){tx.globalAlpha=alpha;tx.fillStyle=CUECOL[type];
  if(type==='tap'){tx.beginPath();tx.arc(x,y,r*0.28,0,Math.PI*2);tx.fill()}
  else if(type==='up'){tx.beginPath();tx.moveTo(x-k,y+k*0.5);tx.lineTo(x,y-k*0.6);tx.lineTo(x+k,y+k*0.5);tx.stroke()}
  else if(type==='duck'){tx.beginPath();tx.moveTo(x-k,y-k*0.5);tx.lineTo(x,y+k*0.6);tx.lineTo(x+k,y-k*0.5);tx.stroke()}
+ else if(type==='kick'||type==='brace'){const s=SWT[type]==='right'?1:-1;tx.beginPath();tx.moveTo(x-k*0.5*s,y-k);tx.lineTo(x+k*0.6*s,y);tx.lineTo(x-k*0.5*s,y+k);tx.stroke()}
+ else if(type==='both'){tx.beginPath();tx.arc(x-r*0.32,y,r*0.2,0,7);tx.fill();tx.beginPath();tx.arc(x+r*0.32,y,r*0.2,0,7);tx.fill()}
  else{tx.font='bold '+Math.round(r*0.9)+'px Georgia,serif';tx.textAlign='center';tx.textBaseline='middle';tx.fillText('H',x,y+1)}tx.globalAlpha=1}
 function addErr(sd,q){G.errs.push({sd,q,t:clock()});if(G.errs.length>10)G.errs.shift()}
 function drawTrack(now,tn){tx.clearRect(0,0,TW,TH);if(G.state!=='play'||!LV)return;const bts=LV.song.beats,sp=LV.song.spb;
@@ -1181,11 +1223,12 @@ function frame(){requestAnimationFrame(frame);{const h=G.state!=='play'||G.pause
  if(G.state==='play'){
   if(DEV.auto){const n=curNote();if(n&&!n.j&&!G.zip&&tn>=n.time){G.lastSd=0;if(n.type==='hold')holdStart(n,'p');else hit(n,'p')}if(G.zip&&tn>=G.zip.n.endTime)holdRelease(tn)}
   /* pending swipes that never moved become presses */
-  for(const id in pend){const p=pend[id];if(!p.done&&tn-p.t>0.5){p.done=true;G.holdPtr=+id;onPress(p.t)}}
+  for(const id in pend){const p=pend[id];if(!p.done&&tn-p.t>0.5){p.done=true;G.holdPtr=+id;onPress(p.t,+id)}}
   /* missed notes */
-  const n=curNote();const swN=n&&(n.type==='up'||n.type==='duck');const pendOn=swN&&Object.keys(pend).some(k=>!pend[k].done);
-  if(n&&!n.j&&!(G.zip&&G.zip.n===n)&&tn>n.time+(swN?W_S+(pendOn?0.12:0):W_G)){if(n.type==='hold'){n.j='m';n.jt=now;G.m++;G.combo=0;thud();glitch();judgeShow('Missed the line','#f08a8a','','m');addErr(0.25,'m');G.ni++;G.hurt=now;loseHeart()}
-   else{G.lastSd=null;fail(n,n.type==='duck'?'Missed · hit by a bat':n.type==='up'?(n.gap?'Missed · fell in':'Missed · bonk'):n.boss?'Missed':'Missed · bitten')}}
+  const n=curNote();const swN=isSw(n);const pendOn=swN&&Object.keys(pend).some(k=>!pend[k].done),one=G.both&&G.both.n===n;
+  if(one&&!n.j&&tn>G.both.t+BOTHW){G.both=null;G.lastSd=null;fail(n,'One thumb is not enough')}
+  else if(n&&!n.j&&!(G.zip&&G.zip.n===n)&&tn>n.time+(swN?W_S+(pendOn?0.12:0):W_G+(one?BOTHW:0))){if(n.type==='hold'){n.j='m';n.jt=now;G.m++;G.combo=0;thud();glitch();judgeShow('Missed the line','#f08a8a','','m');addErr(0.25,'m');G.ni++;G.hurt=now;loseHeart()}
+   else{G.lastSd=null;fail(n,n.type==='duck'?'Missed · hit by a bat':n.type==='kick'?'Missed · bonk':n.type==='brace'?'Missed · rock to the head':n.type==='both'?'Missed · the cart held':n.type==='up'?(n.gap?'Missed · fell in':'Missed · bonk'):n.boss?'Missed':'Missed · bitten')}}
   /* first-time hints */
   for(let i=G.ni;i<Math.min(ACT.length,G.ni+3);i++){const m=ACT[i];const key=(m.boss?'boss':'')+m.type;if(HINTS[key]&&!G.seen[key]&&m.time-tn<Math.max(2.2,sp*4.5)){G.seen[key]=1;showHint(key)}}
   if(G.mode==='descent'&&tn>timeOf(sg.end)+0.45&&!G.zip)levelClear();else if(G.mode==='boss'&&G.ni>=ACT.length&&!G.zip)fallOut('The Inspector outlasted you');
@@ -1214,7 +1257,7 @@ function frame(){requestAnimationFrame(frame);{const h=G.state!=='play'||G.pause
  else{hTh=TH0;hy=shY=1.5}
  G.hl={hTh,hy,shY};
  const ducking=now-G.duck<0.42,hurt=now-G.hurt<0.5;
- if(hurt&&pose!=='hang'&&pose!=='hang2')pose='hurt';else if(ducking)pose='duck';else if(now-G.trip<0.32)pose='trip';else if(now-G.atk<0.24)pose='strike';
+ if(hurt&&pose!=='hang'&&pose!=='hang2')pose='hurt';else if(ducking)pose='duck';else if(now-G.trip<0.32)pose='trip';else if(now-G.atk<0.24)pose='strike';else if(now-G.kick<0.3)pose='kick';else if(now-G.brace<0.4)pose='brace';else if(now-G.heave<0.4)pose='heave';
  else if(now-G.jump<0.55){pose='vault';hy+=Math.sin(Math.PI*(now-G.jump)/0.55)*1.4}
  const hx=Math.cos(hTh)*rad,hz=Math.sin(hTh)*rad;
  HERO.material.map=FR[pose];HSH.position.set(hx,shY+0.03,hz);
@@ -1234,6 +1277,16 @@ function frame(){requestAnimationFrame(frame);{const h=G.state!=='play'||G.pause
   if(n.bat){if(G.state==='title'||!n.time){n.bat.visible=false;continue}const u=(tn-n.time)/(sp*2.2);if(u<-1||u>0.8){n.bat.visible=false;continue}const P=n.pos;n.bat.visible=true;
    let th=P.th-u*0.22,y=P.y+1.3+Math.sin(tt*7+k)*0.08,r=HR-0.15;if(u>0&&n.j&&n.j!=='m'){y+=u*1.2}if(n.bonk&&u>0){y+=u*3;r-=u*2}
    n.bat.position.set(Math.cos(th)*r,y,Math.sin(th)*r);const fl=0.55+0.45*Math.abs(Math.sin(tt*16+k));n.bat.scale.set(1.5,0.75*fl,1);n.bat.material.rotation=Math.sin(tt*5)*0.15}
+  /* kicked boards fly into the pit; a missed barricade just falls apart */
+  if(n.wall&&n.j){const a=now-n.jt,f=n.j==='m'?0.35:1;if(a>1.3)n.wall.visible=false;else n.wall.children.forEach(c=>{const u=c.userData,v=u.v;c.position.set(u.p0.x+v.x*a*f,u.p0.y+v.y*a*f-7*a*a,u.p0.z+v.z*a*f);c.rotation.set(u.r0.x+a*v.z*f,u.r0.y,u.r0.z+a*v.x*3*f)})}
+  /* the rock drops onto the explorer's head on the beat (its shadow grows first); braced, it bounces off into the pit */
+  if(n.rock){const r=n.rock,P=n.pos,R0=Math.hypot(P.x,P.z),u=(n.time-tn)/(sp*1.6);let show=G.state==='play'&&!!n.time&&u<1;
+   if(!n.j){if(show){const y=P.y+1.9+9*Math.max(0,u)**2;r.position.set(P.x,y,P.z);r.rotation.set(tt*3,tt*2,0)}}
+   else{const a=now-n.jt,ok=n.j!=='m';if(a>1.4)show=false;else{const ri=R0-(ok?a*5:a*0.8),y=P.y+(ok?1.9+a*3.5-a*a*11:Math.max(0.4,1.9-a*a*14)-Math.max(0,a-0.7)*6);r.position.set(Math.cos(P.th)*ri,y,Math.sin(P.th)*ri);r.rotation.set(tt*7,tt*5,0)}}
+   r.visible=show;n.rsh.material.opacity=show&&!n.j?0.55*clamp(1-u,0,1):0}
+  /* the cart rolls over the edge when shoved; a missed one only creaks over after you bump it */
+  if(n.cart&&n.j){const a=now-n.jt,c=n.cart,p=n.fpos;if(a>1.8)c.visible=false;else{const d=n.j==='m'?Math.max(0,a-0.35)*0.7:a,R0=Math.hypot(p.x,p.z),ri=R0-d*d*6,y=p.y-Math.max(0,d-0.3)**2*16;
+   c.position.set(Math.cos(p.th)*ri,y,Math.sin(p.th)*ri);c.lookAt(0,y,0);c.rotateX(Math.min(1.6,d*3))}}
   if(n.foe){const f=n.foe,p=n.fpos;
    if(n.j==='p'||n.j==='g'){const a=now-n.jt;if(a>0.9){f.visible=false;continue}const th=p.th+a*0.12,r=HR-a*2.2;f.position.set(Math.cos(th)*r,p.y+a*4.5-a*a*9,Math.sin(th)*r);f.material.rotation=a*14;f.material.opacity=1-a/0.9}
    else if(n.j==='m'){const a=now-n.jt;if(a>1.2){f.visible=false;continue}const th=p.th-Math.min(1,a/0.15)*0.03;f.position.set(Math.cos(th)*HR,p.y+Math.sin(Math.PI*Math.min(1,a/0.3))*0.5,Math.sin(th)*HR);f.material.opacity=a>0.8?1-(a-0.8)/0.4:1}
