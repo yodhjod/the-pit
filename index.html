@@ -267,7 +267,7 @@ function procSong(L,chart,len,lead,boss){const spb=SPBL[L],beats=[];for(let k=-l
    A descent level plays a music file when it has one: track:'music/rim.mp3', plus optional from/to (seconds) to use part of the song.
    The chart is generated from the music (see makeChart); diff (0-1) sets how busy it is. Without a track, or if the file fails, the built-in chart plays */
 const RUN=[
- {kind:'descent',L:0,diff:0.3,track:'music/Pixel%20Rush.mp3',lore:'A sign at the first landing: “Delvers who fall are reclassified as souvenirs. Souvenirs are non-refundable.”'},
+ {kind:'descent',L:0,diff:0.3,track:'music/Pixel%20Rush.mp3',startM:16,lore:'A sign at the first landing: “Delvers who fall are reclassified as souvenirs. Souvenirs are non-refundable.”'},
  {kind:'descent',L:1,diff:0.4,lore:'The 7:42 never arrived. Its passengers are still waiting politely, about forty metres further down.'},
  {kind:'vendor',name:'The NO REFUNDS Kiosk',lore:'A kiosk bolted to the wall under the metro. The vendor says business is booming. You are their first customer this year.',stock:[[1,3],[2,1]]},
  {kind:'descent',L:2,diff:0.55,lore:'Someone has stacked the bones by height. Someone has been down here a very long time, and is very bored.'},
@@ -942,7 +942,10 @@ function beginPlay(intro){const sg=LV.song;G.errs=[];G.jtxt='';Object.assign(G,{
 /* a level plays its music file when it has one; otherwise (or if the file fails) the built-in chart and procedural music */
 async function songFor(nd,first){
  if(nd.custom)return trackSong(CU.T,cuChart());
- if(nd.track){try{const T=await loadTrack(nd.track),st=LSTYLE[nd.L],ch=makeChart(T.A,{from:nd.from,to:nd.to,diff:nd.diff==null?0.5:nd.diff,mix:st.mix,gap:st.gap});return trackSong(T,ch)}
+ if(nd.track){try{const T=await loadTrack(nd.track),st=LSTYLE[nd.L],ch=makeChart(T.A,{from:nd.from,to:nd.to,diff:nd.diff==null?0.5:nd.diff,mix:st.mix,gap:st.gap});
+   /* startM (temporary, per song): no notes until the depth counter reaches this many metres, to let a song's intro play out */
+   if(nd.startM){const a=LAYERS[nd.L].m,c=nd.L===4?MAXM:LAYERS[nd.L+1].m,t0=(nd.startM-a)/(c-a)*ch.end;ch.notes=ch.notes.filter(n=>n.at>=t0);if(ch.notes.length)ch.first=ch.notes[0].at}
+   return trackSong(T,ch)}
   catch(e){console.warn('Could not use '+nd.track+', playing the built-in level instead.',e)}}
  return procSong(nd.L,CHART[nd.L],32,first?8:4)}
 let loadId=0;
