@@ -607,7 +607,7 @@ function audioInit(){try{if(AC){if(AC.state==='suspended')AC.resume();return}con
  const len=AC.sampleRate*3.4,ib=AC.createBuffer(2,len,AC.sampleRate);for(let c=0;c<2;c++){const d=ib.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.8)}
  rev=AC.createConvolver();rev.buffer=ib;const rg=AC.createGain();rg.gain.value=0.5;rev.connect(rg);rg.connect(master);
  dly=AC.createDelay(2);dly.delayTime.value=SPB*0.75;const fb=AC.createGain();fb.gain.value=0.36;const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2400;dly.connect(lp);lp.connect(fb);fb.connect(dly);const dg=AC.createGain();dg.gain.value=0.32;lp.connect(dg);dg.connect(master);dg.connect(rev);
- nbuf=AC.createBuffer(1,AC.sampleRate*0.6,AC.sampleRate);const nd=nbuf.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;OUT=master;musP=mkBus(master);musT=mkBus(AC.destination)}catch(e){AC=null}}
+ nbuf=AC.createBuffer(1,AC.sampleRate*0.6,AC.sampleRate);const nd=nbuf.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;OUT=master;musP=mkBus(master);musT=mkBus(AC.destination);musP.mk.gain.value=0.05}catch(e){AC=null}}
 const ctxNow=()=>AC?AC.currentTime:performance.now()/1000;
 /* the time of the sound currently reaching your ears: compensates output latency, smoothed against the frame clock */
 const CK={ref:0,perf:0,last:0,ok:false};
@@ -619,10 +619,10 @@ function clock(){if(!AC||AC.state!=='running')return AC?AC.currentTime:performan
 /* the heard-time at which an input event actually happened (uses the event's own timestamp, not when we got round to handling it) */
 function clockAt(ts){const c=clock();if(!AC||AC.state!=='running'||!CK.ok||!(ts>0))return c;const t=CK.ref+(ts-CK.perf)/1000;return Math.abs(t-c)<0.25?Math.min(t,c):c}
 const mtof=m=>440*Math.pow(2,(m-69)/12);
-function voice(type,f,t,a,d,peak,sends,f2){const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d*0.6);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+a+d);o.connect(g);g.connect(OUT);(sends||[]).forEach(s=>g.connect(s));o.start(t);o.stop(t+a+d+0.05)}
+function voice(type,f,t,a,d,peak,sends,f2){const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d*0.6);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+a+d);if(OUT!==master)LIVE.push({o,b:0,end:t+a+d+0.05});o.connect(g);g.connect(OUT);(sends||[]).forEach(s=>g.connect(s));o.start(t);o.stop(t+a+d+0.05)}
 function nz(t,d,peak,type,freq,q,sends){const s=AC.createBufferSource();s.buffer=nbuf;const f=AC.createBiquadFilter();f.type=type;f.frequency.value=freq;if(q)f.Q.value=q;const g=AC.createGain();g.gain.setValueAtTime(peak,t);g.gain.exponentialRampToValueAtTime(0.0001,t+d);s.connect(f);f.connect(g);g.connect(OUT);(sends||[]).forEach(x=>g.connect(x));s.start(t);s.stop(t+d+0.02)}
 function pad(notes,t,dur,cut,vol){const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.setValueAtTime(cut*0.6,t);f.frequency.linearRampToValueAtTime(cut,t+dur*0.5);const g=AC.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(vol,t+dur*0.35);g.gain.linearRampToValueAtTime(0.0001,t+dur*1.15);f.connect(g);g.connect(OUT);g.connect(rev);
- notes.forEach(n=>[-7,7].forEach(dt=>{const o=AC.createOscillator();o.type='sawtooth';o.frequency.value=mtof(n);o.detune.value=dt;o.connect(f);o.start(t);o.stop(t+dur*1.2)}))}
+ notes.forEach(n=>[-7,7].forEach(dt=>{const o=AC.createOscillator();o.type='sawtooth';o.frequency.value=mtof(n);o.detune.value=dt;if(OUT!==master)LIVE.push({o,b:dt,end:t+dur*1.2});o.connect(f);o.start(t);o.stop(t+dur*1.2)}))}
 const MUSIC=[
  {ch:[[62,66,69,73],[59,62,66,69],[55,59,62,66],[57,61,64,69]],bass:[50,47,43,45],cut:1500,arp:'bell',shk:true},
  {ch:[[57,60,64,71],[53,57,60,64],[55,60,64,67],[55,59,62,67]],bass:[45,41,48,43],cut:1000,arp:'pluck',shk:true},
@@ -631,7 +631,7 @@ const MUSIC=[
  {ch:[[48,55,60,63],[48,55,60,63],[44,51,56,60],[46,53,58,62]],bass:[36,36,32,34],cut:900,arp:'sparse',shk:false},
  {ch:[[57,60,64,69],[53,57,60,65],[55,58,62,67],[52,56,59,64]],bass:[45,41,43,40],cut:2200,arp:'pluck',shk:true}];
 /* music voices go through the procedural music bus, so mistakes can bend them */
-function musicBeat(L,k,t){OUT=musP.in;try{musicBeat0(L,k,t)}finally{OUT=master}}
+function musicBeat(L,k,t){if(LIVE.length>300){const now=AC.currentTime;for(let i=LIVE.length-1;i>=0;i--)if(LIVE[i].end<now)LIVE.splice(i,1)}OUT=musP.in;try{musicBeat0(L,k,t)}finally{OUT=master}}
 function musicBeat0(L,k,t){const sp=SPBL[L],mu=MUSIC[L],rel=((k%16)+16)%16,ci=Math.floor(rel/4),chord=mu.ch[ci];
  if(rel===0&&dly)dly.delayTime.setValueAtTime(sp*0.75,t);
  if(rel%4===0)pad(chord,t,sp*4.2,mu.cut,L===4?0.03:0.022);
@@ -648,21 +648,32 @@ function musicBeat0(L,k,t){const sp=SPBL[L],mu=MUSIC[L],rel=((k%16)+16)%16,ci=Ma
 /* music files play straight to the speakers (they are already mixed), from the level's anchor, and fade out at the level's end */
 let TRK=null;
 /* no scheduled end: mistakes slow the song, so the frame loop fades it out when the level nears its end */
-function trackPlay(sg,when){trackStop();if(!AC)return;const s=AC.createBufferSource(),g=AC.createGain(),v=0.9,from=sg.from||0;s.buffer=sg.buf;s.connect(g);g.connect(musT.in);
+function trackPlay(sg,when){trackStop();if(!AC)return;const s=AC.createBufferSource(),g=AC.createGain(),v=0.9,from=sg.from||0;s.buffer=sg.buf;s.connect(g);g.connect(musT.in);musT.mk.gain.value=clamp(songRms(sg)*v/WET_RMS,0.01,1);
  g.gain.setValueAtTime(0.0001,when);g.gain.linearRampToValueAtTime(v,when+(from>0?0.25:0.01));s.start(when,from);TRK={s,g}}
 function trackStop(fade){if(!TRK||!AC)return;const {s,g}=TRK,t=AC.currentTime,f=fade||0.06;TRK=null;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(Math.max(0.0001,g.gain.value),t);g.gain.linearRampToValueAtTime(0.0001,t+f);s.stop(t+f+0.02)}catch(e){}}
 /* mistakes bend the music for half a second (muffled and crunched) and slow the song and the level down together (see warp) */
 /* GL: the knobs for balancing. dur s · dry = clean music level · wet = distorted level · drive and bits = how crushed · cut = muffle start (Hz) · q = filter resonance
    slow = how much the song and level slow at the worst point (0.5 = half speed) · slowDur s. Each mistake puts the level slow·slowDur/2 seconds behind */
-const GL={dur:0.5,dry:0.03,wet:0.95,drive:40,bits:3,cut:250,q:10,slow:0.5,slowDur:0.9};
+/* the distorted copy comes out at near full scale whatever the song's level, so its level is matched to each song's own loudness (WET_RMS = its typical level before matching). The built-in music's level is fixed (0.05, measured) */
+/* pitch: semitones the song is shifted during a mistake, as clean copies laid over the crunch; several make a clashing cluster. shift = their level next to the song. The built-in music bends by pitch[0] */
+const GL={dur:0.5,dry:0.03,wet:0.95,drive:40,bits:3,cut:250,q:4,slow:0.5,slowDur:0.9,pitch:[1,-1],shift:0.7},WET_RMS=0.75;
+const LIVE=[];
 let OUT=null,musP=null,musT=null;
 function mkBus(out){const i=AC.createGain(),dry=AC.createGain(),sh=AC.createWaveShaper(),f=AC.createBiquadFilter(),wet=AC.createGain(),c=new Float32Array(1024);
  const st=Math.pow(2,GL.bits-1);for(let k=0;k<1024;k++)c[k]=Math.round(Math.tanh((k/511.5-1)*GL.drive)*st)/st*0.9;sh.curve=c;f.type='lowpass';f.frequency.value=6000;f.Q.value=GL.q;wet.gain.value=0;
- i.connect(dry);dry.connect(out);i.connect(sh);sh.connect(f);f.connect(wet);wet.connect(out);return{in:i,dry,wet,f}}
+ const mk=AC.createGain();mk.gain.value=0.15;i.connect(dry);dry.connect(out);i.connect(sh);sh.connect(f);f.connect(mk);mk.connect(wet);wet.connect(out);return{in:i,dry,wet,f,mk,sh,out}}
+/* a song's loudness over the part a level plays (sampled sparsely, cached on the song) */
+function songRms(sg){if(sg.rms)return sg.rms;const d=sg.buf.getChannelData(0),sr=sg.buf.sampleRate,a=Math.floor((sg.from||0)*sr),b=Math.min(d.length,a+Math.floor(sg.end*sr));let s=0,n=0;for(let i=a;i<b;i+=16){s+=d[i]*d[i];n++}return sg.rms=Math.sqrt(s/Math.max(1,n))||0.1}
 function glitch(){if(!AC||!musP)return;const t=AC.currentTime,D=GL.dur;
  const env=(p,a,b)=>{p.cancelScheduledValues(t);p.setValueAtTime(p.value,t);p.linearRampToValueAtTime(b,t+0.03);p.setValueAtTime(b,t+D-0.15);p.linearRampToValueAtTime(a,t+D)};
  [musP,musT].forEach(b=>{env(b.dry.gain,1,GL.dry);env(b.wet.gain,0,GL.wet);b.f.frequency.cancelScheduledValues(t);b.f.frequency.setValueAtTime(GL.cut,t);b.f.frequency.exponentialRampToValueAtTime(6000,t+D)});
- warp()}
+ warp();
+ /* wrong key: copies of the music file a semitone off, from where the song is now, following the slowdown so they stay in step */
+ const sg=LV&&LV.song;if(TRK&&sg&&sg.buf){const pos=(sg.from||0)+levelAt(t),n=48;GL.pitch.forEach(st=>{const s=AC.createBufferSource(),g=AC.createGain(),r=Math.pow(2,st/12),c=new Float32Array(n),v=0.9*GL.shift;
+  for(let i=0;i<n;i++)c[i]=r*warpRate(t+D*i/(n-1));s.buffer=sg.buf;try{s.playbackRate.setValueCurveAtTime(c,t,D)}catch(e){s.playbackRate.value=r}
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+0.03);g.gain.setValueAtTime(v,t+D-0.12);g.gain.linearRampToValueAtTime(0,t+D);s.connect(g);g.connect(musT.out);g.connect(musT.sh);s.start(t,Math.max(0,pos));s.stop(t+D+0.05)})}
+ /* built-in music: bend every note playing now (or already scheduled) by pitch[0] semitones */
+ for(let i=LIVE.length-1;i>=0;i--){const v=LIVE[i];if(v.end<t){LIVE.splice(i,1);continue}const p=v.o.detune;try{p.cancelScheduledValues(t);p.setValueAtTime(v.b,t);p.linearRampToValueAtTime(v.b+100*GL.pitch[0],t+0.02);p.setValueAtTime(v.b+100*GL.pitch[0],t+D-0.08);p.linearRampToValueAtTime(v.b,t+D)}catch(e){}}}
 /* warps: level time runs slow by 1 - depth·sin²(πu) over each warp, u = 0→1 across its duration. Everything in a level (notes, beats, the hero, built-in music)
    reads level time through levelAt/timeOf, and a music file's playback rate follows the same curve, so the song and the level stay locked together */
 let WARPS=[];
@@ -934,7 +945,7 @@ $('sgFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)r
  catch(err){console.warn(err);$('sgInfo').textContent='Could not read that file. Try an MP3, M4A, WAV or OGG.'}};
 [['sgDiff','diff',Number],['sgLen','len',String],['sgTheme','theme',Number]].forEach(([id,key,cv])=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{
  CU[key]=cv(b.dataset.v);$(id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(CU.T)cuInfo()}));
-window.__pit={analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get WARPS(){return WARPS},warpRate,levelAt,G,S,C,CUT};
+window.__pit={analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},get WARPS(){return WARPS},warpRate,levelAt,G,S,C,CUT};
 
 /* ---------- input: tap, swipe, hold ---------- */
 const gameEl=$('game'),pend={};const nowIn=ts=>clockAt(ts)-offsetMs/1000;
