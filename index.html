@@ -1017,7 +1017,9 @@ async function songFor(nd,first){
    const sg=trackSong(T,ch);if(nd.stems)try{sg.stems=await Promise.all(nd.stems.map(async x=>({buf:await loadBuf(x.src),lv:x.lv||0})))}catch(e){console.warn('Could not load the stems of '+nd.track+', playing the mix.',e)}
    return sg}
   catch(e){console.warn('Could not use '+nd.track+', playing the built-in level instead.',e)}}
- return procSong(nd.L,CHART[nd.L],32,first?8:4)}
+ /* a built-in level plays its 32-beat chart PROC_LOOPS times, long enough for the music to grow through its tiers */
+ const ch=[];for(let k=0;k<PROC_LOOPS;k++)CHART[nd.L].forEach(([o,ty,hl])=>ch.push([k*32+o,ty,hl]));return procSong(nd.L,ch,PROC_LOOPS*32,first?8:4)}
+const PROC_LOOPS=3;
 let loadId=0;
 async function startLevel(nd,first){const id=++loadId;G.mode='descent';G.state='loading';
  const slow=setTimeout(()=>{if(id===loadId&&G.state==='loading')cardText('One moment','Listening…','reading the track',60000)},300);
