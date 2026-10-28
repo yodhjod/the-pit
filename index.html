@@ -261,7 +261,7 @@ const toon=(o)=>new THREE.MeshToonMaterial(Object.assign({gradientMap:toonGrad},
 /* ---------- chart: built-in levels, used when a level has no music file ---------- */
 /* t = whack a critter (tap), u = jump a gap or an obstacle (swipe up), d = duck a swooper (swipe down), h = ride a zipline (hold),
    k = kick through a barricade (swipe forward), b = brace for a falling rock (swipe back), w = shove a cart with both thumbs (two-finger tap). [beat, type, holdBeats] */
-const BPMS=[98,108,116,124,132,140,144],SPBL=BPMS.map(b=>60/b),TYPES={t:'tap',u:'up',d:'duck',h:'hold',k:'kick',b:'brace',w:'both'};
+const BPMS=[98,108,116,124,132,140,144,104,112,120,126,134],SPBL=BPMS.map(b=>60/b),TYPES={t:'tap',u:'up',d:'duck',h:'hold',k:'kick',b:'brace',w:'both'};
 const CHART=[
  [[0,'t'],[1,'t'],[2,'u'],[4,'t'],[5,'t'],[6,'u'],[8,'k'],[9,'t'],[10,'t'],[10.5,'t'],[11,'d'],[12,'u'],[13,'t'],[14,'t'],[15,'d'],[16,'b'],[17,'t'],[18,'w'],[19,'t'],[20,'u'],[21,'t'],[22,'d'],[23,'t'],[24,'k'],[25,'t'],[26,'w'],[28,'h',2],[31,'b']],
  [[0,'t'],[1,'t'],[2,'u'],[4,'h',3],[8,'t'],[9,'t'],[9.5,'t'],[10,'d'],[11,'t'],[12,'u'],[13,'d'],[14,'t'],[14.5,'t'],[15,'t'],[16,'h',3],[20,'d'],[21,'t'],[22,'u'],[23,'t'],[24,'t'],[24.5,'t'],[25,'t'],[26,'d'],[27,'t'],[28,'u'],[29,'d'],[30,'t'],[30.5,'t'],[31,'t']],
@@ -308,6 +308,21 @@ const UPG=[
 const BOSS_LEN=32,BOSS_LOOPS=3,BOSS_HP=40;
 /* the dare room: a short, hard side level (played twice, faster the second time) with its own song (MUSIC[6], BPMS[6]) */
 const DARE_CHART=[[0,'t'],[0.5,'t'],[1,'t'],[2,'u'],[3,'d'],[3.5,'t'],[4,'t'],[5,'u'],[6,'t'],[6.5,'t'],[7,'d'],[8,'h',2],[10.5,'t'],[11,'t'],[12,'u'],[13,'d'],[13.5,'t'],[14,'t'],[14.5,'t'],[15,'u'],[16,'d'],[16.5,'t'],[17,'t'],[18,'u'],[19,'t'],[19.5,'t'],[20,'d'],[21,'u'],[22,'t'],[22.5,'t'],[23,'t'],[24,'h',2],[26.5,'t'],[27,'d'],[28,'u'],[29,'t'],[29.5,'t'],[30,'d'],[31,'t'],[31.5,'t']];
+/* minibosses: one at the end of each descent level (not after a dare room or your own song), a call-and-response fight in the spirit of Melatonin.
+   Each phrase is one bar: the miniboss plays it (the call: it points at each spot it will strike, with that strike's sound), then strikes on the same rhythm in the next bar (the answer).
+   Inputs are only tap (dodge a strike) and hold (brace against a beam for as long as it lasts); the game picks how the explorer dodges each strike (kind: low sweep → jump, high swipe → duck, slam from the left/right → hop aside).
+   A phrase answered with no mistake costs it 1 HP. Phrases (MPH, easiest first) get denser through the fight and start harder deeper down.
+   A cycle is MINI_PH phrases after a bar's breather; each cycle plays faster (RAMP). If MINI_CYC cycles run out first, it wins. Music: MUSIC[7+L] at BPMS[7+L] */
+const MINIS=[
+ {name:'Pitty the Mascot',sub:'The official mascot. Costume sold separately.',hp:4,col:'#e8a23c',eye:'#ffe066'},
+ {name:'The Conductor',sub:'Your ticket has been punched. Repeatedly.',hp:5,col:'#4f8a8b',eye:'#9fffe0'},
+ {name:'The Curator',sub:'You would look lovely in the collection.',hp:5,col:'#cfc3a6',eye:'#ff6a3d'},
+ {name:'The Choir',sub:'It knows the words. You do not.',hp:6,col:'#b05ea8',eye:'#c9ff6a'},
+ {name:'The Notary',sub:'Sign here. And here. And here, with your soul.',hp:6,col:'#3a3850',eye:'#ff3b5c'}];
+const MPH=[[[0,'t'],[2,'t']],[[0,'t'],[1,'t'],[2,'t']],[[0,'t'],[2,'t'],[3,'t']],[[0,'h',2],[3,'t']],[[0,'t'],[1,'t'],[2,'t'],[3,'t']],[[0,'t'],[1,'t'],[1.5,'t'],[3,'t']],
+ [[0,'t'],[0.5,'t'],[1,'t'],[3,'t']],[[0,'t'],[1,'h',1.5],[3,'t']],[[0,'t'],[1.5,'t'],[2,'t'],[3,'t']],[[0,'t'],[0.5,'t'],[1.5,'t'],[2,'t'],[3,'t']],
+ [[0,'h',1],[1.5,'t'],[2,'t'],[2.5,'t'],[3,'t']],[[0,'t'],[0.5,'t'],[1,'t'],[2,'t'],[2.5,'t'],[3,'t']],[[0,'t'],[0.75,'t'],[1.5,'t'],[2,'t'],[3,'t'],[3.5,'t']],[[0,'t'],[0.5,'t'],[1,'t'],[1.5,'t'],[2,'h',1.5]]];
+const MINI_PH=7,MINI_CYC=3;
 const BOSS_CHART=[[0,'t'],[1,'t'],[2,'d'],[3,'t'],[4,'t'],[5,'u'],[6,'t'],[6.5,'t'],[7,'t'],[8,'h',2],[11,'t'],[12,'d'],[13,'u'],[14,'t'],[15,'t'],
  [16,'t'],[16.5,'t'],[17,'t'],[18,'d'],[19,'u'],[20,'t'],[21,'d'],[22,'t'],[22.5,'t'],[23,'t'],[24,'h',3],[28,'u'],[29,'d'],[30,'t'],[31,'t']];
 
@@ -669,6 +684,16 @@ const BOSSG=new THREE.Group(),BEYE=toon({color:'#f3ead8'}),BIRIS=new THREE.MeshB
   t.position.set(Math.cos(a)*1.7,Math.sin(a)*1.7,-0.3);t.rotation.z=a-Math.PI/2;t.userData.a=a;BOSSG.add(t)}
  const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:'#b48cff',transparent:true,opacity:0.55,blending:THREE.AdditiveBlending,depthWrite:false}));gl.scale.set(9,9,1);gl.position.z=-1;BOSSG.add(gl);
  BOSSG.visible=false;S.add(BOSSG)})();
+/* minibosses: one body, recoloured per layer (MINIS[L].col, .eye), with two long claws (MARMS, in world space) that do the strikes, and a beam for holds */
+const MCOL={low:'#ffd166',high:'#7fd4ff',left:'#ff7a9c',right:'#c58cff'},MINIG=new THREE.Group(),MBODY=toon({color:'#888',flatShading:true}),MEYE=new THREE.MeshBasicMaterial({color:'#fff'}),MARM=toon({color:'#2a2230'}),MARMS=[],
+ MBEAM=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,1,10,1,true),new THREE.MeshBasicMaterial({color:'#ff5a3c',transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+(function(){MINIG.add(new THREE.Mesh(new THREE.IcosahedronGeometry(1.25,1),MBODY));
+ [-0.42,0.42].forEach(x=>{const e=new THREE.Mesh(new THREE.SphereGeometry(0.24,12,8),MEYE);e.position.set(x,0.3,1.1);MINIG.add(e);const p=new THREE.Mesh(new THREE.SphereGeometry(0.1,8,6),new THREE.MeshBasicMaterial({color:'#120a1c'}));p.position.set(x,0.3,1.32);MINIG.add(p)});
+ const mouth=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.12,0.1),new THREE.MeshBasicMaterial({color:'#120a1c'}));mouth.position.set(0,-0.35,1.18);MINIG.add(mouth);
+ [-0.7,0.7].forEach(x=>{const h=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.9,6),MARM);h.position.set(x,1.2,0);h.rotation.z=-x*0.6;MINIG.add(h)});
+ const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:'#ffffff',transparent:true,opacity:0.35,blending:THREE.AdditiveBlending,depthWrite:false}));gl.scale.set(7,7,1);gl.position.z=-1;MINIG.add(gl);MINIG.userData.gl=gl;
+ const cg=new THREE.ConeGeometry(0.26,1,7);cg.translate(0,0.5,0);for(let i=0;i<2;i++){const a=new THREE.Mesh(cg,MARM);a.visible=false;S.add(a);MARMS.push(a)}
+ MBEAM.visible=false;S.add(MBEAM);MINIG.visible=false;S.add(MINIG);[MINIG,MBEAM,...MARMS].forEach(o=>o.traverse(c=>c.userData.noCut=true))})();
 
 /* ---------- sparkles ---------- */
 const SPN=60,spPos=new Float32Array(SPN*3),spInfo=[];for(let i=0;i<SPN;i++)spInfo.push({life:0});
@@ -742,7 +767,13 @@ const MUSIC=[
  {ch:[[53,57,60,64],[55,59,62,67],[57,60,64,67],[55,59,62,66]],bass:[41,43,45,43],cut:1900,arp:'shimmer',shk:true},
  {ch:[[48,55,60,63],[48,55,60,63],[44,51,56,60],[46,53,58,62]],bass:[36,36,32,34],cut:900,arp:'sparse',shk:false},
  {ch:[[57,60,64,69],[53,57,60,65],[55,58,62,67],[52,56,59,64]],bass:[45,41,43,40],cut:2200,arp:'pluck',shk:true},
- {ch:[[50,53,57,61],[50,53,56,59],[46,50,53,58],[45,49,52,57]],bass:[38,38,34,33],cut:2600,arp:'pluck',shk:true}];
+ {ch:[[50,53,57,61],[50,53,56,59],[46,50,53,58],[45,49,52,57]],bass:[38,38,34,33],cut:2600,arp:'pluck',shk:true},
+ /* 7–11: the minibosses' themes, one per layer */
+ {ch:[[60,64,67,72],[65,69,72,77],[67,71,74,79],[60,64,67,72]],bass:[48,53,55,48],cut:2400,arp:'bell',shk:true},
+ {ch:[[57,60,64,67],[57,60,64,67],[53,57,60,65],[52,56,59,64]],bass:[45,45,41,40],cut:1800,arp:'pluck',shk:true},
+ {ch:[[52,55,59,64],[48,52,55,60],[53,56,60,65],[51,54,59,63]],bass:[40,36,41,39],cut:1300,arp:'bell',shk:false},
+ {ch:[[53,57,60,64],[50,53,57,60],[55,58,62,65],[52,55,60,64]],bass:[41,38,43,36],cut:2000,arp:'shimmer',shk:true},
+ {ch:[[48,51,55,60],[49,53,56,60],[46,50,53,58],[47,50,55,59]],bass:[36,37,34,35],cut:1500,arp:'pluck',shk:true}];
 /* music voices go through the procedural music bus, so mistakes can bend them */
 function musicBeat(L,k,t){if(LIVE.length>300){const now=AC.currentTime;for(let i=LIVE.length-1;i>=0;i--)if(LIVE[i].end<now)LIVE.splice(i,1)}OUT=musP.in;try{musicBeat0(L,k,t)}finally{OUT=VG.fx}}
 function musicBeat0(L,k,t){const sp=BSP||SPBL[L],mu=MUSIC[L],rel=((k%16)+16)%16,ci=Math.floor(rel/4),chord=mu.ch[ci],T=G.tier;
@@ -815,6 +846,11 @@ function warp(){if(!AC||G.state!=='play'||!LV)return;const t=AC.currentTime,D=GL
  if(TRK){const end=Math.max(...WARPS.map(w=>w.t0+w.dur)),n=96,c=new Float32Array(n);for(let k=0;k<n;k++)c[k]=warpRate(t+(end-t)*k/(n-1));
   TRK.src.forEach(s=>{const pr=s.playbackRate;try{if(pr.cancelAndHoldAtTime)pr.cancelAndHoldAtTime(t);else pr.cancelScheduledValues(t);pr.setValueCurveAtTime(c,t+0.001,end-t)}catch(e){}})}}
 /* move sounds: short and unpitched, so they never clash with a song */
+/* miniboss strikes: each kind has its own sound, played on the call and again, softer, when you answer it (v = level, len = a beam's length) */
+function miniCue(k,t,v,len){if(!AC)return;v=v||1;t=Math.max(AC.currentTime,t);
+ if(k==='low')voice('square',98,t,0.004,0.2,0.07*v,[rev],62);else if(k==='high')voice('square',392,t,0.004,0.16,0.045*v,[rev],520);
+ else if(k==='beam')voice('sawtooth',147,t,0.03,Math.max(0.2,len||0.4),0.045*v,[rev]);else voice('triangle',k==='left'?262:330,t,0.003,0.22,0.09*v,[dly,rev],k==='left'?196:440);
+ nz(t,0.04,0.12*v,'bandpass',k==='low'?600:k==='high'?3000:1500,4)}
 function sfx(type,at){if(!AC)return;const t=Math.max(AC.currentTime,at||0);
  if(type==='tap'){nz(t,0.07,0.32,'bandpass',1500,1.5);voice('triangle',190,t,0.002,0.09,0.12,null,90)}
  else if(type==='kick'){nz(t,0.18,0.4,'bandpass',900,2);voice('triangle',140,t,0.002,0.12,0.14,null,60)}else if(type==='brace')nz(t,0.12,0.35,'lowpass',500);
@@ -972,7 +1008,8 @@ const DMGCUT=[20000,8000,4500,2600,1600];
 function heartsUI(){const lost=clamp(G.maxH-G.hearts,0,4);document.body.style.setProperty('--dmg',lost/4);if(AC)[musP,musT].forEach(b=>b&&b.dmg&&b.dmg.frequency.setTargetAtTime(DMGCUT[lost],AC.currentTime,0.4));const h=$('hearts');h.innerHTML='';for(let i=0;i<G.maxH;i++){const d=document.createElement('i');d.className='ht'+(i<G.hearts?'':' off');h.appendChild(d)}}
 const HINTS={tap:['Tap to whack the critter','Press Space to whack the critter'],up:['Swipe up to jump','Press ↑ to jump'],duck:['Swipe down to duck','Press ↓ to duck'],hold:['Press and hold to ride the line. Let go as you land.','Hold Space to ride the line. Let go as you land.'],
  kick:['Swipe '+FWD+' to kick it down','Press '+(FWD==='right'?'→':'←')+' to kick it down'],brace:['Rock! Swipe '+BACK+' to brace','Rock! Press '+(BACK==='left'?'←':'→')+' to brace'],both:['Tap with both thumbs at once to shove it','Press two keys at once to shove it'],
- bosstap:['Tap on the beat to strike','Press Space on the beat to strike'],bossup:['It sweeps low: swipe up to jump','It sweeps low: press ↑ to jump'],bossduck:['It swipes high: swipe down to duck','It swipes high: press ↓ to duck'],bosshold:['Hold to charge a big strike. Let go on the ring.','Hold Space to charge a big strike. Let go on the ring.']};
+ bosstap:['Tap on the beat to strike','Press Space on the beat to strike'],bossup:['It sweeps low: swipe up to jump','It sweeps low: press ↑ to jump'],bossduck:['It swipes high: swipe down to duck','It swipes high: press ↓ to duck'],bosshold:['Hold to charge a big strike. Let go on the ring.','Hold Space to charge a big strike. Let go on the ring.'],
+ minitap:['Watch its rhythm, then tap it back to dodge','Watch its rhythm, then press Space on it to dodge'],minihold:['A beam: hold for as long as it held','A beam: hold Space for as long as it held']};
 function showHint(key){const tx=HINTS[key][G.kb?1:0];
  const el=$('hint');el.textContent=tx;el.classList.add('show');clearTimeout(showHint.t);showHint.t=setTimeout(()=>el.classList.remove('show'),3600)}
 function showCard(L,ms){const l=LAYERS[L],bpm=Math.round(LV.song.bpm)+' bpm';if(G.custom)cardText('Your song · '+l.name,CU.name,bpm,ms);else cardText(l.ord,l.name,l.m+' m · '+bpm,ms)}
@@ -990,12 +1027,12 @@ function score(n,q){if(q==='g'&&G.up.fork)q='p';addErr(G.lastSd||0,q);n.j=q;G[q]
  /* chains: notes a beat or less apart, all hit. From the third on, +1 coin each */
  G.chain=G.lastHit!=null&&!n.boss&&n.at-G.lastHit<=spbNow(n.at)*1.02?G.chain+1:1;G.lastHit=n.at+(n.len||0);
  addCoins(((q==='p'?2+(G.up.purse?1:0):1)+(G.chain>=3?1:0))*(G.tier>=GROW.max&&!n.boss?2:1));growHit();if(G.up.jar&&G.combo%8===0)addCoins(4);
- if(n.boss&&n.type!=='up'&&n.type!=='duck')bossDamage(n.type==='hold'?3:q==='p'?1.5:1);if(!n.snd){const at=n.type==='hold'?n.endTime:0;chime(n,at);sfx(n.type,at)}praise(q);fxResult(q)}
+ if(n.boss&&n.type!=='up'&&n.type!=='duck')bossDamage(n.type==='hold'?3:q==='p'?1.5:1);if(!n.snd){const at=n.type==='hold'?n.endTime:0;chime(n,at);if(n.mini&&n.type==='tap')miniCue(n.kind,0,0.6);else sfx(n.type,at)}praise(q);fxResult(q);if(n.mini&&n.last)miniPhrase(n)}
 /* grace: after losing a lantern (or the hat taking it), misses cost nothing more and don't warp the music again, and whiffs don't knock the explorer off balance, for GRACE beats (at least GRACE_MIN s). A mistake slows the song and moves the next notes late, so without it one miss in a dense stretch snowballs */
 const GRACE=3,GRACE_MIN=1.4;
 function loseHeart(){if(clock()<G.grace)return;G.grace=clock()+Math.max(GRACE_MIN,GRACE*spbNow());if(G.up.hat&&!G.hatUsed){G.hatUsed=true;G.jsub='the hat took it';return}
  G.hearts=Math.max(0,G.hearts-1);if(G.hearts<=0&&G.up.wind&&!G.windUsed){G.windUsed=true;G.hearts=2;G.jsub='second wind'}heartsUI();if(G.hearts<=0)setTimeout(fallOut,450)}
-function hit(n,q){score(n,q);n.jt=clock();if(n.type==='tap')G.atk=clock();else if(n.type==='up'&&n.boss)G.jump=clock();else if(n.type==='duck')G.duck=clock();else if(n.type==='kick')G.kick=clock();else if(n.type==='brace')G.brace=clock();else if(n.type==='both')G.heave=clock();if(n.type==='up'&&!n.boss)G.busy=n.time+n.w;
+function hit(n,q){score(n,q);n.jt=clock();if(n.type==='tap'&&!n.mini)G.atk=clock();else if(n.type==='up'&&n.boss)G.jump=clock();else if(n.type==='duck')G.duck=clock();else if(n.type==='kick')G.kick=clock();else if(n.type==='brace')G.brace=clock();else if(n.type==='both')G.heave=clock();if(n.type==='up'&&!n.boss)G.busy=n.time+n.w;
  if(n.fpos)burst(new THREE.Vector3(n.fpos.x,n.fpos.y+0.5,n.fpos.z),q==='p'?12:7,'#ffe2a0');G.ni++}
 function fail(n,why){n.j='m';n.jt=clock();G.m++;G.combo=0;G.chain=0;G.lastHit=null;thud();glitch();fxResult('m');G.shake=0.35;judgeShow(why||'Missed','#f08a8a','','m');addErr(G.lastSd==null?0.25:G.lastSd,'m');G.lastSd=null;G.ni++;
  if(n.type==='tap'){if(n.boss){G.trip=clock();creak()}else G.hurt=clock()}else if(n.type==='up'){if(n.obj)n.obj.userData.hitT=clock();G.hurt=clock()}else if(n.type==='duck'){G.hurt=clock();n.bonk=clock()}else G.hurt=clock();
@@ -1077,7 +1114,26 @@ async function startLevel(nd,first){const id=++loadId;G.mode='descent';G.state='
  SPEED=clamp(PACE*song.bpm/60,3,6);const path=buildLevel(L,song,th0,y0);LV={L,song,path,nd};G.pathEnd=pathPt(path,SPEED*song.end);
  if(first){beginPlay(true);$('card').classList.remove('show');setTimeout(()=>{if(G.state==='play'&&LV.song===song)showCard(L,4200)},1400)}
  else{beginPlay(false);if(nd.dare){G.enter=null;G.irisOpen=clock();cardText('A dare','The side passage','no refunds, no way back',3000)}else showCard(L,3000)}}
-function levelClear(){G.state='clear';const nd=LV.nd;$('clBack').hidden=!G.custom;
+/* a descent level's end: the miniboss waits there (not after a dare room or your own song) */
+function levelEnd(){if(G.custom||LV.nd.dare)levelClear();else startMini()}
+const MINI={L:0,hp:4,max:4,dead:-1,hitT:-9};
+/* the fight as a song: a bar's breather, then MINI_PH phrases of call bar + answer bar, MINI_CYC times. Call notes become cues (sg.cues, not judged); answer notes are judged.
+   Both carry the phrase's strike kinds (picked per note, fixed per run), ph (phrase index), and the answer's callT (its call's start, level s) */
+function miniSong(L){const ch=[],meta=[];let ph=0;
+ for(let c=0;c<MINI_CYC;c++)for(let p=0;p<MINI_PH;p++){const b=c*64+4+p*8,P=MPH[Math.min(MPH.length-1,Math.floor(L*1.2+p*0.75+c*3)+(h3(ph,L,7)<0.5?1:0))];
+  P.forEach(([o,ty,hl],i)=>{const kind=ty==='h'?'beam':['low','high','left','right'][Math.floor(h3(ph*8+i,L,13)*4)%4];
+   ch.push([b+o,ty,hl]);meta.push({call:true,kind,ph});ch.push([b+4+o,ty,hl]);meta.push({call:false,kind,ph,last:i===P.length-1,callB:b})});ph++}
+ const sg=procSong(7+L,ch,MINI_CYC*64,4,true,RAMP,64);sg.notes.forEach((n,i)=>Object.assign(n,meta[i],{boss:false,mini:true}));
+ sg.cues=sg.notes.filter(n=>n.call);sg.notes=sg.notes.filter(n=>!n.call);sg.notes.forEach(n=>n.callT=sg.beats[n.callB+sg.lead]);return sg}
+function startMini(){const L=LV.L,M=MINIS[L],lc=G.lvCoins,lm=G.lvMax;G.mode='mini';loadId++;trackStop(1.2);
+ const song=miniSong(L);prepNotes(song);LV={L,song,path:LV.path,nd:LV.nd};G.mini=G.pathEnd;G.cueI=0;
+ Object.assign(MINI,{L,hp:M.hp,max:M.hp,dead:-1,hitT:-9});MEYE.color.set(M.eye);MINIG.userData.gl.material.color.set(M.eye);
+ $('boss').firstChild.nodeValue=M.name;$('bossHp').style.width='100%';$('boss').hidden=false;beginPlay(false);G.lvCoins=lc;G.lvMax=lm;cardText('Miniboss',M.name,M.sub,3400)}
+/* a phrase answered with no mistake: the explorer hits back and the miniboss loses 1 HP. At 0 it falls into the pit (+5 coins) and the level is cleared */
+function miniPhrase(n){if(MINI.dead>0||!ACT.every(m=>m.ph!==n.ph||m.j==='p'||m.j==='g'))return;const M=MINIS[MINI.L];
+ MINI.hp--;MINI.hitT=clock();G.atk=clock();$('bossHp').style.width=(MINI.hp/MINI.max*100)+'%';judgeShow('Clean!','#f2c46d',MINI.hp>0?M.name+' takes a hit':'','p');creak();
+ if(MINI.hp<=0){MINI.dead=clock();G.state='won';holdFxEnd('p');G.zip=null;thud();addCoins(5);judgeShow('Defeated','#f2c46d','+5 coins','p');setTimeout(()=>{if(G.state==='won'&&G.mode==='mini')levelClear()},2600)}}
+function levelClear(){G.state='clear';const nd=LV.nd;$('clBack').hidden=!G.custom;$('boss').hidden=true;
  if(G.custom){const tot=Math.max(1,G.p+G.g+G.m);$('clN').textContent=CU.name;$('clL').textContent='The pit listened to the whole thing. It has notes.';
   $('clS').textContent='Accuracy '+Math.round((G.p+G.g*0.6)/tot*100)+'% · best combo '+G.lvMax+' · '+G.m+' stumbles';$('clGo').textContent='Play it again';showOnly('clear');return}
  const nx=RUN[G.node+1];$('clN').textContent=nd.dare?'The side passage':LAYERS[nd.L].name;$('clL').textContent=nd.dare?'You made it through. Your prize is pending review by the committee.':nd.lore;$('clS').textContent='+'+G.lvCoins+' coins · best combo '+G.lvMax;
@@ -1096,7 +1152,7 @@ function startBoss(){trackStop();loadId++;G.mode='boss';relight();if(!G.pathEnd&
  const pe=G.pathEnd||{th:TH0+5.2,y:layerTop(5)-1};G.camp=pe;buildCamp(pe.th,pe.y);
  const ch=[];for(let k=0;k<BOSS_LOOPS;k++)BOSS_CHART.forEach(([o,ty,hl])=>ch.push([k*BOSS_LEN+o,ty,hl]));
  const song=procSong(5,ch,BOSS_LOOPS*BOSS_LEN,4,true,RAMP,BOSS_LEN);prepNotes(song);LV={L:4,song,path:LV&&LV.path,nd:RUN[G.node]};
- Object.assign(BOSS,{hp:BOSS_HP,dead:-1,hitT:-9});bossUI();$('boss').hidden=false;beginPlay(false);cardText('Chapter boss','The Inspector','It has reviewed your permit. It has concerns.',3400)}
+ Object.assign(BOSS,{hp:BOSS_HP,dead:-1,hitT:-9});bossUI();$('boss').firstChild.nodeValue='The Inspector';$('boss').hidden=false;beginPlay(false);cardText('Chapter boss','The Inspector','It has reviewed your permit. It has concerns.',3400)}
 function bossDamage(d){if(BOSS.dead>0)return;BOSS.hp=Math.max(0,BOSS.hp-d);BOSS.hitT=clock();bossUI();
  if(BOSS.hp<=0){BOSS.dead=clock();G.state='won';holdFxEnd('p');G.zip=null;thud();saveBest(RUN.length);setTimeout(finish,2600)}}
 function fallOut(why){if(G.state!=='play')return;G.state='fallen';G.freezeLt=levelAt(clock()-offsetMs/1000);holdFxEnd('m');G.zip=null;trackStop(1.5);$('fBack').hidden=!G.custom;
@@ -1140,7 +1196,7 @@ $('sgFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)r
  catch(err){console.warn(err);$('sgInfo').textContent='Could not read that file. Try an MP3, M4A, WAV or OGG.'}};
 [['sgDiff','diff',Number],['sgLen','len',String],['sgTheme','theme',Number]].forEach(([id,key,cv])=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{
  CU[key]=cv(b.dataset.v);$(id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(CU.T)cuInfo()}));
-window.__pit={score,fail,dareTry,enterDare,step:()=>frame(true),HERO,GROW,analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},PV,get WARPS(){return WARPS},warpRate,levelAt,clock,onPress,onSwipe,G,S,C,CUT,GROW,growHit,growMiss};
+window.__pit={startMini,MINI,score,fail,dareTry,enterDare,step:()=>frame(true),HERO,GROW,analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},PV,get WARPS(){return WARPS},warpRate,levelAt,clock,onPress,onSwipe,G,S,C,CUT,GROW,growHit,growMiss};
 /* ---------- dev test helpers on window.__pit (the browser pane's tools run in an isolated world: inject a <script> and read results back from the DOM) ---------- */
 /* synth(o): a drum loop with a steady tone, rendered offline. song(buf,o): analyse it and start a custom level. measure(o): watch a music bus and
    report clean vs during-mistake loudness and spectrum peaks. report(x): put a short JSON on document.body.dataset.test. errs: errors since load */
@@ -1267,9 +1323,9 @@ function drawTrack(now,tn){tx.clearRect(0,0,TW,TH);if(G.state!=='play'||!LV)retu
  tx.save();rrect(left,by,right-left,bandH,bandH/2);tx.clip();
  for(let i=0;i<bts.length;i++){const x=hitX+(timeOf(bts[i])-tn)*speed;if(x<left-4)continue;if(x>right+4)break;const bar=((i-LV.song.bar0)%4+4)%4===0;tx.fillStyle=bar?'rgba(246,234,210,.32)':'rgba(246,234,210,.13)';tx.fillRect(x-(bar?1:0.5),by+8,bar?2:1,bandH-16)}
  /* notes: quick consecutive notes are linked like a drumroll */
- for(let i=Math.max(0,G.ni-4);i<Math.min(ACT.length-1,G.ni+16);i++){const a=ACT[i],b=ACT[i+1];if(a.type==='hold'||b.type==='hold')continue;if(b.at-a.at>0.6*sp)continue;if(a.j==='p'||a.j==='g')continue;const xa=Math.max(hitX,hitX+(a.time-tn)*speed),xb=hitX+(b.time-tn)*speed;if(xb<left||xa>right+30)continue;
+ for(let i=Math.max(0,G.ni-4);i<Math.min(ACT.length-1,G.ni+16);i++){const a=ACT[i],b=ACT[i+1];if(a.type==='hold'||b.type==='hold'||(b.mini&&levelAt(tn)<b.callT))continue;if(b.at-a.at>0.6*sp)continue;if(a.j==='p'||a.j==='g')continue;const xa=Math.max(hitX,hitX+(a.time-tn)*speed),xb=hitX+(b.time-tn)*speed;if(xb<left||xa>right+30)continue;
   tx.strokeStyle='rgba(246,234,210,.55)';tx.lineWidth=8;tx.lineCap='round';tx.beginPath();tx.moveTo(xa,cy);tx.lineTo(xb,cy);tx.stroke();tx.strokeStyle=CUECOL[a.type];tx.lineWidth=4;tx.beginPath();tx.moveTo(xa,cy);tx.lineTo(xb,cy);tx.stroke()}
- for(let i=Math.max(0,G.ni-4);i<Math.min(ACT.length,G.ni+14);i++){const n=ACT[i];const x=hitX+(n.time-tn)*speed;if(x>right+30)break;
+ for(let i=Math.max(0,G.ni-4);i<Math.min(ACT.length,G.ni+14);i++){const n=ACT[i];const x=hitX+(n.time-tn)*speed;if(x>right+30)break;/* a miniboss's answer shows only once its call has begun */if(n.mini&&levelAt(tn)<n.callT)continue;
   if(n.type==='hold'){const riding=G.zip&&G.zip.n===n;const xe=hitX+(n.endTime-tn)*speed;const xs=riding?hitX:x;if(xe<left)continue;if(n.j&&!riding&&n.j!=='m')continue;
    tx.globalAlpha=n.j==='m'?0.3:0.85;rrect(xs,cy-11,Math.max(0,xe-xs),22,11);tx.fillStyle=riding?'rgba(242,196,109,.55)':'rgba(242,196,109,.35)';tx.fill();tx.globalAlpha=1;
    tx.strokeStyle='#f2c46d';tx.lineWidth=3;tx.beginPath();tx.arc(xe,cy,13,0,Math.PI*2);tx.stroke();
@@ -1308,7 +1364,9 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
  if(TRK&&G.mode==='descent'&&G.state==='play'&&lt>sg.end-1.4)trackStop(1.8);
  /* music: built-in songs are generated a moment ahead, beat by beat; music files are already playing */
  if(G.state==='play'&&AC&&sg.proc!==undefined){while(nextBeat<sg.beats.length&&timeOf(sg.beats[nextBeat])<ctxNow()+0.3){const b=sg.beats[nextBeat],bt=timeOf(b),k=nextBeat-sg.lead;nextBeat++;if(b>sg.end+0.01||bt<ctxNow()-0.05)continue;
-   if(k<0&&k>=-4)nz(bt,0.08,0.35,'bandpass',k===-1?2400:1700,6,[rev]);BSP=sg.beats[nextBeat]!=null?sg.beats[nextBeat]-b:0;musicBeat(sg.proc,k,bt);BSP=0;if(k>=0&&G.mode==='descent')footstep(bt,sg.proc)}}
+   if(k<0&&k>=-4)nz(bt,0.08,0.35,'bandpass',k===-1?2400:1700,6,[rev]);BSP=sg.beats[nextBeat]!=null?sg.beats[nextBeat]-b:0;musicBeat(sg.proc,k,bt);BSP=0;if(k>=0&&G.mode==='descent')footstep(bt,sg.proc)}
+  /* a miniboss's call: each strike's sound, scheduled ahead like the music */
+  if(sg.cues)while(G.cueI<sg.cues.length){const c=sg.cues[G.cueI],ct=timeOf(c.at);if(ct>=ctxNow()+0.3)break;G.cueI++;if(ct>ctxNow()-0.05)miniCue(c.kind,ct,1,c.len)}}
  if(G.state==='play'){
   if(DEV.auto){const n=curNote();if(n&&!n.j&&!G.zip&&tn>=n.time){G.lastSd=0;if(n.type==='hold')holdStart(n,'p');else hit(n,'p')}if(G.zip&&tn>=G.zip.n.endTime)holdRelease(tn)}
   /* pending swipes that never moved become presses */
@@ -1317,10 +1375,11 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
   const n=curNote();const swN=isSw(n);const pendOn=swN&&Object.keys(pend).some(k=>!pend[k].done),one=G.both&&G.both.n===n;
   if(one&&!n.j&&tn>G.both.t+BOTHW){G.both=null;G.lastSd=null;fail(n,'One thumb is not enough')}
   else if(n&&!n.j&&!(G.zip&&G.zip.n===n)&&tn>n.time+(swN?W_S+(pendOn?0.12:0):W_G+(one?BOTHW:0))){if(n.type==='hold'){n.j='m';n.jt=now;G.m++;G.combo=0;thud();glitch();judgeShow('Missed the line','#f08a8a','','m');addErr(0.25,'m');G.ni++;G.hurt=now;loseHeart()}
-   else{G.lastSd=null;fail(n,n.type==='duck'?'Missed · hit by a bat':n.type==='kick'?'Missed · bonk':n.type==='brace'?'Missed · rock to the head':n.type==='both'?'Missed · the cart held':n.type==='up'?(n.gap?'Missed · fell in':'Missed · bonk'):n.boss?'Missed':'Missed · bitten')}}
+   else{G.lastSd=null;fail(n,n.type==='duck'?'Missed · hit by a bat':n.type==='kick'?'Missed · bonk':n.type==='brace'?'Missed · rock to the head':n.type==='both'?'Missed · the cart held':n.type==='up'?(n.gap?'Missed · fell in':'Missed · bonk'):n.boss?'Missed':n.mini?'Missed · hit':'Missed · bitten')}}
   /* first-time hints */
-  for(let i=G.ni;i<Math.min(ACT.length,G.ni+3);i++){const m=ACT[i];const key=(m.boss?'boss':'')+m.type;if(HINTS[key]&&!G.seen[key]&&m.time-tn<Math.max(2.2,sp*4.5)){G.seen[key]=1;showHint(key)}}
-  if(G.mode==='descent'&&tn>timeOf(sg.end)+0.45&&!G.zip)levelClear();else if(G.mode==='boss'&&G.ni>=ACT.length&&!G.zip)fallOut('The Inspector outlasted you');
+  for(let i=G.ni;i<Math.min(ACT.length,G.ni+3);i++){const m=ACT[i];const key=(m.boss?'boss':m.mini?'mini':'')+m.type;if(HINTS[key]&&!G.seen[key]&&m.time-tn<Math.max(2.2,sp*4.5)){G.seen[key]=1;showHint(key)}}
+  if(G.mode==='descent'&&tn>timeOf(sg.end)+0.45&&!G.zip)levelEnd();else if(G.mode==='boss'&&G.ni>=ACT.length&&!G.zip)fallOut('The Inspector outlasted you');
+  else if(G.mode==='mini'&&G.ni>=ACT.length&&!G.zip)fallOut(MINIS[MINI.L].name+' outlasted you');
   if(now<G.goT){const k=Math.ceil((G.goT-now)/sp);if(k<=4&&k!==G.cd){G.cd=k}}else if(G.cd){G.cd=0;judgeShow('Go','#f2c46d','')}}
  /* zipline: the landing sound is scheduled ahead, on the landing beat, whenever the player lets go (letting go too early is a miss well before this). Auto-finish if the player keeps holding past the landing */
  if(G.zip&&G.state==='play'&&!G.zip.n.snd&&ctxNow()+0.1>=G.zip.n.endTime){const n=G.zip.n;n.snd=1;chime(n,n.endTime);sfx(n.type,n.endTime)}
@@ -1330,6 +1389,14 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
  let hTh,hy,shY,rad=HR,pose=(Math.floor(tt/0.45)%2?'sneakIdle2':'sneakIdle');
  if(G.state==='loading'&&G.hl){({hTh,hy,shY}=G.hl)}
  else if(G.mode==='boss'&&G.camp&&G.state!=='title'){hTh=G.camp.th;hy=shY=G.camp.y}
+ /* miniboss: the explorer stands at the end of the ledge; the game picks the dodge for each answered strike: low sweep → jump, high swipe → duck, a slam from one side → hop to the other, a beam → brace while the hold lasts */
+ else if(G.mode==='mini'&&G.mini&&G.state!=='title'){hTh=G.mini.th;hy=shY=G.mini.y;
+  for(let k=Math.max(0,G.ni-3);k<Math.min(ACT.length,G.ni+2);k++){const n=ACT[k],d=lt-n.at;
+   if(n.kind==='beam'){if(((G.zip&&G.zip.n===n)||n.j==='p'||n.j==='g')&&d>=-0.1&&d<=n.len+0.1)pose='brace';continue}
+   if(!n.j||n.j==='m'||d<-0.12||d>0.5)continue;const u=(d+0.12)/0.62;
+   if(n.kind==='low'){hy+=Math.sin(Math.PI*u)*1.3;pose=u<0.2?'push':u<0.7?'vault':'fall'}
+   else if(n.kind==='high')pose='duck';
+   else{const e=u<0.3?smooth(u/0.3):1-smooth((u-0.3)/0.7);hTh+=(n.kind==='left'?1:-1)*1.1*e/HR;if(u<0.45)hy+=Math.sin(Math.PI*u/0.45)*0.45;pose=u<0.45?'push':'land'}}}
  else if(G.state==='enter'&&G.enter){const e=G.enter,el=now-e.t0,f=smooth(clamp(el/ENTER.walk,0,1));hTh=e.a.th+(e.b.th-e.a.th)*f;hy=shY=e.a.y+(e.b.y-e.a.y)*f;rad=HR+(e.r1-HR)*smooth(clamp((el-ENTER.walk)/ENTER.inn,0,1));
   let ph=el/0.4;const si=Math.floor(ph);ph-=si;const A=si%2?'B':'',Bn=(si+1)%2?'B':'';pose=ph<0.22?'sneakPlant'+A:ph<0.5?'sneakSettle'+A:ph<0.75?'sneakLift'+Bn:'sneakReach'+Bn;
   if(el>ENTER.walk+ENTER.inn*0.5+ENTER.iris+0.2&&!e.go){e.go=1;startDare()}}
@@ -1405,10 +1472,33 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
   BOSSG.position.copy(p);BOSSG.scale.setScalar(sc);if(!(BOSS.dead>0))BOSSG.lookAt(new THREE.Vector3(hx,hy+1.2,hz).lerp(camPos,0.55));
   BIRIS.color.set(col);BEYE.color.set(hit<0.15?'#ff9a9a':'#f3ead8');
   BOSSG.children.forEach(c=>{if(c.userData.a!==undefined)c.rotation.z=c.userData.a-Math.PI/2+Math.sin(tt*3+c.userData.a*4)*0.15})}
+ /* miniboss: floats in the pit just ahead of the explorer. On the call it points a claw at each spot it will strike (a flash there and the strike's sound) and shows a faint beam for holds;
+    on the answer the claw strikes on the beat: sweeps cross the explorer's spot at feet or head height, slams come down on it from one side. Arm 0 does low sweeps and left slams, arm 1 the rest */
+ const miniOn=G.mode==='mini'&&!!G.mini&&G.state!=='title'&&G.state!=='end';MINIG.visible=miniOn&&!(MINI.dead>0&&now-MINI.dead>2.4);MBEAM.visible=false;MARMS.forEach(a=>a.visible=MINIG.visible&&!(MINI.dead>0));
+ if(MINIG.visible){const E=G.mini,th=E.th+0.2,r=HR-3.6,hit=now-MINI.hitT,U=new THREE.Vector3(0,1,0),T=new THREE.Vector3(-Math.sin(E.th),0,Math.cos(E.th)),H=new THREE.Vector3(Math.cos(E.th)*HR,E.y,Math.sin(E.th)*HR);
+  const body=new THREE.Vector3(Math.cos(th)*r,E.y+3.3+Math.sin(tt*1.8)*0.25,Math.sin(th)*r);if(hit<0.3)body.add(new THREE.Vector3((Math.random()-0.5)*0.4,(Math.random()-0.5)*0.4,0));
+  let sc=1+(hit<0.2?0.12:0);if(MINI.dead>0){const a=clamp((now-MINI.dead)/2.4,0,1);sc*=1-a;body.y-=a*a*9;MINIG.rotation.z+=dt*7}
+  MINIG.position.copy(body);MINIG.scale.setScalar(sc);if(!(MINI.dead>0))MINIG.lookAt(H.clone().addScaledVector(U,1.2).lerp(camPos,0.5));MBODY.color.set(hit<0.15?'#ff9a9a':MINIS[MINI.L].col);
+  const P=(t,s)=>H.clone().addScaledVector(T,t).addScaledVector(U,s),sw=k=>k==='low'||k==='high',hh=k=>k==='high'?1.9:0.35;
+  /* [wind-up spot, strike end] per kind */
+  const aim=k=>sw(k)?[P(2.6,hh(k)),P(-2.2,hh(k))]:[P(k==='left'?-1.8:1.8,4.2),P(0,0.25)];
+  const sh=[0,1].map(i=>body.clone().addScaledVector(T,i?-0.9:0.9).addScaledVector(U,-0.5)),tip=[0,1].map(i=>sh[i].clone().addScaledVector(T,i?-0.6:0.6).addScaledVector(U,-1.6+Math.sin(tt*2.2+i*2)*0.25));
+  const beam=(op,col)=>{const dv=P(0,1.1).sub(body),L=dv.length();MBEAM.visible=true;MBEAM.position.copy(body).addScaledVector(dv,0.5);MBEAM.quaternion.setFromUnitVectors(U,dv.divideScalar(L));const w=1+Math.sin(tt*40)*0.15;MBEAM.scale.set(w,L,w);MBEAM.material.opacity=op;MBEAM.material.color.set(col)};
+  if(!(MINI.dead>0)&&LV.song.cues){const wb=Math.min(0.5,sp*0.8);
+   for(const c of LV.song.cues){const d=lt-c.at;if(d<-0.2)break;if(d>Math.max(0.4,c.len+0.1))continue;
+    if(c.kind==='beam'){if(d>=0&&d<=c.len)beam(0.25,MINIS[MINI.L].eye);continue}
+    const [a0]=aim(c.kind),i=c.kind==='low'||c.kind==='left'?0:1;tip[i].lerp(sw(c.kind)?a0.lerp(P(0,hh(c.kind)),0.45):a0,Math.sin(Math.PI*clamp((d+0.15)/0.5,0,1))*0.85);
+    if(!c.fl&&d>=0){c.fl=1;landFlash(sw(c.kind)?P(0,hh(c.kind)):P(0,0.05),MCOL[c.kind])}}
+   for(let k=Math.max(0,G.ni-4);k<Math.min(ACT.length,G.ni+3);k++){const n=ACT[k],d=lt-n.at;
+    if(n.kind==='beam'){if(d>=0&&d<=n.len+0.05)beam(n.j==='m'?1:0.85,n.j==='m'?'#ff2020':'#ff5a3c');continue}
+    if(d<-wb||d>0.55)continue;const [a0,a1]=aim(n.kind),i=n.kind==='low'||n.kind==='left'?0:1,end=sw(n.kind)?0.12:0.15;
+    if(d<-0.12)tip[i].lerp(a0,smooth((d+wb)/(wb-0.12)));else if(d<end)tip[i].copy(a0.lerp(a1,sw(n.kind)?(d+0.12)/0.24:clamp((d+0.12)/0.12,0,1)));else tip[i].copy(a1.lerp(tip[i],smooth((d-end)/0.4)));
+    if(!n.sp&&d>=0&&n.j&&n.j!=='m'){n.sp=1;burst(sw(n.kind)?P(0,hh(n.kind)):P(0,0.3),6,'#ffffff')}}}
+  MARMS.forEach((m,i)=>{const dv=tip[i].clone().sub(sh[i]),L=Math.max(0.1,dv.length());m.position.copy(sh[i]);m.quaternion.setFromUnitVectors(U,dv.divideScalar(L));m.scale.set(1,L,1)})}
  /* camera */
  const port=C.aspect<1;const D=(port?13.5:13);const pull=Math.sin(Math.PI*clamp((now-G.pullT)/3.2,0,1));const endPull=G.state==='end'?smooth(clamp((now-G.endT)/3,0,1)):0;const pw=Math.max(pull,endPull);
  const rc=HR-D-pw*14,thc=fTh+CAMA;let tp=new THREE.Vector3(Math.cos(thc)*rc,fY+3.1+pw*5,Math.sin(thc)*rc),tl=new THREE.Vector3(Math.cos(fTh+CAML)*(HR+1),fY-0.7-pw*3,Math.sin(fTh+CAML)*(HR+1));
- if(bossOn&&G.state!=='end'){const tb=fTh+0.09;tp.set(Math.cos(tb)*(HR-D-4),fY+3.6,Math.sin(tb)*(HR-D-4));tl.set(Math.cos(tb)*(HR-2),fY+1.4,Math.sin(tb)*(HR-2))}
+ if((bossOn||miniOn)&&G.state!=='end'){const tb=fTh+0.09;tp.set(Math.cos(tb)*(HR-D-4),fY+3.6,Math.sin(tb)*(HR-D-4));tl.set(Math.cos(tb)*(HR-2),fY+1.4,Math.sin(tb)*(HR-2))}
  if(G.state==='title'){const [ip,il]=introPose(tt*0.05);envAt(1.5);camPos.copy(ip);camLook.copy(il)}
  else if(G.state==='play'&&G.intro&&now<G.goT+0.6){const s=smooth(clamp((now-G.startT)/(G.goT-G.startT+0.3),0,1));const [ip,il]=introPose(G.startT*0.05);camPos.copy(ip.lerp(tp,s));camLook.copy(il.lerp(tl,s))}
  else{camPos.lerp(tp,1-Math.exp(-rdt*5));camLook.lerp(tl,1-Math.exp(-rdt*6))}
@@ -1416,7 +1506,7 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
  $('shake').style.opacity=G.shake>0?G.shake*0.8:0;
  drawTrack(now,tn);
  /* hud */
- if(G.state!=='title'&&LV){const L=LV.L,a=LAYERS[L].m,c=L===4?MAXM:LAYERS[L+1].m,m=G.mode==='boss'?MAXM:a+(c-a)*clamp(lt/Math.max(1,sg.end),0,1);$('dM').textContent=Math.round(m)+' m';$('dL').textContent=LAYERS[L].name;$('mk').style.top=(m/MAXM*100)+'%'}
+ if(G.state!=='title'&&LV){const L=LV.L,a=LAYERS[L].m,c=L===4?MAXM:LAYERS[L+1].m,m=G.mode==='boss'?MAXM:G.mode==='mini'?c:a+(c-a)*clamp(lt/Math.max(1,sg.end),0,1);$('dM').textContent=Math.round(m)+' m';$('dL').textContent=LAYERS[L].name;$('mk').style.top=(m/MAXM*100)+'%'}
  R.render(S,C)}
 requestAnimationFrame(frame);
 })();
