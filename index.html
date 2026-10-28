@@ -20,7 +20,11 @@ html,body{height:100%;margin:0;overflow:hidden}
 body{background:var(--ink);color:var(--paper);font-family:var(--serif);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
 #game{position:relative;width:100%;height:100%;overflow:hidden;touch-action:none;cursor:pointer}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block}
-.vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 45%,transparent 50%,rgba(10,6,14,.6) 100%)}
+.vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 45%,transparent calc(50% - var(--dmg,0)*28%),rgba(10,6,14,calc(.6 + var(--dmg,0)*.35)) 100%)}
+.fxe{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .35s}
+#feverFx{box-shadow:inset 0 0 110px 24px rgba(255,180,70,.55)}body.fever #feverFx{opacity:1;animation:fvp .45s ease-in-out infinite alternate}
+#dareFx{box-shadow:inset 0 0 90px 18px rgba(230,60,50,.55)}body.dare #dareFx{opacity:1}
+@keyframes fvp{from{filter:brightness(.8)}to{filter:brightness(1.25)}}
 #shake{position:absolute;inset:0;pointer-events:none;background:rgba(200,40,60,.18);opacity:0}
 #gauge{position:absolute;left:max(16px,env(safe-area-inset-left,0px));top:24%;bottom:24%;width:90px;pointer-events:none;transition:opacity .6s}
 #gauge .rail{position:absolute;left:5px;top:0;bottom:0;width:2px;background:var(--line)}
@@ -109,7 +113,7 @@ body{background:var(--ink);color:var(--paper);font-family:var(--serif);-webkit-u
 
 <div id="game">
   <canvas id="cv" aria-label="Descent into the pit"></canvas>
-  <div class="vig"></div>
+  <div class="vig"></div><div class="fxe" id="feverFx"></div><div class="fxe" id="dareFx"></div>
   <div id="shake"></div>
   <div id="gauge" hidden><div class="rail"></div></div>
   <div id="depth" hidden><b id="dM">0 m</b><i id="dL">The Rim</i><div id="hearts" aria-label="Lanterns left"></div><div id="coins">0 coins</div></div>
@@ -256,18 +260,21 @@ const toon=(o)=>new THREE.MeshToonMaterial(Object.assign({gradientMap:toonGrad},
 /* ---------- chart: built-in levels, used when a level has no music file ---------- */
 /* t = whack a critter (tap), u = jump a gap or an obstacle (swipe up), d = duck a swooper (swipe down), h = ride a zipline (hold),
    k = kick through a barricade (swipe forward), b = brace for a falling rock (swipe back), w = shove a cart with both thumbs (two-finger tap). [beat, type, holdBeats] */
-const BPMS=[88,96,100,108,84,112],SPBL=BPMS.map(b=>60/b),TYPES={t:'tap',u:'up',d:'duck',h:'hold',k:'kick',b:'brace',w:'both'};
+const BPMS=[98,108,116,124,132,140,144],SPBL=BPMS.map(b=>60/b),TYPES={t:'tap',u:'up',d:'duck',h:'hold',k:'kick',b:'brace',w:'both'};
 const CHART=[
- [[2,'u'],[6,'u'],[8,'k'],[10,'t'],[12,'u'],[14,'t'],[16,'b'],[18,'w'],[20,'u'],[22,'d'],[24,'k'],[25,'t'],[26,'w'],[28,'h',2],[31,'b']],
- [[0,'t'],[2,'u'],[4,'h',3],[8,'t'],[9,'t'],[10,'d'],[12,'u'],[14,'t'],[16,'h',3],[20,'d'],[21,'t'],[22,'u'],[24,'t'],[24.5,'t'],[25,'t'],[26,'d'],[28,'u'],[30,'t']],
- [[0,'t'],[1,'t'],[2,'d'],[4,'t'],[5,'u'],[6,'d'],[7,'d'],[8,'t'],[8.5,'t'],[9,'t'],[10,'u'],[12,'d'],[13,'t'],[14,'u'],[16,'t'],[17,'d'],[18,'t'],[18.5,'t'],[19,'u'],[20,'h',2],[23,'t'],[24,'d'],[25,'u'],[26,'t'],[27,'t'],[28,'d'],[29,'u'],[30,'t'],[31,'t']],
+ [[0,'t'],[1,'t'],[2,'u'],[4,'t'],[5,'t'],[6,'u'],[8,'k'],[9,'t'],[10,'t'],[10.5,'t'],[11,'d'],[12,'u'],[13,'t'],[14,'t'],[15,'d'],[16,'b'],[17,'t'],[18,'w'],[19,'t'],[20,'u'],[21,'t'],[22,'d'],[23,'t'],[24,'k'],[25,'t'],[26,'w'],[28,'h',2],[31,'b']],
+ [[0,'t'],[1,'t'],[2,'u'],[4,'h',3],[8,'t'],[9,'t'],[9.5,'t'],[10,'d'],[11,'t'],[12,'u'],[13,'d'],[14,'t'],[14.5,'t'],[15,'t'],[16,'h',3],[20,'d'],[21,'t'],[22,'u'],[23,'t'],[24,'t'],[24.5,'t'],[25,'t'],[26,'d'],[27,'t'],[28,'u'],[29,'d'],[30,'t'],[30.5,'t'],[31,'t']],
+ [[0,'t'],[1,'t'],[2,'d'],[3,'t'],[4,'t'],[5,'u'],[6,'d'],[7,'d'],[8,'t'],[8.5,'t'],[9,'t'],[10,'u'],[12,'d'],[13,'t'],[14,'u'],[15,'t'],[16,'t'],[17,'d'],[18,'t'],[18.5,'t'],[19,'u'],[20,'h',2],[23,'t'],[24,'d'],[25,'u'],[26,'t'],[27,'t'],[28,'d'],[29,'u'],[30,'t'],[31,'t']],
  [[0,'t'],[1,'u'],[2,'d'],[3,'t'],[3.5,'t'],[4,'h',2],[7,'u'],[8,'d'],[9,'t'],[9.5,'t'],[10,'u'],[11,'d'],[12,'h',3],[16,'t'],[17,'u'],[18,'d'],[19,'t'],[19.5,'t'],[20,'u'],[21,'t'],[22,'d'],[23,'u'],[24,'h',2],[27,'t'],[27.5,'t'],[28,'d'],[29,'u'],[30,'t'],[31,'d']],
  [[0,'d'],[1,'t'],[2,'u'],[3,'t'],[4,'h',3],[8,'d'],[8.5,'d'],[9,'t'],[10,'u'],[11,'t'],[12,'d'],[13,'u'],[14,'t'],[14.5,'t'],[15,'t'],[16,'u'],[17,'d'],[18,'h',2],[21,'t'],[22,'u'],[23,'d'],[24,'t'],[24.5,'t'],[25,'u'],[26,'d'],[27,'t'],[28,'h',2],[31,'u']]];
 /* a song is everything a level needs, in level seconds (0 = the level starts): beats, notes, first note, end.
    built-in songs are generated beat by beat by musicBeat; songs from music files come from makeChart */
-function procSong(L,chart,len,lead,boss){const spb=SPBL[L],beats=[];for(let k=-lead;k<=len+4;k++)beats.push((k+lead)*spb);
- const notes=chart.map(([o,ty,hl],i)=>({k:o,at:(o+lead)*spb,type:TYPES[ty],len:(hl||0)*spb,boss:!!boss,gap:!boss&&ty==='u'&&h3(i,L,31)<LSTYLE[L].gap}));
- return{proc:L,bpm:BPMS[L],spb,beats,lead,bar0:0,notes,first:lead*spb,end:(len+lead)*spb}}
+/* ramp: tempo factor per seg beats (each loop of the chart plays faster than the last); beats are no longer evenly spaced, so use sg.beats or sg.spbAt(t) */
+const RAMP=[1,1.06,1.12];
+function procSong(L,chart,len,lead,boss,ramp,seg=32){const spb=SPBL[L],R=ramp||[1],sp=i=>spb/R[Math.min(R.length-1,i)],
+ bt=x=>{if(x<0)return(x+lead)*spb;let t=lead*spb,i=0;while(x>=seg){t+=seg*sp(i);x-=seg;i++}return t+x*sp(i)},beats=[];for(let k=-lead;k<=len+4;k++)beats.push(bt(k));
+ const notes=chart.map(([o,ty,hl],i)=>({k:o,at:bt(o),type:TYPES[ty],len:hl?bt(o+hl)-bt(o):0,boss:!!boss,gap:!boss&&ty==='u'&&h3(i,L,31)<(LSTYLE[L]||LSTYLE[0]).gap}));
+ return{proc:L,bpm:BPMS[L],spb,beats,lead,bar0:0,notes,first:lead*spb,end:bt(len),spbAt:t=>{const i=bIdx(beats,t);return(beats[i+1]||beats[i]+spb)-beats[i]}}}
 
 /* ---------- the run: one fixed chapter of levels, rest stops and a boss ---------- */
 /* levels and lore never change; only the vendors' stock is rolled per run.
@@ -298,6 +305,8 @@ const UPG=[
  {id:'cape',tier:3,price:140,name:'Featherfall Cape',desc:'Bonks, falls and bat hits cost no lanterns.'}];
 /* boss chart: 32 beats, looped; tap = strike, hold = charged strike, up/down = dodge its sweeps */
 const BOSS_LEN=32,BOSS_LOOPS=3,BOSS_HP=40;
+/* the dare room: a short, hard side level (played twice, faster the second time) with its own song (MUSIC[6], BPMS[6]) */
+const DARE_CHART=[[0,'t'],[0.5,'t'],[1,'t'],[2,'u'],[3,'d'],[3.5,'t'],[4,'t'],[5,'u'],[6,'t'],[6.5,'t'],[7,'d'],[8,'h',2],[10.5,'t'],[11,'t'],[12,'u'],[13,'d'],[13.5,'t'],[14,'t'],[14.5,'t'],[15,'u'],[16,'d'],[16.5,'t'],[17,'t'],[18,'u'],[19,'t'],[19.5,'t'],[20,'d'],[21,'u'],[22,'t'],[22.5,'t'],[23,'t'],[24,'h',2],[26.5,'t'],[27,'d'],[28,'u'],[29,'t'],[29.5,'t'],[30,'d'],[31,'t'],[31.5,'t']];
 const BOSS_CHART=[[0,'t'],[1,'t'],[2,'d'],[3,'t'],[4,'t'],[5,'u'],[6,'t'],[6.5,'t'],[7,'t'],[8,'h',2],[11,'t'],[12,'d'],[13,'u'],[14,'t'],[15,'t'],
  [16,'t'],[16.5,'t'],[17,'t'],[18,'d'],[19,'u'],[20,'t'],[21,'d'],[22,'t'],[22.5,'t'],[23,'t'],[24,'h',3],[28,'u'],[29,'d'],[30,'t'],[31,'t']];
 
@@ -377,7 +386,7 @@ function addGlow(arr,p,c){arr.push({p:p.clone(),c:new THREE.Color(c)})}
 /* ---------- the ledge: built for each level from its chart; the explorer walks it at a steady pace ---------- */
 /* s = distance along the ledge from the level's start. A note at level time t sits at s = SPEED·t, so the explorer reaches it on its beat.
    The ledge winds down the pit; long songs wind round more than once, dropping at least MINPITCH so the turns never touch */
-const SPEED=3,MINPITCH=5.4/(Math.PI*2*HR),CABR=HR-0.55,LEDGE_IN=22.9;
+let SPEED=3;const PACE=2.1,MINPITCH=5.4/(Math.PI*2*HR),CABR=HR-0.55,LEDGE_IN=22.9;
 const WOODS=['#9a6b3e','#8a5d34','#a77a4a','#7c532e'],STONES=[null,null,['#cbbd9c','#b9a885','#d8cba9','#a8977a'],['#2f9483','#3aa892','#ff8fc8','#2a7a6c'],['#4a3a6c','#3c2e5a','#5a4880','#2e2248']];
 const FIRE_L=new THREE.PointLight(0xff9a50,0,9,1.6);S.add(FIRE_L);
 let LVG=null,CAMPG=null;
@@ -411,7 +420,7 @@ function buildLevel(L,sg,th0,y0){if(LVG)dropGroup(LVG);const g=LVG=new THREE.Gro
  addTo(g,tiles,kind==='caps'?new THREE.CylinderGeometry(0.5,0.42,0.2,10):new THREE.BoxGeometry(1,1,1),toon({}));
  addTo(g,struts,new THREE.BoxGeometry(1,1,1),toon({}));addTo(g,posts,new THREE.CylinderGeometry(0.05,0.06,1,5),toon({}));addTo(g,lan,new THREE.SphereGeometry(0.13,8,6),new THREE.MeshBasicMaterial({}));
  if(rope.length)g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(rope),new THREE.LineBasicMaterial({color:'#2e1f12'})));
- sign(st.sign,th0+0.1,y0+2.0,g);clearLedge(P,len);
+ sign(st.sign,th0+0.1,y0+2.0,g);(sg.dares||[]).forEach(d=>{const q=pathPt(P,SPEED*d.a);sign('DARE?',q.th,q.y+2.0,g)});clearLedge(P,len);
  /* what each note puts on the ledge */
  sg.notes.forEach(n=>{if(n.boss)return;const s=SPEED*n.at;n.pos=pathPt(P,s);
   if(n.type==='up'){n.mid=pathPt(P,SPEED*(n.at+n.w/2));if(!n.gap){const o=obstacle(L),m=n.mid;o.position.set(m.x,m.y-0.05,m.z);o.lookAt(0,m.y-0.05,0);g.add(o);n.obj=o;if(L>=3)glowAt(g,o.position.clone().add(new THREE.Vector3(0,0.7,0)),L===3?'#2fd6b8':'#b48cff',2.2)}}
@@ -658,6 +667,14 @@ const BOSSG=new THREE.Group(),BEYE=toon({color:'#f3ead8'}),BIRIS=new THREE.MeshB
 const SPN=60,spPos=new Float32Array(SPN*3),spInfo=[];for(let i=0;i<SPN;i++)spInfo.push({life:0});
 const spG=new THREE.BufferGeometry();spG.setAttribute('position',new THREE.BufferAttribute(spPos,3));
 const SPARK=new THREE.Points(spG,new THREE.PointsMaterial({size:0.35,map:glowTex,color:'#ffe2a0',transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));S.add(SPARK);
+/* fever: gold sparks around the explorer (they stay where they spawn and drift up, so they trail behind the walk) and an aura that pulses on the beat */
+const FVN=90,fvPos=new Float32Array(FVN*3),fvInfo=[];for(let i=0;i<FVN;i++)fvInfo.push({life:0});
+const fvG=new THREE.BufferGeometry();fvG.setAttribute('position',new THREE.BufferAttribute(fvPos,3));
+const FEVP=new THREE.Points(fvG,new THREE.PointsMaterial({size:0.26,map:glowTex,color:'#ffb347',transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));FEVP.frustumCulled=false;S.add(FEVP);
+const AURA=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:'#ffb347',transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));S.add(AURA);let fvAcc=0;
+function fevFx(dt,on,pulse){const H=HERO.position;if(on){fvAcc+=dt*70;for(let i=0;i<FVN&&fvAcc>=1;i++){const s=fvInfo[i];if(s.life>0)continue;fvAcc--;const a=rnd()*6.28,r=rr(0.25,0.6);s.life=1;s.x=H.x+Math.cos(a)*r;s.y=H.y+rr(0.1,HH*0.9);s.z=H.z+Math.sin(a)*r;s.vx=Math.cos(a)*0.4;s.vz=Math.sin(a)*0.4;s.vy=rr(0.4,1.4)}}else fvAcc=0;
+ for(let i=0;i<FVN;i++){const s=fvInfo[i];if(s.life>0){s.life-=dt*1.4;s.x+=s.vx*dt;s.y+=s.vy*dt;s.z+=s.vz*dt;fvPos.set([s.x,s.y,s.z],i*3)}else fvPos.set([0,-999,0],i*3)}fvG.attributes.position.needsUpdate=true;
+ const m=AURA.material;m.opacity+=((on?0.35+0.3*pulse:0)-m.opacity)*Math.min(1,dt*10);AURA.visible=m.opacity>0.01;AURA.position.set(H.x,H.y+HH*0.45,H.z);const k=HH*(1.3+0.25*pulse);AURA.scale.set(k,k,1)}
 function burst(p,n,col){SPARK.material.color.set(col);let k=0;for(let i=0;i<SPN&&k<n;i++){const s=spInfo[i];if(s.life>0)continue;k++;s.life=1;s.x=p.x;s.y=p.y+0.2;s.z=p.z;const a=rnd()*6.28,v=rr(1.2,3.2);s.vx=Math.cos(a)*v;s.vz=Math.sin(a)*v;s.vy=rr(1.5,4)}}
 
 /* ---------- audio ---------- */
@@ -710,10 +727,11 @@ const MUSIC=[
  {ch:[[52,55,59,62],[53,57,60,64],[52,55,59,62],[50,53,57,60]],bass:[40,41,40,38],cut:700,arp:'low',shk:false},
  {ch:[[53,57,60,64],[55,59,62,67],[57,60,64,67],[55,59,62,66]],bass:[41,43,45,43],cut:1900,arp:'shimmer',shk:true},
  {ch:[[48,55,60,63],[48,55,60,63],[44,51,56,60],[46,53,58,62]],bass:[36,36,32,34],cut:900,arp:'sparse',shk:false},
- {ch:[[57,60,64,69],[53,57,60,65],[55,58,62,67],[52,56,59,64]],bass:[45,41,43,40],cut:2200,arp:'pluck',shk:true}];
+ {ch:[[57,60,64,69],[53,57,60,65],[55,58,62,67],[52,56,59,64]],bass:[45,41,43,40],cut:2200,arp:'pluck',shk:true},
+ {ch:[[50,53,57,61],[50,53,56,59],[46,50,53,58],[45,49,52,57]],bass:[38,38,34,33],cut:2600,arp:'pluck',shk:true}];
 /* music voices go through the procedural music bus, so mistakes can bend them */
 function musicBeat(L,k,t){if(LIVE.length>300){const now=AC.currentTime;for(let i=LIVE.length-1;i>=0;i--)if(LIVE[i].end<now)LIVE.splice(i,1)}OUT=musP.in;try{musicBeat0(L,k,t)}finally{OUT=VG.fx}}
-function musicBeat0(L,k,t){const sp=SPBL[L],mu=MUSIC[L],rel=((k%16)+16)%16,ci=Math.floor(rel/4),chord=mu.ch[ci],T=G.tier;
+function musicBeat0(L,k,t){const sp=BSP||SPBL[L],mu=MUSIC[L],rel=((k%16)+16)%16,ci=Math.floor(rel/4),chord=mu.ch[ci],T=G.tier;
  if(rel===0&&dly)dly.delayTime.setValueAtTime(sp*0.75,t);
  if(rel%4===0)pad(chord,t,sp*4.2,mu.cut,L===4?0.03:0.022);
  if(k<0){if(k===-8||k===-4)voice('sine',mtof(chord[3]+12),t,0.01,1.4,0.05,[dly,rev]);return}
@@ -742,7 +760,7 @@ function trackStop(fade){if(!TRK||!AC)return;const {src,g}=TRK,t=AC.currentTime,
    Music files with stems (RUN node stems:[{src,lv}], each the same length and start as the track; meant for Suno stems) fade a stem in once the tier reaches its lv.
    A file without stems opens a low-pass instead (GROW.cut Hz per tier). Built-in music: tier 0 pad, kick and hats · 1 + bass and shaker · 2 + arpeggio · 3 + a lead on top */
 const GROW={up:8,down:1,start:1,max:3,cut:[1800,4500,10000,20000],fade:0.15};
-function growHit(){if(++G.gs>=GROW.up&&G.tier<GROW.max){G.tier++;G.gs=0;growApply(true)}}
+function growHit(){if(++G.gs>=GROW.up&&G.tier<GROW.max){G.tier++;G.gs=0;growApply(true);if(G.tier>=GROW.max&&G.mode==='descent')G.fevNew=true}}
 function growMiss(){G.gs=0;if(G.tier>0){G.tier=Math.max(0,G.tier-GROW.down);growApply(false)}}
 function growApply(rise){if(!AC||!TRK)return;const sg=LV&&LV.song;let t=AC.currentTime;
  if(rise&&sg){let i=bIdx(sg.beats,levelAt(t))+1;while(i<sg.beats.length&&((i-(sg.bar0||0))%4+4)%4)i++;if(i<sg.beats.length)t=Math.max(t,timeOf(sg.beats[i]))}
@@ -754,14 +772,14 @@ function growApply(rise){if(!AC||!TRK)return;const sg=LV&&LV.song;let t=AC.curre
 /* the distorted copy comes out at near full scale whatever the song's level, so its level is matched to each song's own loudness (WET_RMS = its typical level before matching). The built-in music's level is fixed (0.05, measured) */
 /* pitch: semitones the song is shifted during a mistake, as clean copies laid over the crunch; several make a clashing cluster. shift = their level next to the song. The built-in music bends by pitch[0] */
 const GL={dur:0.5,dry:0.03,wet:0.95,drive:40,bits:3,cut:250,q:4,slow:0.5,slowDur:0.9,pitch:[1,-1],shift:0.7},WET_RMS=0.75;
-const LIVE=[];
+const LIVE=[];let BSP=0;
 let OUT=null,musP=null,musT=null;
 function mkBus(out){const i=AC.createGain(),dry=AC.createGain(),sh=AC.createWaveShaper(),f=AC.createBiquadFilter(),wet=AC.createGain(),c=new Float32Array(1024);
  const st=Math.pow(2,GL.bits-1);for(let k=0;k<1024;k++)c[k]=Math.round(Math.tanh((k/511.5-1)*GL.drive)*st)/st*0.9;sh.curve=c;f.type='lowpass';f.frequency.value=6000;f.Q.value=GL.q;wet.gain.value=0;
- const mk=AC.createGain();mk.gain.value=0.15;i.connect(dry);dry.connect(out);i.connect(sh);sh.connect(f);f.connect(mk);mk.connect(wet);wet.connect(out);const spy=AC.createAnalyser();spy.fftSize=8192;spy.smoothingTimeConstant=0;dry.connect(spy);wet.connect(spy);return{in:i,dry,wet,f,mk,sh,out,spy}}
+ const mk=AC.createGain();mk.gain.value=0.15;i.connect(dry);dry.connect(out);i.connect(sh);sh.connect(f);f.connect(mk);mk.connect(wet);const dmg=AC.createBiquadFilter();dmg.type='lowpass';dmg.frequency.value=20000;dmg.Q.value=0.5;wet.disconnect();dry.disconnect();dry.connect(dmg);wet.connect(dmg);dmg.connect(out);const spy=AC.createAnalyser();spy.fftSize=8192;spy.smoothingTimeConstant=0;dry.connect(spy);wet.connect(spy);return{in:i,dry,wet,f,mk,sh,out,spy,dmg}}
 /* a song's loudness over the part a level plays (sampled sparsely, cached on the song) */
 function songRms(sg){if(sg.rms)return sg.rms;const d=sg.buf.getChannelData(0),sr=sg.buf.sampleRate,a=Math.floor((sg.from||0)*sr),b=Math.min(d.length,a+Math.floor(sg.end*sr));let s=0,n=0;for(let i=a;i<b;i+=16){s+=d[i]*d[i];n++}return sg.rms=Math.sqrt(s/Math.max(1,n))||0.1}
-function glitch(){if(!AC||!musP)return;const t=AC.currentTime,D=GL.dur;growMiss();
+function glitch(){if(!AC||!musP||clock()<G.grace)return;const t=AC.currentTime,D=GL.dur;growMiss();
  const env=(p,a,b)=>{p.cancelScheduledValues(t);p.setValueAtTime(p.value,t);p.linearRampToValueAtTime(b,t+0.03);p.setValueAtTime(b,t+D-0.15);p.linearRampToValueAtTime(a,t+D)};
  [musP,musT].forEach(b=>{env(b.dry.gain,1,GL.dry);env(b.wet.gain,0,GL.wet);b.f.frequency.cancelScheduledValues(t);b.f.frequency.setValueAtTime(GL.cut,t);b.f.frequency.exponentialRampToValueAtTime(6000,t+D)});
  warp();
@@ -923,7 +941,7 @@ const WRONG={up:'swipe up',duck:'swipe down',kick:'swipe '+FWD,brace:'swipe '+BA
 /* LV: the level being played ({L, song, path, nd}); ACT: its notes. Note times (at, len) are level seconds */
 let LV=null,anchorT=0,nextBeat=0,W_P=0.07,W_G=0.14,ACT=[];
 /* level time ↔ AudioContext time, through any slowdowns (warps). timeOf solves T = anchorT + lt + lag(T); the lag grows slower than time, so it converges */
-const levelAt=T=>T-anchorT-warpLag(T),spbNow=()=>LV?LV.song.spb:0.6;
+const levelAt=T=>T-anchorT-warpLag(T),spbNow=t=>LV?(t!=null&&LV.song.spbAt?LV.song.spbAt(t):LV.song.spb):0.6;
 function timeOf(lt){let T=anchorT+lt;if(WARPS.length)for(let i=0;i<6;i++)T=anchorT+lt+warpLag(T);return T}
 function retime(){ACT.forEach(n=>{n.time=timeOf(n.at);if(n.type==='hold')n.endTime=timeOf(n.at+n.len)});G.flI=0}
 function judgeShow(txt,col,sub,q){G.jt=clock();G.jtxt=txt;G.jcol=col;G.jsub=sub||'';G.jq=q||null}
@@ -935,7 +953,9 @@ function markerXY(){const r=trk.getBoundingClientRect(),g=gameEl.getBoundingClie
 function newFx(x,y){G.fx={el:ripple(x,y),x,y,t:clock(),done:false,swipe:null}}
 function fxResult(q,hold){const now=clock();const f=G.fx;if(f&&now-f.t<0.6&&!f.done){f.done=true;f.el.classList.add(q);if(f.swipe)streak(f.x,f.y,f.swipe,q);if(hold){f.el.classList.add('hold');G.holdFx=f.el}}}
 function holdFxEnd(q){const e=G.holdFx;if(!e)return;G.holdFx=null;e.classList.remove('hold','p','g','m');e.classList.add(q,'out');setTimeout(()=>e.remove(),500)}
-function heartsUI(){const h=$('hearts');h.innerHTML='';for(let i=0;i<G.maxH;i++){const d=document.createElement('i');d.className='ht'+(i<G.hearts?'':' off');h.appendChild(d)}}
+/* every lantern lost darkens the screen and muffles the music (DMGCUT Hz, by lanterns lost) */
+const DMGCUT=[20000,8000,4500,2600,1600];
+function heartsUI(){const lost=clamp(G.maxH-G.hearts,0,4);document.body.style.setProperty('--dmg',lost/4);if(AC)[musP,musT].forEach(b=>b&&b.dmg&&b.dmg.frequency.setTargetAtTime(DMGCUT[lost],AC.currentTime,0.4));const h=$('hearts');h.innerHTML='';for(let i=0;i<G.maxH;i++){const d=document.createElement('i');d.className='ht'+(i<G.hearts?'':' off');h.appendChild(d)}}
 const HINTS={tap:['Tap to whack the critter','Press Space to whack the critter'],up:['Swipe up to jump','Press ↑ to jump'],duck:['Swipe down to duck','Press ↓ to duck'],hold:['Press and hold to ride the line. Let go as you land.','Hold Space to ride the line. Let go as you land.'],
  kick:['Swipe '+FWD+' to kick it down','Press '+(FWD==='right'?'→':'←')+' to kick it down'],brace:['Rock! Swipe '+BACK+' to brace','Rock! Press '+(BACK==='left'?'←':'→')+' to brace'],both:['Tap with both thumbs at once to shove it','Press two keys at once to shove it'],
  bosstap:['Tap on the beat to strike','Press Space on the beat to strike'],bossup:['It sweeps low: swipe up to jump','It sweeps low: press ↑ to jump'],bossduck:['It swipes high: swipe down to duck','It swipes high: press ↓ to duck'],bosshold:['Hold to charge a big strike. Let go on the ring.','Hold Space to charge a big strike. Let go on the ring.']};
@@ -946,19 +966,24 @@ function cardText(o,n,d,ms){$('cO').textContent=o;$('cN').textContent=n;$('cD').
 /* built-in songs answer a good move with a note from the current chord; music files get sfx only */
 function chime(n,at){if(!AC||!LV||LV.song.proc===undefined)return;const t=Math.max(AC.currentTime,at||0);const ch=MUSIC[LV.song.proc].ch[Math.floor((((n.k||0)%16)+16)%16/4)];voice('sine',mtof(ch[G.combo%4]+24),t,0.003,0.6,0.09,[dly,rev]);nz(t,0.05,0.22,'bandpass',1100,3)}
 function creak(){if(!AC)return;const t=AC.currentTime;voice('sawtooth',320,t,0.01,0.28,0.05,null,170);nz(t,0.25,0.12,'bandpass',900,6)}
-function footstep(t,L){if(!AC)return;const f=[784,698,659,880,587,659][L];voice('triangle',f,t,0.002,0.07,0.05,[rev]);nz(t,0.02,0.07,'bandpass',3200,5)}
+function footstep(t,L){if(!AC)return;const f=[784,698,659,880,587,659,622][L];voice('triangle',f,t,0.002,0.07,0.05,[rev]);nz(t,0.02,0.07,'bandpass',3200,5)}
 function thud(){if(!AC)return;const t=AC.currentTime;nz(t,0.3,0.35,'lowpass',260);voice('sawtooth',90,t,0.005,0.25,0.05,null,45)}
-function praise(q){const sd=G.lastSd||0;judgeShow(q==='p'?'Perfect':(sd<0?'Good · early':'Good · late'),q==='p'?'#f2c46d':'#bfe6ef',G.combo>2?G.combo+' in a row':'',q)}
+function praise(q){const sd=G.lastSd||0,f=G.fevNew;G.fevNew=false;if(f)return judgeShow('FEVER','#ffb347','coins ×2 until you miss','p');
+ judgeShow(q==='p'?'Perfect':(sd<0?'Good · early':'Good · late'),q==='p'?'#f2c46d':'#bfe6ef',G.chain>=3?'chain ×'+G.chain:G.combo>2?G.combo+' in a row':'',q)}
 function coinsUI(){$('coins').textContent=G.coins+' coins';$('vCoins').textContent=G.coins}
 function addCoins(k){G.coins+=k;G.lvCoins+=k;coinsUI()}
 function score(n,q){if(q==='g'&&G.up.fork)q='p';addErr(G.lastSd||0,q);n.j=q;G[q]++;G.combo++;G.max=Math.max(G.max,G.combo);G.lvMax=Math.max(G.lvMax,G.combo);
- addCoins(q==='p'?2+(G.up.purse?1:0):1);growHit();if(G.up.jar&&G.combo%8===0)addCoins(4);
+ /* chains: notes a beat or less apart, all hit. From the third on, +1 coin each */
+ G.chain=G.lastHit!=null&&!n.boss&&n.at-G.lastHit<=spbNow(n.at)*1.02?G.chain+1:1;G.lastHit=n.at+(n.len||0);
+ addCoins(((q==='p'?2+(G.up.purse?1:0):1)+(G.chain>=3?1:0))*(G.tier>=GROW.max&&!n.boss?2:1));growHit();if(G.up.jar&&G.combo%8===0)addCoins(4);
  if(n.boss&&n.type!=='up'&&n.type!=='duck')bossDamage(n.type==='hold'?3:q==='p'?1.5:1);if(!n.snd){const at=n.type==='hold'?n.endTime:0;chime(n,at);sfx(n.type,at)}praise(q);fxResult(q)}
-function loseHeart(){if(G.up.hat&&!G.hatUsed){G.hatUsed=true;G.jsub='the hat took it';return}
+/* grace: after losing a lantern (or the hat taking it), misses cost nothing more and don't warp the music again, and whiffs don't knock the explorer off balance, for GRACE beats (at least GRACE_MIN s). A mistake slows the song and moves the next notes late, so without it one miss in a dense stretch snowballs */
+const GRACE=3,GRACE_MIN=1.4;
+function loseHeart(){if(clock()<G.grace)return;G.grace=clock()+Math.max(GRACE_MIN,GRACE*spbNow());if(G.up.hat&&!G.hatUsed){G.hatUsed=true;G.jsub='the hat took it';return}
  G.hearts=Math.max(0,G.hearts-1);if(G.hearts<=0&&G.up.wind&&!G.windUsed){G.windUsed=true;G.hearts=2;G.jsub='second wind'}heartsUI();if(G.hearts<=0)setTimeout(fallOut,450)}
 function hit(n,q){score(n,q);n.jt=clock();if(n.type==='tap')G.atk=clock();else if(n.type==='up'&&n.boss)G.jump=clock();else if(n.type==='duck')G.duck=clock();else if(n.type==='kick')G.kick=clock();else if(n.type==='brace')G.brace=clock();else if(n.type==='both')G.heave=clock();if(n.type==='up'&&!n.boss)G.busy=n.time+n.w;
  if(n.fpos)burst(new THREE.Vector3(n.fpos.x,n.fpos.y+0.5,n.fpos.z),q==='p'?12:7,'#ffe2a0');G.ni++}
-function fail(n,why){n.j='m';n.jt=clock();G.m++;G.combo=0;thud();glitch();fxResult('m');G.shake=0.35;judgeShow(why||'Missed','#f08a8a','','m');addErr(G.lastSd==null?0.25:G.lastSd,'m');G.lastSd=null;G.ni++;
+function fail(n,why){n.j='m';n.jt=clock();G.m++;G.combo=0;G.chain=0;G.lastHit=null;thud();glitch();fxResult('m');G.shake=0.35;judgeShow(why||'Missed','#f08a8a','','m');addErr(G.lastSd==null?0.25:G.lastSd,'m');G.lastSd=null;G.ni++;
  if(n.type==='tap'){if(n.boss){G.trip=clock();creak()}else G.hurt=clock()}else if(n.type==='up'){if(n.obj)n.obj.userData.hitT=clock();G.hurt=clock()}else if(n.type==='duck'){G.hurt=clock();n.bonk=clock()}else G.hurt=clock();
  if(G.up.cape&&n.type!=='tap'&&n.type!=='hold'){G.jsub='the cape caught you';return}loseHeart()}
 function holdStart(n,q,id){n.hj=q;G.holdPtr=id;G.zip={n,state:'ride'};chime(n);fxResult(q,true);addErr(G.lastSd||0,q);judgeShow('Hold…',q==='p'?'#f2c46d':'#bfe6ef','let go on the ring',q)}
@@ -969,7 +994,10 @@ function curNote(){return ACT[G.ni]}
 /* free moves: input away from any note's window still moves the explorer (REC = how long each move lasts). A whiff leaves them off balance for that long, and no input counts until it's over */
 const REC={tap:0.24,up:0.55,duck:0.42,kick:0.3,brace:0.4,both:0.4};
 function freeAct(mv,t,id){if(t<G.busy)return;const c=clock();if(mv==='tap'){G.fp={t,id};G.atk=c}else if(mv==='both'){G.atk=-9;G.heave=c}else if(mv==='up')G.jump=c;else if(mv==='duck')G.duck=c;else if(mv==='kick')G.kick=c;else G.brace=c;
- G.lock=t+REC[mv];if(AC)nz(AC.currentTime,0.12,0.07,'bandpass',1800,2);flourish(t)}
+ G.lock=t+(clock()<G.grace?0:REC[mv]);dareTry(t);if(AC)nz(AC.currentTime,0.12,0.07,'bandpass',1800,2);flourish(t)}
+function dareTry(t){const d=LV&&LV.song.dares;if(!d||G.mode!=='descent')return;const lt=levelAt(t),x=d.find(x=>x.on==null&&lt>=x.a-W_G&&lt<x.b);if(!x)return;x.on=true;if(AC)nz(AC.currentTime,0.2,0.3,'bandpass',900,3);startDare(lt)}
+/* the dare room starts from where the explorer stands; the rest of the level is skipped, and the run goes on to the next node after it */
+function startDare(lt){G.pathEnd=pathPt(LV.path,SPEED*lt);startLevel(Object.assign({},LV.nd,{dare:true}),false)}
 /* a free move on a beat, with no note due within a beat, is a flourish (Runner's dance): a coin and a note in the music. Once per beat */
 function flourish(t){const sg=LV&&LV.song,n=curNote();if(!sg||G.mode!=='descent'||(n&&!n.j&&n.time-t<sg.spb))return;const lt=levelAt(t),i=bIdx(sg.beats,lt),bi=Math.abs(sg.beats[i+1]-lt)<Math.abs(lt-sg.beats[i])?i+1:i;
  if(!(Math.abs(sg.beats[bi]-lt)<=W_G)||bi===G.flB)return;G.flB=bi;addCoins(1);judgeShow('Flourish','#f2c46d','+1 coin','p');if(!AC)return;const c=AC.currentTime;
@@ -1006,10 +1034,11 @@ function startNode(first){const nd=RUN[G.node];if(!nd)return;saveBest(G.node);if
 function nextNode(){if(G.state!=='clear'&&G.state!=='vendor')return;if(G.custom){playCustom();return}showOnly(null);G.node=Math.min(G.node+1,RUN.length-1);startNode(false)}
 function relight(){G.hearts=Math.min(G.maxH,G.hearts+(G.up.oil?2:1))}
 /* anchor the level: level time 0 plays a moment from now; music files start there, built-in songs count in first */
-function beginPlay(intro){const sg=LV.song;G.errs=[];G.jtxt='';Object.assign(G,{state:'play',trip:-9,zip:null,combo:0,pullT:-99,shake:0,cd:0,duck:-9,hurt:-9,atk:-9,jump:-9,kick:-9,brace:-9,heave:-9,both:null,lock:-9,busy:-9,fp:null,tier:GROW.start,gs:0,flB:-1,hatUsed:false,lvCoins:0,lvMax:0,ni:0,freezeLt:null});
+function beginPlay(intro){const sg=LV.song;G.errs=[];G.jtxt='';Object.assign(G,{state:'play',trip:-9,zip:null,combo:0,pullT:-99,shake:0,cd:0,duck:-9,hurt:-9,atk:-9,jump:-9,kick:-9,brace:-9,heave:-9,both:null,lock:-9,busy:-9,fp:null,tier:GROW.start,gs:0,chain:0,lastHit:null,fevNew:false,grace:0,flB:-1,hatUsed:false,lvCoins:0,lvMax:0,ni:0,freezeLt:null});
  anchorT=ctxNow()+(intro?0.45:0.55);WARPS=[];nextBeat=0;ACT=sg.notes;retime();G.goT=timeOf(sg.first);G.startT=clock();G.intro=intro;heartsUI();judgeShow('','#fff','');if(sg.buf)trackPlay(sg,anchorT)}
 /* a level plays its music file when it has one; otherwise (or if the file fails) the built-in chart and procedural music */
 async function songFor(nd,first){
+ if(nd.dare){const ch=[];for(let k=0;k<2;k++)DARE_CHART.forEach(([o,ty,hl])=>ch.push([k*32+o,ty,hl]));return procSong(6,ch,64,4,false,[1,1.06])}
  if(nd.custom){const sg=trackSong(CU.T,cuChart());sg.stems=CU.stems||null;return sg}
  if(nd.track){try{const T=await loadTrack(nd.track),st=LSTYLE[nd.L],ch=makeChart(T.A,{from:nd.from,to:nd.to,diff:nd.diff==null?0.5:nd.diff,mix:st.mix,gap:st.gap});
    /* startM (temporary, per song): no notes until the depth counter reaches this many metres, to let a song's intro play out */
@@ -1018,21 +1047,23 @@ async function songFor(nd,first){
    return sg}
   catch(e){console.warn('Could not use '+nd.track+', playing the built-in level instead.',e)}}
  /* a built-in level plays its 32-beat chart PROC_LOOPS times, long enough for the music to grow through its tiers */
- const ch=[];for(let k=0;k<PROC_LOOPS;k++)CHART[nd.L].forEach(([o,ty,hl])=>ch.push([k*32+o,ty,hl]));return procSong(nd.L,ch,PROC_LOOPS*32,first?8:4)}
+ /* dares: from the second loop on, mid-loop, 3 empty beats with a DARE? sign; a free move there leaves the level for the dare room (startDare) */
+ const ch=[],gates=[];for(let k=0;k<PROC_LOOPS;k++){const g=k*32+16;if(k)gates.push(g);CHART[nd.L].forEach(([o,ty,hl])=>{const b=k*32+o;if(k&&b<g&&b+(hl||0)>=g-3)return;ch.push([b,ty,hl])})}
+ const lead=first?8:4,sg=procSong(nd.L,ch,PROC_LOOPS*32,lead,false,RAMP);sg.dares=gates.map(g=>({a:sg.beats[g-3+lead],b:sg.beats[g+lead],on:null}));return sg}
 const PROC_LOOPS=3;
 let loadId=0;
 async function startLevel(nd,first){const id=++loadId;G.mode='descent';G.state='loading';
  const slow=setTimeout(()=>{if(id===loadId&&G.state==='loading')cardText('One moment','Listening…','reading the track',60000)},300);
  const song=await songFor(nd,first);clearTimeout(slow);if(id!==loadId||G.state!=='loading')return;
- if(!first&&!G.custom)relight();
+ if(!first&&!G.custom&&!nd.dare)relight();
  const L=nd.L,pe=G.pathEnd,th0=pe?pe.th:TH0+L*1.3,y0=pe?pe.y:L?layerTop(L)-0.5:1.5;
- const path=buildLevel(L,song,th0,y0);LV={L,song,path,nd};G.pathEnd=pathPt(path,SPEED*song.end);
+ SPEED=clamp(PACE*song.bpm/60,3,6);const path=buildLevel(L,song,th0,y0);LV={L,song,path,nd};G.pathEnd=pathPt(path,SPEED*song.end);
  if(first){beginPlay(true);$('card').classList.remove('show');setTimeout(()=>{if(G.state==='play'&&LV.song===song)showCard(L,4200)},1400)}
- else{beginPlay(false);showCard(L,3000)}}
+ else{beginPlay(false);if(nd.dare)cardText('A dare','The side passage','no refunds, no way back',3000);else showCard(L,3000)}}
 function levelClear(){G.state='clear';const nd=LV.nd;$('clBack').hidden=!G.custom;
  if(G.custom){const tot=Math.max(1,G.p+G.g+G.m);$('clN').textContent=CU.name;$('clL').textContent='The pit listened to the whole thing. It has notes.';
   $('clS').textContent='Accuracy '+Math.round((G.p+G.g*0.6)/tot*100)+'% · best combo '+G.lvMax+' · '+G.m+' stumbles';$('clGo').textContent='Play it again';showOnly('clear');return}
- const nx=RUN[G.node+1];$('clN').textContent=LAYERS[nd.L].name;$('clL').textContent=nd.lore;$('clS').textContent='+'+G.lvCoins+' coins · best combo '+G.lvMax;
+ const nx=RUN[G.node+1];$('clN').textContent=nd.dare?'The side passage':LAYERS[nd.L].name;$('clL').textContent=nd.dare?'You made it through. Your prize is pending review by the committee.':nd.lore;$('clS').textContent='+'+G.lvCoins+' coins · best combo '+G.lvMax;
  $('clGo').textContent=nx.kind==='vendor'?'Visit the rest stop':nx.kind==='boss'?'Face what waits below':'Keep descending';showOnly('clear')}
 function openVendor(nd){G.state='vendor';const stock=[];
  const take=(t,k)=>{const p=UPG.filter(u=>u.tier===t&&!G.up[u.id]&&!stock.includes(u));for(let i=0;i<k&&p.length;i++)stock.push(p.splice(Math.floor(Math.random()*p.length),1)[0])};
@@ -1047,7 +1078,7 @@ function bossUI(){$('bossHp').style.width=(BOSS.hp/BOSS_HP*100)+'%'}
 function startBoss(){trackStop();loadId++;G.mode='boss';relight();if(!G.pathEnd&&LVG){dropGroup(LVG);LVG=null}
  const pe=G.pathEnd||{th:TH0+5.2,y:layerTop(5)-1};G.camp=pe;buildCamp(pe.th,pe.y);
  const ch=[];for(let k=0;k<BOSS_LOOPS;k++)BOSS_CHART.forEach(([o,ty,hl])=>ch.push([k*BOSS_LEN+o,ty,hl]));
- const song=procSong(5,ch,BOSS_LOOPS*BOSS_LEN,4,true);prepNotes(song);LV={L:4,song,path:LV&&LV.path,nd:RUN[G.node]};
+ const song=procSong(5,ch,BOSS_LOOPS*BOSS_LEN,4,true,RAMP,BOSS_LEN);prepNotes(song);LV={L:4,song,path:LV&&LV.path,nd:RUN[G.node]};
  Object.assign(BOSS,{hp:BOSS_HP,dead:-1,hitT:-9});bossUI();$('boss').hidden=false;beginPlay(false);cardText('Chapter boss','The Inspector','It has reviewed your permit. It has concerns.',3400)}
 function bossDamage(d){if(BOSS.dead>0)return;BOSS.hp=Math.max(0,BOSS.hp-d);BOSS.hitT=clock();bossUI();
  if(BOSS.hp<=0){BOSS.dead=clock();G.state='won';holdFxEnd('p');G.zip=null;thud();saveBest(RUN.length);setTimeout(finish,2600)}}
@@ -1092,7 +1123,7 @@ $('sgFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)r
  catch(err){console.warn(err);$('sgInfo').textContent='Could not read that file. Try an MP3, M4A, WAV or OGG.'}};
 [['sgDiff','diff',Number],['sgLen','len',String],['sgTheme','theme',Number]].forEach(([id,key,cv])=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{
  CU[key]=cv(b.dataset.v);$(id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(CU.T)cuInfo()}));
-window.__pit={analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},PV,get WARPS(){return WARPS},warpRate,levelAt,clock,onPress,onSwipe,G,S,C,CUT,GROW,growHit,growMiss};
+window.__pit={score,fail,dareTry,startDare,GROW,analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},PV,get WARPS(){return WARPS},warpRate,levelAt,clock,onPress,onSwipe,G,S,C,CUT,GROW,growHit,growMiss};
 /* ---------- dev test helpers on window.__pit (the browser pane's tools run in an isolated world: inject a <script> and read results back from the DOM) ---------- */
 /* synth(o): a drum loop with a steady tone, rendered offline. song(buf,o): analyse it and start a custom level. measure(o): watch a music bus and
    report clean vs during-mistake loudness and spectrum peaks. report(x): put a short JSON on document.body.dataset.test. errs: errors since load */
@@ -1253,12 +1284,14 @@ function envAt(y,L){let lf=layerF(y);if(L!==undefined)lf=clamp(lf,L,L+0.999);con
  lamp.intensity=a.lamp+(b.lamp-a.lamp)*f;HERO.material.color.copy(a.tintC).lerp(b.tintC,f);HGLOW.material.opacity=Math.min(0.55,(a.lamp+(b.lamp-a.lamp)*f)*0.4)}
 const introPose=a=>[new THREE.Vector3(Math.cos(a)*6,55,Math.sin(a)*6),new THREE.Vector3(Math.cos(a)*-3,-80,Math.sin(a)*-3)];
 function frame(){requestAnimationFrame(frame);{const h=G.state!=='play'||G.paused;if($('pauseB').hidden!==h)$('pauseB').hidden=h;const k=skipTo()==null;if($('skipB').hidden!==k)$('skipB').hidden=k}const pn=performance.now(),rdt=Math.min(0.5,(pn-last)/1000),dt=Math.min(0.05,rdt);last=pn;const now=clock(),tn=now-offsetMs/1000,tt=pn/1000;
- const sg=LV&&LV.song,lt=levelAt(tn),sp=spbNow();
+ const sg=LV&&LV.song,lt=levelAt(tn),sp=spbNow(lt);
+ /* fever (top music tier), dare zones, camera pull-in */
+ {const fev=G.state==='play'&&G.mode==='descent'&&G.tier>=GROW.max,bc=document.body.classList;bc.toggle('fever',fev);bc.toggle('dare',G.state==='play'&&!!(LV&&LV.nd&&LV.nd.dare));const dd=G.state==='play'&&G.mode==='descent'&&sg.dares&&sg.dares.find(x=>x.on==null&&!x.hint&&lt>=x.a&&lt<x.b);if(dd){dd.hint=1;judgeShow('DARE?','#ff7a5c','any move now: take the side passage')}const fz=fev?1.08:1;if(Math.abs(C.zoom-fz)>0.002){C.zoom+=(fz-C.zoom)*Math.min(1,dt*3);C.updateProjectionMatrix()}}
  /* music files fade out as the level nears its end */
  if(TRK&&G.mode==='descent'&&G.state==='play'&&lt>sg.end-1.4)trackStop(1.8);
  /* music: built-in songs are generated a moment ahead, beat by beat; music files are already playing */
  if(G.state==='play'&&AC&&sg.proc!==undefined){while(nextBeat<sg.beats.length&&timeOf(sg.beats[nextBeat])<ctxNow()+0.3){const b=sg.beats[nextBeat],bt=timeOf(b),k=nextBeat-sg.lead;nextBeat++;if(b>sg.end+0.01||bt<ctxNow()-0.05)continue;
-   if(k<0&&k>=-4)nz(bt,0.08,0.35,'bandpass',k===-1?2400:1700,6,[rev]);musicBeat(sg.proc,k,bt);if(k>=0&&G.mode==='descent')footstep(bt,sg.proc)}}
+   if(k<0&&k>=-4)nz(bt,0.08,0.35,'bandpass',k===-1?2400:1700,6,[rev]);BSP=sg.beats[nextBeat]!=null?sg.beats[nextBeat]-b:0;musicBeat(sg.proc,k,bt);BSP=0;if(k>=0&&G.mode==='descent')footstep(bt,sg.proc)}}
  if(G.state==='play'){
   if(DEV.auto){const n=curNote();if(n&&!n.j&&!G.zip&&tn>=n.time){G.lastSd=0;if(n.type==='hold')holdStart(n,'p');else hit(n,'p')}if(G.zip&&tn>=G.zip.n.endTime)holdRelease(tn)}
   /* pending swipes that never moved become presses */
@@ -1333,8 +1366,9 @@ function frame(){requestAnimationFrame(frame);{const h=G.state!=='play'||G.pause
    else{const hop=Math.abs(Math.sin(tt*5+n.at*3));f.visible=true;f.material.opacity=1;f.material.rotation=0;f.position.set(p.x,p.y+hop*0.12,p.z);f.scale.set(1.2*(1+0.06*(1-hop)),1-0.06*(1-hop),1)}}}
  /* sparks */
  for(let i=0;i<SPN;i++){const s=spInfo[i];if(s.life>0){s.life-=dt*1.6;s.vy-=9*dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.z+=s.vz*dt;spPos.set([s.x,s.y,s.z],i*3)}else spPos.set([0,-999,0],i*3)}spG.attributes.position.needsUpdate=true;
+ {const fb=sg?bIdx(sg.beats,lt):0,b0=sg&&sg.beats[fb],b1=sg&&sg.beats[fb+1];fevFx(dt,G.state==='play'&&G.mode==='descent'&&G.tier>=GROW.max,b1>b0?Math.max(0,1-(lt-b0)/(b1-b0)):0)}
  /* environment */
- const kf=1-Math.exp(-rdt*7);fTh+=(hTh-fTh)*kf;fY+=(hy-fY)*kf;envAt(fY,G.mode==='boss'?4:LV?LV.L:undefined);if(hurt)HERO.material.color.set(Math.floor(tt*20)%2?'#ff7070':'#ffffff');
+ const kf=1-Math.exp(-rdt*7);fTh+=(hTh-fTh)*kf;fY+=(hy-fY)*kf;envAt(fY,G.mode==='boss'?4:LV?LV.L:undefined);if(hurt)HERO.material.color.set(Math.floor(tt*20)%2?'#ff7070':'#ffffff');else if(G.state==='play'&&now<G.grace&&Math.floor(tt*12)%2)HERO.material.color.multiplyScalar(0.4);
  for(let i=0;i<PN;i++){const inf=pInfo[i];let y=pPos[i*3+1]+inf.vy*dt;if(y>inf.yTop)y=inf.yBot;if(y<inf.yBot)y=inf.yTop;pPos[i*3+1]=y;pPos[i*3]+=Math.sin(tt*0.5+inf.ph)*dt*0.15;pPos[i*3+2]+=Math.cos(tt*0.4+inf.ph)*dt*0.15}window.__pg.attributes.position.needsUpdate=true;
  FALLS.forEach(t=>t.offset.y+=dt*1.6);SHAFTS.forEach(s=>s.mat.opacity=s.base*(0.75+0.25*Math.sin(tt*0.6+s.ph)));
  for(let i=0;i<BIRDN;i++){const b=birdInfo[i];const a=b.ph+tt*b.w;dmy.position.set(Math.cos(a)*b.r,b.y+Math.sin(tt*0.7+i)*0.8,Math.sin(a)*b.r);const a2=a+0.1*Math.sign(b.w);dmy.lookAt(Math.cos(a2)*b.r,dmy.position.y,Math.sin(a2)*b.r);dmy.scale.set(0.9,Math.sin(tt*b.f+i)*1.3,0.9);dmy.updateMatrix();BIRDS.setMatrixAt(i,dmy.matrix)}BIRDS.instanceMatrix.needsUpdate=true;
