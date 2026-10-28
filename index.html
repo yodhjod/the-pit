@@ -899,7 +899,7 @@ const ICONTEX={up:iconTex('up'),duck:iconTex('down'),hold:iconTex('hold'),kick:i
 const ICON=new THREE.Sprite(new THREE.SpriteMaterial({map:ICONTEX.up,transparent:true,depthTest:false,opacity:0,fog:false}));ICON.scale.set(1.35,0.9,1);ICON.renderOrder=10;S.add(ICON);
 
 /* ---------- game state ---------- */
-const G={errs:[],jtxt:'',jcol:'#fff',jsub:'',state:'title',mode:'descent',node:0,coins:0,lvCoins:0,lvMax:0,up:{},maxH:5,ni:0,zip:null,duck:-9,hurt:-9,atk:-9,jump:-9,trip:-9,kick:-9,brace:-9,heave:-9,both:null,combo:0,max:0,p:0,g:0,m:0,pullT:-99,endT:0,startT:0,hearts:5,seen:{},shake:0,cd:0,intro:false,goT:0,holdPtr:null,kb:false,custom:false,pathEnd:null,camp:null};
+const G={errs:[],jtxt:'',jcol:'#fff',jsub:'',state:'title',mode:'descent',node:0,coins:0,lvCoins:0,lvMax:0,up:{},maxH:5,ni:0,zip:null,duck:-9,hurt:-9,atk:-9,jump:-9,trip:-9,kick:-9,brace:-9,heave:-9,both:null,lock:-9,busy:-9,fp:null,combo:0,max:0,p:0,g:0,m:0,pullT:-99,endT:0,startT:0,hearts:5,seen:{},shake:0,cd:0,intro:false,goT:0,holdPtr:null,kb:false,custom:false,pathEnd:null,camp:null};
 /* swipes per move. The explorer walks to the right of the screen, so forward is a swipe right. both = a two-finger tap: the second finger must land within BOTHW of the first */
 const FWD='right',BACK='left',SWT={up:'up',duck:'down',kick:FWD,brace:BACK},isSw=n=>!!(n&&SWT[n.type]),BOTHW=0.12;
 const WRONG={up:'swipe up',duck:'swipe down',kick:'swipe '+FWD,brace:'swipe '+BACK,both:'both thumbs',hold:'hold',tap:'tap'};
@@ -939,7 +939,7 @@ function score(n,q){if(q==='g'&&G.up.fork)q='p';addErr(G.lastSd||0,q);n.j=q;G[q]
  if(n.boss&&n.type!=='up'&&n.type!=='duck')bossDamage(n.type==='hold'?3:q==='p'?1.5:1);chime(n);sfx(n.type);praise(q);fxResult(q)}
 function loseHeart(){if(G.up.hat&&!G.hatUsed){G.hatUsed=true;G.jsub='the hat took it';return}
  G.hearts=Math.max(0,G.hearts-1);if(G.hearts<=0&&G.up.wind&&!G.windUsed){G.windUsed=true;G.hearts=2;G.jsub='second wind'}heartsUI();if(G.hearts<=0)setTimeout(fallOut,450)}
-function hit(n,q){score(n,q);n.jt=clock();if(n.type==='tap')G.atk=clock();else if(n.type==='up'&&n.boss)G.jump=clock();else if(n.type==='duck')G.duck=clock();else if(n.type==='kick')G.kick=clock();else if(n.type==='brace')G.brace=clock();else if(n.type==='both')G.heave=clock();
+function hit(n,q){score(n,q);n.jt=clock();if(n.type==='tap')G.atk=clock();else if(n.type==='up'&&n.boss)G.jump=clock();else if(n.type==='duck')G.duck=clock();else if(n.type==='kick')G.kick=clock();else if(n.type==='brace')G.brace=clock();else if(n.type==='both')G.heave=clock();if(n.type==='up'&&!n.boss)G.busy=n.time+n.w;
  if(n.fpos)burst(new THREE.Vector3(n.fpos.x,n.fpos.y+0.5,n.fpos.z),q==='p'?12:7,'#ffe2a0');G.ni++}
 function fail(n,why){n.j='m';n.jt=clock();G.m++;G.combo=0;thud();glitch();fxResult('m');G.shake=0.35;judgeShow(why||'Missed','#f08a8a','','m');addErr(G.lastSd==null?0.25:G.lastSd,'m');G.lastSd=null;G.ni++;
  if(n.type==='tap'){if(n.boss){G.trip=clock();creak()}else G.hurt=clock()}else if(n.type==='up'){if(n.obj)n.obj.userData.hitT=clock();G.hurt=clock()}else if(n.type==='duck'){G.hurt=clock();n.bonk=clock()}else G.hurt=clock();
@@ -949,13 +949,21 @@ function holdRelease(t){const z=G.zip;if(!z||z.state!=='ride')return;const n=z.n
  if(d<-W_G){G.zip=null;n.j='m';G.m++;G.combo=0;thud();glitch();fxResult('m');holdFxEnd('m');G.shake=0.3;judgeShow('Let go too early','#f08a8a','','m');G.ni++;loseHeart()}
  else{G.lastSd=d;const q=(Math.abs(d)<=W_P&&n.hj==='p')?'p':'g';if(n.boss)G.atk=clock();score(n,q);holdFxEnd(q);G.zip=null;G.ni++}}
 function curNote(){return ACT[G.ni]}
+/* free moves: input away from any note's window still moves the explorer (REC = how long each move lasts). A whiff leaves them off balance for that long, and no input counts until it's over */
+const REC={tap:0.24,up:0.55,duck:0.42,kick:0.3,brace:0.4,both:0.4};
+function freeAct(mv,t,id){if(t<G.busy)return;const c=clock();if(mv==='tap'){G.fp={t,id};G.atk=c}else if(mv==='both'){G.atk=-9;G.heave=c}else if(mv==='up')G.jump=c;else if(mv==='duck')G.duck=c;else if(mv==='kick')G.kick=c;else G.brace=c;
+ G.lock=t+REC[mv];if(AC)nz(AC.currentTime,0.12,0.07,'bandpass',1800,2)}
+function offBal(n,t){if(n&&!n.j&&Math.abs(n.time-t)<=W_S){judgeShow('Off balance','#cdbfa8','still recovering','e');if(G.fx&&!G.fx.done){G.fx.done=true;G.fx.el.style.borderColor='#9a8fae'}}}
 function tooEarly(n,t){const ahead=n.time-t;if(ahead>W_G&&ahead<0.5){judgeShow('Too early','#cdbfa8','wait for the marker','e');addErr(-ahead,'e');if(G.fx&&!G.fx.done){G.fx.done=true;G.fx.el.style.borderColor='#9a8fae'}}}
 /* id tells fingers (pointerId) and keys (code) apart, for two-finger notes */
-function onPress(t,id){const n=curNote();if(!n||G.state!=='play'||n.j)return;
+function onPress(t,id){const n=curNote();if(G.state!=='play'||G.zip)return;
+ const f=G.fp;if(f&&f.id!==id&&t-f.t<=BOTHW&&t<G.lock){G.fp=null;freeAct('both',t);return}
+ if(t<G.lock){offBal(n,t);return}if(!n||n.j){freeAct('tap',t,id);return}
  if(n.type==='both'){const b=G.both;if(b&&b.n===n&&b.id!==id&&t-b.t<=BOTHW){G.both=null;const m=(b.t+t)/2;G.lastSd=m-n.time;hit(n,Math.abs(m-n.time)<=W_P+0.02?'p':'g');return}}
- const d=Math.abs(n.time-t);G.lastSd=t-n.time;if(d>W_G){tooEarly(n,t);return}const q=d<=W_P?'p':'g';
+ const d=Math.abs(n.time-t);G.lastSd=t-n.time;if(d>W_G){tooEarly(n,t);freeAct('tap',t,id);return}const q=d<=W_P?'p':'g';
  if(n.type==='tap')hit(n,q);else if(n.type==='hold')holdStart(n,q);else if(n.type==='both'){G.both={n,t,id}}else fail(n,'Wrong move · '+WRONG[n.type])}
-function onSwipe(dir,t){const n=curNote();if(!n||G.state!=='play'||n.j)return;const sw=isSw(n);const d=Math.abs(n.time-t);G.lastSd=t-n.time;if(d>(sw?W_S:W_G)){tooEarly(n,t);return}const q=d<=W_P+(sw?0.02:0)?'p':'g';
+function onSwipe(dir,t){const n=curNote();if(G.state!=='play'||G.zip)return;if(t<G.lock){offBal(n,t);return}const mv=dir==='up'?'up':dir==='down'?'duck':dir===FWD?'kick':'brace';
+ if(!n||n.j){freeAct(mv,t);return}const sw=isSw(n);const d=Math.abs(n.time-t);G.lastSd=t-n.time;if(d>(sw?W_S:W_G)){tooEarly(n,t);freeAct(mv,t);return}const q=d<=W_P+(sw?0.02:0)?'p':'g';
  if(n.type==='tap'||SWT[n.type]===dir)hit(n,q);else if(n.type==='hold')holdStart(n,q);else fail(n,'Wrong move · '+WRONG[n.type])}
 
 /* ---------- run flow: newRun → nodes (descent / vendor / boss); death ends the run ---------- */
@@ -977,7 +985,7 @@ function startNode(first){const nd=RUN[G.node];if(!nd)return;saveBest(G.node);if
 function nextNode(){if(G.state!=='clear'&&G.state!=='vendor')return;if(G.custom){playCustom();return}showOnly(null);G.node=Math.min(G.node+1,RUN.length-1);startNode(false)}
 function relight(){G.hearts=Math.min(G.maxH,G.hearts+(G.up.oil?2:1))}
 /* anchor the level: level time 0 plays a moment from now; music files start there, built-in songs count in first */
-function beginPlay(intro){const sg=LV.song;G.errs=[];G.jtxt='';Object.assign(G,{state:'play',trip:-9,zip:null,combo:0,pullT:-99,shake:0,cd:0,duck:-9,hurt:-9,atk:-9,jump:-9,kick:-9,brace:-9,heave:-9,both:null,hatUsed:false,lvCoins:0,lvMax:0,ni:0,freezeLt:null});
+function beginPlay(intro){const sg=LV.song;G.errs=[];G.jtxt='';Object.assign(G,{state:'play',trip:-9,zip:null,combo:0,pullT:-99,shake:0,cd:0,duck:-9,hurt:-9,atk:-9,jump:-9,kick:-9,brace:-9,heave:-9,both:null,lock:-9,busy:-9,fp:null,hatUsed:false,lvCoins:0,lvMax:0,ni:0,freezeLt:null});
  anchorT=ctxNow()+(intro?0.45:0.55);WARPS=[];nextBeat=0;ACT=sg.notes;retime();G.goT=timeOf(sg.first);G.startT=clock();G.intro=intro;heartsUI();judgeShow('','#fff','');if(sg.buf)trackPlay(sg,anchorT)}
 /* a level plays its music file when it has one; otherwise (or if the file fails) the built-in chart and procedural music */
 async function songFor(nd,first){
@@ -1103,7 +1111,7 @@ function swipeDir(dx,dy){const ax=Math.abs(dx),ay=Math.abs(dy),n=curNote(),hz=n&
 function resolveSwipe(p,dir,ts){p.done=true;if(G.fx&&!G.fx.done)G.fx.swipe=dir;onSwipe(dir,nowIn(ts)-0.02)}
 gameEl.addEventListener('pointerdown',e=>{if(e.target.closest('.overlay,#pauseB,#skipB'))return;e.preventDefault();if(G.state!=='play'||G.paused)return;G.kb=false;const t=nowIn(e.timeStamp);const n=curNote();{const r=gameEl.getBoundingClientRect();newFx(e.clientX-r.left,e.clientY-r.top)}
  try{gameEl.setPointerCapture(e.pointerId)}catch(_){}
- if(n&&!n.j&&isSw(n)&&n.time-t<0.6&&t-n.time<W_S){pend[e.pointerId]={x:e.clientX,y:e.clientY,t,done:false};return}
+ if(!G.zip&&!(n&&!n.j&&!isSw(n)&&n.time-t<0.6)){pend[e.pointerId]={x:e.clientX,y:e.clientY,t,done:false};return}
  pend[e.pointerId]={x:e.clientX,y:e.clientY,t,done:true};G.holdPtr=e.pointerId;onPress(t,e.pointerId)});
 gameEl.addEventListener('pointermove',e=>{const p=pend[e.pointerId];if(!p||p.done)return;let evs=e.getCoalescedEvents?e.getCoalescedEvents():[];if(!evs||!evs.length)evs=[e];
  for(const ev of evs){const dir=swipeDir(ev.clientX-p.x,ev.clientY-p.y);if(dir){resolveSwipe(p,dir,ev.timeStamp||e.timeStamp);break}}});
@@ -1261,9 +1269,9 @@ function frame(){requestAnimationFrame(frame);{const h=G.state!=='play'||G.pause
    else if(n.type==='tap'&&d>=-0.16&&d<0&&!n.j)pose='windup'}}
  else{hTh=TH0;hy=shY=1.5}
  G.hl={hTh,hy,shY};
- const ducking=now-G.duck<0.42,hurt=now-G.hurt<0.5;
- if(hurt&&pose!=='hang'&&pose!=='hang2')pose='hurt';else if(ducking)pose='duck';else if(now-G.trip<0.32)pose='trip';else if(now-G.atk<0.24)pose='strike';else if(now-G.kick<0.3)pose='kick';else if(now-G.brace<0.4)pose='brace';else if(now-G.heave<0.4)pose='heave';
- else if(now-G.jump<0.55){pose='vault';hy+=Math.sin(Math.PI*(now-G.jump)/0.55)*1.4}
+ const ducking=now-G.duck<REC.duck,hurt=now-G.hurt<0.5;
+ if(hurt&&pose!=='hang'&&pose!=='hang2')pose='hurt';else if(ducking)pose='duck';else if(now-G.trip<0.32)pose='trip';else if(now-G.atk<REC.tap)pose='strike';else if(now-G.kick<REC.kick)pose='kick';else if(now-G.brace<REC.brace)pose='brace';else if(now-G.heave<REC.both)pose='heave';
+ else if(now-G.jump<REC.up){pose='vault';hy+=Math.sin(Math.PI*(now-G.jump)/REC.up)*1.4}
  const hx=Math.cos(hTh)*rad,hz=Math.sin(hTh)*rad;
  HERO.material.map=FR[pose];HSH.position.set(hx,shY+0.03,hz);
  HERO.position.set(hx,hy,hz);HERO.material.rotation=hurt?Math.sin(tt*30)*0.08:0;
