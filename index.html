@@ -483,24 +483,85 @@ function sign(text,th,y,par){const t=canvasTex(320,110,(x,w,h)=>{x.fillStyle='#8
  const m=new THREE.Mesh(new THREE.PlaneGeometry(2.9,1),toon({map:t}));const p=wallPos(th,y,0.25);m.position.copy(p);m.lookAt(0,y,0);m.rotateZ((rnd()-0.5)*0.12);(par||S).add(m);
  const post=new THREE.Mesh(new THREE.BoxGeometry(0.12,1.6,0.12),toon({color:'#4a3220'}));post.position.copy(wallPos(th,y-0.9,0.3));(par||S).add(post)}
 /* ---------- obstacles, ziplines, swoopers ---------- */
-const BATROWS=["K..............K","KK............KK","KKK...K..K...KKK",".KKK.KKKKKK.KKK.","..KKKKEKKEKKKK..","...KKKKKKKKKK...","....KK.KK.KK...."];
-const BATTEX=['#ffd36b','#ffe08a','#ff8a5a','#7ff5e0','#ff6fb1'].map(e=>{const c=document.createElement('canvas');c.width=18;c.height=9;const x=c.getContext('2d');BATROWS.forEach((r,j)=>[...r].forEach((ch,i)=>{if(ch!=='.'){x.fillStyle=ch==='E'?e:'#24142e';x.fillRect(i+1,j+1,1,1)}}));const t=new THREE.CanvasTexture(c);t.magFilter=t.minFilter=THREE.NearestFilter;t.generateMipmaps=false;return t});
-/* Cagliari (layer 0) pixel sprites: a seagull "con il becco woo woo" swoops, a gaggio in a rossoblù shirt is the critter */
-function pixTex(rows,P){const c=document.createElement('canvas');c.width=rows[0].length+2;c.height=rows.length+2;const x=c.getContext('2d');rows.forEach((r,j)=>[...r].forEach((ch,i)=>{if(ch!=='.'){x.fillStyle=P[ch];x.fillRect(i+1,j+1,1,1)}}));const t=new THREE.CanvasTexture(c);t.magFilter=t.minFilter=THREE.NearestFilter;t.generateMipmaps=false;return t}
-const GULLROWS=["...........DD...........","..........DGGD..........",".........KGGGGK.........","....KKK..KGGGGGK........","...KWWWK..KGGGGK........","YYKWEWWWK.KGGGGGK.......","RYYKWWWWWKKKGGGGKKKK....","...KWWWWWWWWWWWWWWWWKK..","....KWWWWWWWWWWWWWWWWDK.",".....KKWWWWWWWWWWWWKDDK.",".......KKKKPKKPKKKK.KK..","...........P..P........."];
-BATTEX[0]=pixTex(GULLROWS,{K:'#2c2f38',W:'#f6f6f2',G:'#9aa5b0',D:'#1c1c22',Y:'#f2c230',R:'#d8322a',E:'#111',P:'#e8a07a'});
-const BATSZ=[[1.75,0.95],[1.5,0.75],[1.5,0.75],[1.5,0.75],[1.5,0.75]];
+/* enemies: cartoon sprites drawn in code (bold outline, flat colours, big heads so they read at small size).
+   Each is one image; the game animates them only by squash and stretch. Critters stand on the bottom edge of their canvas */
 /* each note picks a look from its layer's variants, fixed by its time, so a level looks the same every run but no two neighbours need match */
 const vIdx=(n,k,sd)=>{const x=Math.sin(n.at*91.7+sd*13.1)*43758.5453;return Math.floor((x-Math.floor(x))*k)};
-const GULLPIZ=GULLROWS.map((r,j)=>(j===5?'ZZ':j===6?'TZ':j===7?'ZZ':'..')+r);
-const BATVAR=[[{t:BATTEX[0],sz:[1.75,0.95]},
-  {t:pixTex(GULLPIZ,{K:'#2c2f38',W:'#f6f6f2',G:'#9aa5b0',D:'#1c1c22',Y:'#f2c230',R:'#d8322a',E:'#111',P:'#e8a07a',Z:'#e8b04a',T:'#d8322a'}),sz:[1.9,0.95]},
-  {t:pixTex(GULLROWS,{K:'#3a2e24',W:'#d8cbb8',G:'#8a7660',D:'#4a3a2a',Y:'#3a3530',R:'#3a3530',E:'#111',P:'#c9a08a'}),sz:[1.65,0.9]},
-  {t:pixTex(GULLROWS,{K:'#2a2a38',W:'#a9aec2',G:'#7d8399',D:'#3a3d4a',Y:'#4a4a4a',R:'#7a4aa0',E:'#e04020',P:'#d07a7a'}),sz:[1.3,0.7]}]];
-/* gull, gull with a pizzetta, young gull, pigeon: mixed per layer */
-{const[GU,GP,GY,PI]=BATVAR[0];BATVAR.push([GU,GP,PI],[PI,GY,PI],[GU,PI,GP],[GU,GY,PI])}
-const GAGROWS=["....KKKKKK....","...KCCCCCCK...","..KCCCWWCCCKKK","..KCCCCCCCCCCK","..KHSSSSSSHK..","..KSNNSSNNSK..","..KSNNSSNNSK..","..KSSSSSSSSK..","...KSSMMSSK...","....KSSSSK....","..KKBBBUUUKK..",".KBBBYBUUULUK.","KSKBBBYUULUKSK","KSKBBBBULUUKSK","KSKBBBLUUUUKSK",".KKBBLGGGUUKK.","..KTTGGGTTTK..","..KTTWTTTWTK..","..KTTWK.KWTK..","..KTTWK.KWTK..",".KWWWWK.KWWWWK",".KKKKKK.KKKKKK"];
-const FOESZ=[[0.92,1.45,1/24],[1.2,1,1/15],[1.2,1,1/15],[1.2,1,1/15],[1.2,1,1/15]];
+const{FOEVAR,BATVAR}=(()=>{let FOEVAR,BATVAR;const OL='#1a1418';
+function vtex(w,h,draw){const t=canvasTex(w,h,(x,W,H)=>{x.lineJoin=x.lineCap='round';x.strokeStyle=OL;x.lineWidth=5;draw(x,W,H)});t.anisotropy=4;return t}
+const sh=(x,fill,path,lw)=>{x.beginPath();path(x);if(fill){x.fillStyle=fill;x.fill()}if(lw!==0){x.lineWidth=lw||5;x.strokeStyle=OL;x.stroke()}};
+const E=(cx,cy,rx,ry,r)=>x=>x.ellipse(cx,cy,rx,ry,r||0,0,Math.PI*2);
+const RB=(X,Y,w,h,r)=>x=>{x.moveTo(X+r,Y);x.arcTo(X+w,Y,X+w,Y+h,r);x.arcTo(X+w,Y+h,X,Y+h,r);x.arcTo(X,Y+h,X,Y,r);x.arcTo(X,Y,X+w,Y,r);x.closePath()};
+const PL=(...p)=>x=>{x.moveTo(p[0],p[1]);for(let i=2;i<p.length;i+=2)x.lineTo(p[i],p[i+1]);x.closePath()};
+const ln=(x,c,w,...p)=>{x.beginPath();x.moveTo(p[0],p[1]);for(let i=2;i<p.length;i+=2)x.lineTo(p[i],p[i+1]);x.strokeStyle=c;x.lineWidth=w;x.stroke()};
+/* a half-and-half fill (the Cagliari shirt): left colour, then the right half clipped */
+const halves=(x,path,a,b)=>{sh(x,a,path,0);x.save();x.beginPath();path(x);x.clip();x.fillStyle=b;x.fillRect(64,0,64,256);x.restore();sh(x,null,path)};
+/* a chibi person on a 128x256 canvas, feet on y≈250. o: skin, top, sleeves (left,right), pants, shorts, socks, shoes, armsUp, eyes, mouth, and draw hooks torso/hair/extra */
+function dude(o){return vtex(128,256,x=>{const sk=o.skin,sl=o.sleeve||[o.top,o.top];
+ if(o.shorts){for(const X of[40,70]){sh(x,sk,RB(X,196,18,46,8));if(o.socks)sh(x,o.socks,RB(X-1,220,20,22,6))}sh(x,o.pants,RB(34,166,60,42,10))}
+ else{for(const X of[36,68])sh(x,o.pants,RB(X,166,24,78,10));if(o.stripe)for(const X of[40,88])ln(x,o.stripe,4,X,172,X,238)}
+ for(const X of[44,84])sh(x,o.shoes,E(X,244,19,8));if(o.sole)for(const X of[44,84])ln(x,o.sole,3,X-16,249,X+16,249);
+ if(o.armsUp){sh(x,sl[0],RB(8,44,22,76,10));sh(x,sl[1],RB(98,44,22,76,10));sh(x,sk,E(19,38,11,11));sh(x,sk,E(109,38,11,11))}
+ else{sh(x,sl[0],RB(12,112,22,62,10));sh(x,sl[1],RB(94,112,22,62,10));sh(x,sk,E(23,178,11,11));sh(x,sk,E(105,178,11,11));if(o.stripe)for(const X of[18,110])ln(x,o.stripe,4,X,116,X,168)}
+ const body=RB(26,102,76,76,16);if(o.halves)halves(x,body,o.halves[0],o.halves[1]);else sh(x,o.top,body);if(o.torso)o.torso(x);
+ sh(x,sk,E(25,68,8,11));sh(x,sk,E(103,68,8,11));sh(x,sk,E(64,64,38,40));if(o.cheeks)for(const X of[44,84])sh(x,o.cheeks,E(X,80,8,5),0);
+ const ey=o.eyes||'';if(ey==='shades'){sh(x,'#141414',RB(36,54,25,17,7));sh(x,'#141414',RB(67,54,25,17,7));ln(x,OL,4,61,60,67,60);x.fillStyle='rgba(255,255,255,.55)';x.fillRect(40,57,7,3);x.fillRect(71,57,7,3)}
+ else{const hh=ey==='squint'?5:9;for(const X of[50,78]){sh(x,'#fff',E(X,63,8,hh),3);sh(x,OL,E(X+1,64,3.5,Math.min(4.5,hh-1)),0)}
+  if(ey==='squint'){ln(x,OL,5,40,57,58,61);ln(x,OL,5,70,61,88,57)}else if(ey==='angry'){ln(x,OL,6,40,49,58,56);ln(x,OL,6,70,56,88,49)}else{ln(x,OL,4,42,50,57,49);ln(x,OL,4,71,49,86,50)}}
+ ln(x,OL,3,64,70,61,77,66,77);const m=o.mouth||'';
+ if(m==='shout'){sh(x,'#5a1a1a',E(64,90,12,10),4);sh(x,'#e86a6a',E(64,95,7,4),0)}else{x.beginPath();if(m==='smirk'){x.moveTo(53,87);x.quadraticCurveTo(66,91,77,82)}else{x.moveTo(54,85);x.quadraticCurveTo(64,93,74,85)}x.lineWidth=4;x.strokeStyle=OL;x.stroke()}
+ if(o.hair)o.hair(x);if(o.extra)o.extra(x)})}
+/* hair and hats */
+const fade=c=>x=>{sh(x,c,x=>{x.arc(64,62,39,Math.PI*1.06,Math.PI*1.94);x.quadraticCurveTo(64,40,26,56)})};
+const cap=(c,brim,logo)=>x=>{sh(x,c,x=>{x.arc(64,54,38,Math.PI,0);x.closePath()});sh(x,brim,E(64,54,44,8));if(logo)ln(x,logo,4,56,38,64,44,74,34)};
+/* man-bag (borsello) across the chest and a gold chain: the gaggio kit */
+const gaggioKit=bag=>x=>{ln(x,OL,7,32,106,92,160);ln(x,'#3a3a40',3,32,106,92,160);sh(x,bag,RB(70,142,32,24,6));x.fillStyle='#f2c230';x.fillRect(80,150,12,5);
+ x.beginPath();x.arc(64,98,17,0.25*Math.PI,0.75*Math.PI);x.strokeStyle='#f2c230';x.lineWidth=4;x.stroke();ln(x,'#d8d8d8',2,64,104,64,176)};
+const shirtV=c=>x=>sh(x,c,PL(52,102,64,118,76,102),3);
+/* the tourists: a camera on a strap, flowers on the shirt */
+const tourKit=(fl)=>x=>{for(const[a,b]of[[40,128],[86,118],[58,160],[90,164],[34,166]])sh(x,fl,E(a,b,5,5),2);ln(x,OL,3,40,104,58,140);ln(x,OL,3,88,104,72,140);sh(x,'#2a2a2e',RB(48,136,32,22,5));sh(x,'#9aa5b0',E(64,147,7,7),3)};
+const strawHat=x=>{sh(x,'#e8c870',E(64,30,58,13));sh(x,'#e8c870',RB(38,0,52,32,14));ln(x,'#c8302a',6,40,26,88,26)};
+const bucketHat=x=>{sh(x,'#f4f4f0',PL(30,36,98,36,88,4,40,4));sh(x,'#f4f4f0',E(64,36,44,8))};
+/* scarf held up over the head, and the rossoblù crest */
+const scarf=x=>{for(let k=0;k<8;k++)sh(x,k%2?'#0d2f7a':'#c8102e',x=>x.rect(14+k*12.5,14,12.5,18),0);sh(x,null,x=>x.rect(14,14,100,18));for(let k=0;k<6;k++)ln(x,k%2?'#c8102e':'#0d2f7a',3,18+k*18,32,16+k*18,42)};
+const SKIN=['#e8b48a','#d9a074','#c98a5e','#f0c09a'];
+const GA=dude({skin:SKIN[1],top:'#18181c',pants:'#18181c',stripe:'#f4f4f0',shoes:'#f4f4f0',sole:'#bbb',eyes:'squint',mouth:'smirk',torso:gaggioKit('#3a3d44'),hair:cap('#18181c','#0d0d10','#f4f4f0')}),
+ GW=dude({skin:SKIN[2],top:'#f0f0f2',pants:'#e4e4e8',stripe:'#1a1a1a',shoes:'#f4f4f0',sole:'#888',eyes:'squint',mouth:'smirk',torso:gaggioKit('#141414'),hair:fade('#2a1a12')}),
+ UL=dude({skin:SKIN[0],halves:['#c8102e','#0d2f7a'],sleeve:['#c8102e','#0d2f7a'],pants:'#3b5a8a',shoes:'#2a2a2a',armsUp:true,eyes:'angry',mouth:'shout',torso:shirtV('#f4f4f0'),hair:fade('#4a3020'),extra:scarf}),
+ TO=dude({skin:SKIN[3],top:'#2bb3a0',pants:'#d9c48f',shorts:true,socks:'#f4f4f4',shoes:'#7a4a2a',eyes:'shades',cheeks:'#ff8a7a',torso:tourKit('#ff7a3a'),hair:strawHat}),
+ T2=dude({skin:'#f0a088',top:'#f2d84a',pants:'#8a9a6a',shorts:true,socks:'#f4f4f4',shoes:'#5a3a22',cheeks:'#ff6a5a',torso:tourKit('#3a7ad6'),hair:bucketHat});
+const FL=vtex(128,256,x=>{ln(x,OL,10,74,150,72,250);ln(x,'#e86a8a',5,74,150,72,250);ln(x,OL,10,84,152,100,190,80,200);ln(x,'#e86a8a',5,84,152,100,190,80,200);
+ sh(x,OL,PL(104,128,124,138,106,148));sh(x,'#f48aa8',E(78,138,36,24,-0.15));sh(x,'#e0507a',E(88,136,24,13,-0.2),3);
+ x.beginPath();x.moveTo(52,134);x.bezierCurveTo(18,110,72,82,46,44);x.strokeStyle=OL;x.lineWidth=18;x.stroke();x.strokeStyle='#f48aa8';x.lineWidth=11;x.stroke();
+ sh(x,'#f48aa8',E(44,36,16,14));sh(x,'#f2e6d0',PL(33,28,10,40,14,56,32,44));sh(x,OL,PL(15,43,10,40,14,56,21,49),0);sh(x,'#fff',E(47,31,5,5),3);sh(x,OL,E(48,31,2.2,2.2),0)});
+const RA=vtex(256,128,x=>{x.beginPath();x.moveTo(196,96);x.bezierCurveTo(244,100,252,58,222,48);x.strokeStyle=OL;x.lineWidth=11;x.stroke();x.strokeStyle='#e8a0a0';x.lineWidth=6;x.stroke();
+ for(const X of[82,168])sh(x,'#e8a0a0',E(X,118,13,6));sh(x,'#7a6a60',E(140,84,62,36));sh(x,'#a89888',E(132,106,40,10),0);
+ sh(x,'#7a6a60',x=>{x.moveTo(104,58);x.quadraticCurveTo(44,64,18,92);x.quadraticCurveTo(52,114,108,108)});sh(x,'#7a6a60',E(92,50,18,20));sh(x,'#e8a0a0',E(92,52,10,12),0);
+ sh(x,'#f6eec0',RB(28,100,11,12,2),3);sh(x,'#e87a8a',E(18,92,7,6));sh(x,'#ff3a2a',E(62,76,7,7),3);sh(x,'#fff',E(60,74,2,2),0);ln(x,OL,4,52,66,72,70);
+ for(const[a,b]of[[0,80],[-2,94],[2,108]])ln(x,OL,2,26,92,a,b)});
+/* birds flying left: far wing up, near wing out, open beak. o: body, wing, tip, beak, spot, eye, piz (a pizzetta in the beak), neck (pigeon sheen), bars, dots (mottled) */
+function bird(o){return vtex(256,128,x=>{
+ /* wings spread in an M (the gull silhouette), mirrored about the body; black tips with white spots */
+ for(const s of[1,-1]){const X=v=>128+s*v;
+  sh(x,o.wing,x=>{x.moveTo(X(8),62);x.quadraticCurveTo(X(36),12,X(78),16);x.quadraticCurveTo(X(104),20,X(124),40);x.quadraticCurveTo(X(84),46,X(62),58);x.quadraticCurveTo(X(42),72,X(12),84);x.closePath()});
+  sh(x,o.tip,x=>{x.moveTo(X(96),19);x.quadraticCurveTo(X(112),26,X(124),40);x.quadraticCurveTo(X(102),42,X(86),46);x.closePath()},3);
+  if(o.tip!==o.wing)sh(x,'#fff',E(X(110),36,3,3),0);if(o.bars)for(const v of[44,60])ln(x,OL,5,X(v),34+v*0.3,X(v+10),48+v*0.3);
+  if(o.dots)for(let k=0;k<6;k++)sh(x,o.dots,E(X(30+k*12),34+(k%3)*8,3,2),0)}
+ sh(x,o.body,PL(152,80,192,74,190,96,152,94));sh(x,'#f2a050',PL(158,94,176,104,166,96),3);
+ sh(x,o.body,E(126,80,40,20,-0.08));if(o.neck){sh(x,o.neck[0],E(104,78,14,13),0);sh(x,o.neck[1],E(110,88,12,7),0)}
+ if(o.dots)for(let k=0;k<8;k++)sh(x,o.dots,E(112+k*7,74+(k%3)*6,3,2),0);
+ const r=o.small?17:22;sh(x,o.body,E(90,64,r,r-2));const bx=90-r+4,bl=o.small?16:32;
+ sh(x,o.beak,PL(bx,58,bx-bl,60,bx,66));sh(x,o.beak,PL(bx,70,bx-bl+4,76,bx,76));sh(x,'#5a1a1a',PL(bx-2,66,bx-bl+8,68,bx-2,71),0);if(o.spot)sh(x,o.spot,E(bx-bl+12,75,3.5,2.5),0);
+ if(o.piz){sh(x,'#e8b04a',E(bx-bl+4,68,15,13));sh(x,'#d8322a',E(bx-bl+4,68,8,7),0);for(const[a,b]of[[-2,-3],[4,3]])sh(x,'#f2e6a0',E(bx-bl+4+a,68+b,2.5,2),0)}
+ sh(x,o.eye,E(92,56,5.5,5.5),3);sh(x,OL,E(91,56,2.3,2.3),0);ln(x,OL,6,80,46,102,52)})}
+const GULL={body:'#f6f6f2',wing:'#9aa5b0',tip:'#1c1c22',beak:'#f2c230',spot:'#d8322a',eye:'#f2c230'};
+const GU={t:bird(GULL),sz:[1.75,0.88]},GP={t:bird({...GULL,piz:true}),sz:[1.75,0.88]},
+ GY={t:bird({body:'#d6c6b0',wing:'#8a7660',tip:'#4a3a2a',beak:'#3a3530',eye:'#5a4a3a',dots:'#7a6650'}),sz:[1.65,0.82]},
+ PI={t:bird({body:'#a9aec2',wing:'#8a90a8',tip:'#4a4e5e',beak:'#3a3a40',eye:'#ff7a20',neck:['#4a9a7a','#8a5ab0'],bars:true,small:true}),sz:[1.35,0.68]};
+BATVAR=[[GU,GP,GY,PI],[GU,GP,PI],[PI,GY,PI],[GU,PI,GP],[GU,GY,PI]];
+const MAN=[0.8,1.6,6/256],F={GA:{t:GA,sz:MAN},GW:{t:GW,sz:MAN},UL:{t:UL,sz:MAN},TO:{t:TO,sz:MAN},T2:{t:T2,sz:MAN},FL:{t:FL,sz:[0.95,1.9,6/256]},RA:{t:RA,sz:[1.3,0.65,4/128]}};
+FOEVAR=[[F.GA,F.GW,F.UL,F.TO,F.FL],[F.GA,F.RA,F.GW,F.UL],[F.RA,F.TO,F.T2,F.RA],[F.FL,F.GA,F.UL,F.GW],[F.GA,F.GW,F.UL,F.RA]];
+return{FOEVAR,BATVAR}})();
 /* jump obstacles: named builders, four per layer (OBSV), picked per note by vIdx */
 function oba(g){return(geo,c,x,y,z)=>{const m=new THREE.Mesh(geo,toon({color:c}));m.position.set(x,y,z);g.add(m);return m}}
 const AMPH=new THREE.LatheGeometry([[0,0],[0.06,0.02],[0.15,0.16],[0.19,0.4],[0.15,0.6],[0.065,0.72],[0.065,0.84],[0.1,0.86]].map(([x,y])=>new THREE.Vector2(x,y)),10);
@@ -571,24 +632,6 @@ function cart(v){const g=new THREE.Group(),add=(geo,mat,x,y,z,rx,rz)=>{const m=n
  for(const x of[-0.5,0.5])for(const z of[-0.4,0.4])add(new THREE.CylinderGeometry(0.1,0.1,0.07,10),toon({color:'#222'}),x,0.1,z,Math.PI/2);
  const am=toon({color:'#7a3e10'}),rd=toon({color:'#d8202a'});for(let k=0;k<4;k++){const x=-0.4+k*0.17,z=(k%2)*0.2-0.1;add(new THREE.CylinderGeometry(0.06,0.06,0.42,8),am,x,1.25,z);add(new THREE.CylinderGeometry(0.065,0.065,0.12,8),rd,x,1.22,z);add(new THREE.CylinderGeometry(0.025,0.04,0.12,6),am,x,1.52,z)}
  add(new THREE.BoxGeometry(0.34,0.3,0.24),toon({color:'#f2c230'}),0.3,1.2,0.1);return g}
-/* critters: whack them on the beat (tap) or they bite */
-const FOEROWS=["......KKKK......",".....KHHHHK.....","....KHHHHHHK....","...KKKKKKKKKK...","..KBBBBBBBBBBK..",".KBBWWBBBBWWBBK.",".KBBWEBBBBWEBBK.","KBBBBBBBBBBBBBBK","KBBBMTMTMTMMBBBK","KBBBBMMMMMMBBBBK",".KBBBBBBBBBBBBK.","..KKBKKKKKKBKK..","..K.K......K.K.."];
-const FOETEX=['#9bb46a','#6fa3a8','#d9cba8','#ff7ac8','#b48cff'].map(bc=>{const c=document.createElement('canvas');c.width=18;c.height=15;const x=c.getContext('2d'),P={K:'#1a0f16',B:bc,H:'#c0392b',W:'#f6ead2',E:'#1a0f16',M:'#5a1a2a',T:'#f6ead2'};
- FOEROWS.forEach((r,j)=>[...r].forEach((ch,i)=>{if(ch!=='.'){x.fillStyle=P[ch];x.fillRect(i+1,j+1,1,1)}}));const t=new THREE.CanvasTexture(c);t.magFilter=t.minFilter=THREE.NearestFilter;t.generateMipmaps=false;return t});
-const ULTRA=["....KKKKKK....","...KBBUUBBK...","..KBBUUBBUUK..","..KWWWWWWWWK..","..KSSSSSSSSK..","..KSEESSEESK..","..KSSSSSSSSK..","..KSHHSSHHSK..","...KHMMMMHK...","....KHHHHK....",".KKBBUUBBUUKK.","KJJUUBBUUBBJJK","KJJJJJBUJJJJJK","KSKJJJUBJJJKSK","KSKJJJBUJJJKSK",".KKJJJJJJJJKK.","..KDDDDDDDDK..","..KDDDKKDDDK..","..KDDK..KDDK..","..KDDK..KDDK..",".KWWWK..KWWWK.",".KKKKK..KKKKK."];
-const TOURIST=["...KKKKKKKK...","..KAAAAAAAAK..",".KAAAAAAAAAAK.","..KPPPPPPPPK..","..KPNNPPNNPK..","..KPPPPPPPPK..","..KPPPRRPPPK..","...KPPMMPPK...","....KPPPPK....","..KKFFFFFFKK..",".KFFGFFFGFFFK.","KPKFFCCCCFFKPK","KPKFGCLLCFGKPK","KPKFFCCCCFFKPK",".KKFFGFFFFGKK.","..KOOOOOOOOK..","..KOOOKKOOOK..","..KPPK..KPPK..","..KWWK..KWWK..","..KWWK..KWWK..",".KBBBK..KBBBK.",".KKKKK..KKKKK."];
-const FLAMINGO=["....KKK.......","...KPPPK......","..KWWPEK......",".KDWWKPK......",".KDDK.KPK.....","..KK...KPK....",".......KPK....","......KPK.....",".....KPK......",".....KPK......","......KPK.....",".......KPKKK..","......KPPPPPKK",".....KPPPPPPLK","....KPPPPPPLLK","....KPPPPPLLDK",".....KPPPPPKK.","......KKKRKK..",".........R....",".........R.RR.",".........RR...",".........R....",".........R....","........RRR..."];
-FOETEX[0]=pixTex(GAGROWS,{K:'#1a1418',C:'#161616',W:'#f4f4f4',H:'#2a1a12',S:'#d9a074',N:'#0b0b0b',M:'#7a2a2a',B:'#c8102e',U:'#0d2f7a',Y:'#f2c230',L:'#111111',G:'#3a3d44',T:'#1d1d22'});
-const FOEVAR=[[{t:FOETEX[0],sz:FOESZ[0]},
-  {t:pixTex(GAGROWS,{K:'#1a1418',C:'#f4f4f4',W:'#c8102e',H:'#2a1a12',S:'#c98a5e',N:'#0b0b0b',M:'#7a2a2a',B:'#ececee',U:'#c4c4cc',Y:'#f2c230',L:'#111111',G:'#141414',T:'#ececee'}),sz:FOESZ[0]},
-  {t:pixTex(ULTRA,{K:'#1a1418',B:'#c8102e',U:'#0d2f7a',W:'#f4f4f4',S:'#e0a98a',E:'#1a1418',H:'#6a4a3a',M:'#5a1a1a',J:'#24262e',D:'#3b5a8a'}),sz:[0.98,1.5,1/24]},
-  {t:pixTex(TOURIST,{K:'#1a1418',A:'#d9c48f',P:'#f0a08a',N:'#1a1418',R:'#e0503a',M:'#8a2a2a',F:'#2bb3a0',G:'#ff7a3a',C:'#222222',L:'#6fb3e0',O:'#c9b07a',W:'#f4f4f4',B:'#7a4a2a'}),sz:FOESZ[0]},
-  {t:pixTex(FLAMINGO,{K:'#5a1a2a',P:'#f48aa8',L:'#e0507a',D:'#141414',W:'#f2e6d0',E:'#111111',R:'#e86a8a'}),sz:[1.0,1.75,1/26]}]];
-/* a sewer rat (Via Roma, Tuvixeddu, Sant'Elia) and a second tourist palette (socks with sandals, sunburnt) */
-const RATROWS=["....KK............","...KPGK..KKKKK....","..KGGGGKKGGGGGKK..",".KEGGGGGGGGGGGGGK.","KNWGGGGGGGGGGGGGK.",".KKGGGGGGGGGGGGGKT","..KKGGLGGGGGLGGK.T","...KPK.KK..KPK..T.","...............TT."];
-{const[GA,GW,UL,TO,FL]=FOEVAR[0],RA={t:pixTex(RATROWS,{K:'#1a1418',G:'#6b5e55',L:'#4a403a',P:'#e8a0a0',N:'#e87a8a',W:'#f2e6a0',E:'#ff3a2a',T:'#d89090'}),sz:[1.25,0.7,1/11]},
- T2={t:pixTex(TOURIST,{K:'#1a1418',A:'#f4f4f0',P:'#f08a6a',N:'#1a1418',R:'#e0503a',M:'#8a2a2a',F:'#e8d04a',G:'#3a7ad6',C:'#222222',L:'#6fb3e0',O:'#7a8a5a',W:'#f4f4f4',B:'#5a3a22'}),sz:FOESZ[0]};
- FOEVAR.push([GA,RA,GW,UL],[RA,TO,T2,RA],[FL,GA,UL,GW],[GA,GW,UL,RA])}
 function cablePt(n,u){const c=n.cable;const f=clamp(u,0,1)*(c.length-1),i=Math.min(c.length-2,Math.floor(f)),r=f-i;return{th:c[i].th+(c[i+1].th-c[i].th)*r,y:c[i].y+(c[i+1].y-c[i].y)*r}}
 
 /* ---------- layer 0: the rim (Castello & Marina, Cagliari) ---------- */
