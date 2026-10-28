@@ -713,14 +713,17 @@ const MUSIC=[
  {ch:[[57,60,64,69],[53,57,60,65],[55,58,62,67],[52,56,59,64]],bass:[45,41,43,40],cut:2200,arp:'pluck',shk:true}];
 /* music voices go through the procedural music bus, so mistakes can bend them */
 function musicBeat(L,k,t){if(LIVE.length>300){const now=AC.currentTime;for(let i=LIVE.length-1;i>=0;i--)if(LIVE[i].end<now)LIVE.splice(i,1)}OUT=musP.in;try{musicBeat0(L,k,t)}finally{OUT=VG.fx}}
-function musicBeat0(L,k,t){const sp=SPBL[L],mu=MUSIC[L],rel=((k%16)+16)%16,ci=Math.floor(rel/4),chord=mu.ch[ci];
+function musicBeat0(L,k,t){const sp=SPBL[L],mu=MUSIC[L],rel=((k%16)+16)%16,ci=Math.floor(rel/4),chord=mu.ch[ci],T=G.tier;
  if(rel===0&&dly)dly.delayTime.setValueAtTime(sp*0.75,t);
  if(rel%4===0)pad(chord,t,sp*4.2,mu.cut,L===4?0.03:0.022);
  if(k<0){if(k===-8||k===-4)voice('sine',mtof(chord[3]+12),t,0.01,1.4,0.05,[dly,rev]);return}
  voice('sine',120,t,0.004,0.3,L===4&&k%2?0.35:0.55,null,40);nz(t,0.025,0.09,'highpass',5200);
+ if(T<1)return;
  if(mu.shk){nz(t+sp/2,0.05,0.06,'highpass',7000);nz(t,0.03,0.03,'highpass',8000)}
  if(rel%2===0||L<2)voice('triangle',mtof(mu.bass[ci]),t,0.01,sp*1.5,0.16);
+ if(T<2)return;
  const top=chord.map(n=>n+12);
+ if(T>=3)voice('triangle',mtof(top[(rel*3+1)%4]+12),t+sp/2,0.006,sp*0.8,0.022,[dly,rev]);
  if(mu.arp==='bell'){[0,0.5].forEach((o,k)=>voice('sine',mtof(top[(rel*2+k)%4]),t+o*sp,0.005,0.9,0.045,[dly,rev]))}
  else if(mu.arp==='pluck'){[0,0.5].forEach((o,k)=>{const f=mtof(top[(rel*2+k*3)%4]-12);voice('square',f,t+o*sp,0.004,0.22,0.025,[dly])})}
  else if(mu.arp==='low'){if(rel%2===0)voice('sine',mtof(chord[0]),t,0.01,2.2,0.07,[rev]);if(rel%4===3)voice('sine',mtof(top[2]+12),t,0.01,1.6,0.03,[rev,dly])}
@@ -729,9 +732,22 @@ function musicBeat0(L,k,t){const sp=SPBL[L],mu=MUSIC[L],rel=((k%16)+16)%16,ci=Ma
 /* music files play straight to the speakers (they are already mixed), from the level's anchor, and fade out at the level's end */
 let TRK=null;
 /* no scheduled end: mistakes slow the song, so the frame loop fades it out when the level nears its end */
-function trackPlay(sg,when,at){trackStop();if(!AC)return;const s=AC.createBufferSource(),g=AC.createGain(),v=0.9,from=sg.from||0;s.buffer=sg.buf;s.connect(g);g.connect(musT.in);musT.mk.gain.value=clamp(songRms(sg)*v/WET_RMS,0.01,1);
- g.gain.setValueAtTime(0.0001,when);g.gain.linearRampToValueAtTime(v,when+(from>0?0.25:0.01));s.start(when,from+(at||0));TRK={s,g}}
-function trackStop(fade){if(!TRK||!AC)return;const {s,g}=TRK,t=AC.currentTime,f=fade||0.06;TRK=null;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(Math.max(0.0001,g.gain.value),t);g.gain.linearRampToValueAtTime(0.0001,t+f);s.stop(t+f+0.02)}catch(e){}}
+/* with stems, each one plays through its own gain (see GROW) instead of the mix; all of them go through the growth filter */
+function trackPlay(sg,when,at){trackStop();if(!AC)return;const g=AC.createGain(),f=AC.createBiquadFilter(),v=0.9,from=sg.from||0,parts=sg.stems||[{buf:sg.buf,lv:0}];f.type='lowpass';f.frequency.value=sg.stems?20000:GROW.cut[G.tier];g.connect(f);f.connect(musT.in);musT.mk.gain.value=clamp(songRms(sg)*v/WET_RMS,0.01,1);
+ const src=[],sgn=[];parts.forEach(p=>{const s=AC.createBufferSource(),pg=AC.createGain();s.buffer=p.buf;pg.gain.value=p.lv<=G.tier?1:0;s.connect(pg);pg.connect(g);s.start(when,from+(at||0));src.push(s);sgn.push(pg)});
+ g.gain.setValueAtTime(0.0001,when);g.gain.linearRampToValueAtTime(v,when+(from>0?0.25:0.01));TRK={src,g,f,sgn,lv:parts.map(p=>p.lv),stems:!!sg.stems}}
+function trackStop(fade){if(!TRK||!AC)return;const {src,g}=TRK,t=AC.currentTime,f=fade||0.06;TRK=null;try{g.gain.cancelScheduledValues(t);g.gain.setValueAtTime(Math.max(0.0001,g.gain.value),t);g.gain.linearRampToValueAtTime(0.0001,t+f);src.forEach(s=>s.stop(t+f+0.02))}catch(e){}}
+/* the music grows with your streak, in the spirit of Runner's mode-ups. Tier 0–max: every GROW.up hits in a row add one, a mistake (glitch) takes GROW.down away.
+   A level starts at GROW.start. Rises land on the next bar, drops straight away.
+   Music files with stems (RUN node stems:[{src,lv}], each the same length and start as the track; meant for Suno stems) fade a stem in once the tier reaches its lv.
+   A file without stems opens a low-pass instead (GROW.cut Hz per tier). Built-in music: tier 0 pad, kick and hats · 1 + bass and shaker · 2 + arpeggio · 3 + a lead on top */
+const GROW={up:8,down:1,start:1,max:3,cut:[1800,4500,10000,20000],fade:0.15};
+function growHit(){if(++G.gs>=GROW.up&&G.tier<GROW.max){G.tier++;G.gs=0;growApply(true)}}
+function growMiss(){G.gs=0;if(G.tier>0){G.tier=Math.max(0,G.tier-GROW.down);growApply(false)}}
+function growApply(rise){if(!AC||!TRK)return;const sg=LV&&LV.song;let t=AC.currentTime;
+ if(rise&&sg){let i=bIdx(sg.beats,levelAt(t))+1;while(i<sg.beats.length&&((i-(sg.bar0||0))%4+4)%4)i++;if(i<sg.beats.length)t=Math.max(t,timeOf(sg.beats[i]))}
+ const to=(p,v)=>{p.cancelScheduledValues(t);p.setTargetAtTime(v,t,GROW.fade)};
+ TRK.sgn.forEach((g,i)=>to(g.gain,TRK.lv[i]<=G.tier?1:0));if(!TRK.stems)to(TRK.f.frequency,GROW.cut[G.tier])}
 /* mistakes bend the music for half a second (muffled and crunched) and slow the song and the level down together (see warp) */
 /* GL: the knobs for balancing. dur s · dry = clean music level · wet = distorted level · drive and bits = how crushed · cut = muffle start (Hz) · q = filter resonance
    slow = how much the song and level slow at the worst point (0.5 = half speed) · slowDur s. Each mistake puts the level slow·slowDur/2 seconds behind */
@@ -745,7 +761,7 @@ function mkBus(out){const i=AC.createGain(),dry=AC.createGain(),sh=AC.createWave
  const mk=AC.createGain();mk.gain.value=0.15;i.connect(dry);dry.connect(out);i.connect(sh);sh.connect(f);f.connect(mk);mk.connect(wet);wet.connect(out);const spy=AC.createAnalyser();spy.fftSize=8192;spy.smoothingTimeConstant=0;dry.connect(spy);wet.connect(spy);return{in:i,dry,wet,f,mk,sh,out,spy}}
 /* a song's loudness over the part a level plays (sampled sparsely, cached on the song) */
 function songRms(sg){if(sg.rms)return sg.rms;const d=sg.buf.getChannelData(0),sr=sg.buf.sampleRate,a=Math.floor((sg.from||0)*sr),b=Math.min(d.length,a+Math.floor(sg.end*sr));let s=0,n=0;for(let i=a;i<b;i+=16){s+=d[i]*d[i];n++}return sg.rms=Math.sqrt(s/Math.max(1,n))||0.1}
-function glitch(){if(!AC||!musP)return;const t=AC.currentTime,D=GL.dur;
+function glitch(){if(!AC||!musP)return;const t=AC.currentTime,D=GL.dur;growMiss();
  const env=(p,a,b)=>{p.cancelScheduledValues(t);p.setValueAtTime(p.value,t);p.linearRampToValueAtTime(b,t+0.03);p.setValueAtTime(b,t+D-0.15);p.linearRampToValueAtTime(a,t+D)};
  [musP,musT].forEach(b=>{env(b.dry.gain,1,GL.dry);env(b.wet.gain,0,GL.wet);b.f.frequency.cancelScheduledValues(t);b.f.frequency.setValueAtTime(GL.cut,t);b.f.frequency.exponentialRampToValueAtTime(6000,t+D)});
  warp();
@@ -765,7 +781,7 @@ function warp(){if(!AC||G.state!=='play'||!LV)return;const t=AC.currentTime,D=GL
  for(let k=1;k<24;k++){const sh=Math.pow(Math.sin(Math.PI*k/24),2);depth=Math.min(depth,(warpRate(t+D*k/24)-0.25)/sh)}if(depth<0.02)return;
  WARPS.push({t0:t,dur:D,depth});retime();G.goT=timeOf(LV.song.first);
  if(TRK){const end=Math.max(...WARPS.map(w=>w.t0+w.dur)),n=96,c=new Float32Array(n);for(let k=0;k<n;k++)c[k]=warpRate(t+(end-t)*k/(n-1));
-  const pr=TRK.s.playbackRate;try{if(pr.cancelAndHoldAtTime)pr.cancelAndHoldAtTime(t);else pr.cancelScheduledValues(t);pr.setValueCurveAtTime(c,t+0.001,end-t)}catch(e){}}}
+  TRK.src.forEach(s=>{const pr=s.playbackRate;try{if(pr.cancelAndHoldAtTime)pr.cancelAndHoldAtTime(t);else pr.cancelScheduledValues(t);pr.setValueCurveAtTime(c,t+0.001,end-t)}catch(e){}})}}
 /* move sounds: short and unpitched, so they never clash with a song */
 function sfx(type){if(!AC)return;const t=AC.currentTime;
  if(type==='tap'){nz(t,0.07,0.32,'bandpass',1500,1.5);voice('triangle',190,t,0.002,0.09,0.12,null,90)}
@@ -885,6 +901,7 @@ function bestWindow(A,secs){const B=A.beats,spb=60/A.bpm;if(A.dur<=secs+10)retur
 const TRACKS={};
 async function readTrack(ab,prog){const buf=await decodeAudio(ab),A=await analyse(await monoAt(buf,AN.sr),prog);return{buf,A}}
 function loadTrack(src){if(!TRACKS[src])TRACKS[src]=fetch(src).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.arrayBuffer()}).then(ab=>readTrack(ab));return TRACKS[src]}
+const BUFS={};function loadBuf(src){if(!BUFS[src])BUFS[src]=fetch(src).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.arrayBuffer()}).then(decodeAudio);return BUFS[src]}
 function trackSong(T,ch){return{buf:T.buf,from:ch.from,bpm:ch.bpm,spb:ch.spb,beats:ch.beats,bar0:ch.bar0,notes:ch.notes,first:ch.first,end:ch.end,lead:0}}
 
 /* ---------- action cues ---------- */
@@ -899,7 +916,7 @@ const ICONTEX={up:iconTex('up'),duck:iconTex('down'),hold:iconTex('hold'),kick:i
 const ICON=new THREE.Sprite(new THREE.SpriteMaterial({map:ICONTEX.up,transparent:true,depthTest:false,opacity:0,fog:false}));ICON.scale.set(1.35,0.9,1);ICON.renderOrder=10;S.add(ICON);
 
 /* ---------- game state ---------- */
-const G={errs:[],jtxt:'',jcol:'#fff',jsub:'',state:'title',mode:'descent',node:0,coins:0,lvCoins:0,lvMax:0,up:{},maxH:5,ni:0,zip:null,duck:-9,hurt:-9,atk:-9,jump:-9,trip:-9,kick:-9,brace:-9,heave:-9,both:null,lock:-9,busy:-9,fp:null,combo:0,max:0,p:0,g:0,m:0,pullT:-99,endT:0,startT:0,hearts:5,seen:{},shake:0,cd:0,intro:false,goT:0,holdPtr:null,kb:false,custom:false,pathEnd:null,camp:null};
+const G={errs:[],jtxt:'',jcol:'#fff',jsub:'',state:'title',mode:'descent',node:0,coins:0,lvCoins:0,lvMax:0,up:{},maxH:5,ni:0,zip:null,duck:-9,hurt:-9,atk:-9,jump:-9,trip:-9,kick:-9,brace:-9,heave:-9,both:null,lock:-9,busy:-9,fp:null,tier:GROW.start,gs:0,flB:-1,combo:0,max:0,p:0,g:0,m:0,pullT:-99,endT:0,startT:0,hearts:5,seen:{},shake:0,cd:0,intro:false,goT:0,holdPtr:null,kb:false,custom:false,pathEnd:null,camp:null};
 /* swipes per move. The explorer walks to the right of the screen, so forward is a swipe right. both = a two-finger tap: the second finger must land within BOTHW of the first */
 const FWD='right',BACK='left',SWT={up:'up',duck:'down',kick:FWD,brace:BACK},isSw=n=>!!(n&&SWT[n.type]),BOTHW=0.12;
 const WRONG={up:'swipe up',duck:'swipe down',kick:'swipe '+FWD,brace:'swipe '+BACK,both:'both thumbs',hold:'hold',tap:'tap'};
@@ -935,7 +952,7 @@ function praise(q){const sd=G.lastSd||0;judgeShow(q==='p'?'Perfect':(sd<0?'Good 
 function coinsUI(){$('coins').textContent=G.coins+' coins';$('vCoins').textContent=G.coins}
 function addCoins(k){G.coins+=k;G.lvCoins+=k;coinsUI()}
 function score(n,q){if(q==='g'&&G.up.fork)q='p';addErr(G.lastSd||0,q);n.j=q;G[q]++;G.combo++;G.max=Math.max(G.max,G.combo);G.lvMax=Math.max(G.lvMax,G.combo);
- addCoins(q==='p'?2+(G.up.purse?1:0):1);if(G.up.jar&&G.combo%8===0)addCoins(4);
+ addCoins(q==='p'?2+(G.up.purse?1:0):1);growHit();if(G.up.jar&&G.combo%8===0)addCoins(4);
  if(n.boss&&n.type!=='up'&&n.type!=='duck')bossDamage(n.type==='hold'?3:q==='p'?1.5:1);chime(n);sfx(n.type);praise(q);fxResult(q)}
 function loseHeart(){if(G.up.hat&&!G.hatUsed){G.hatUsed=true;G.jsub='the hat took it';return}
  G.hearts=Math.max(0,G.hearts-1);if(G.hearts<=0&&G.up.wind&&!G.windUsed){G.windUsed=true;G.hearts=2;G.jsub='second wind'}heartsUI();if(G.hearts<=0)setTimeout(fallOut,450)}
@@ -952,7 +969,11 @@ function curNote(){return ACT[G.ni]}
 /* free moves: input away from any note's window still moves the explorer (REC = how long each move lasts). A whiff leaves them off balance for that long, and no input counts until it's over */
 const REC={tap:0.24,up:0.55,duck:0.42,kick:0.3,brace:0.4,both:0.4};
 function freeAct(mv,t,id){if(t<G.busy)return;const c=clock();if(mv==='tap'){G.fp={t,id};G.atk=c}else if(mv==='both'){G.atk=-9;G.heave=c}else if(mv==='up')G.jump=c;else if(mv==='duck')G.duck=c;else if(mv==='kick')G.kick=c;else G.brace=c;
- G.lock=t+REC[mv];if(AC)nz(AC.currentTime,0.12,0.07,'bandpass',1800,2)}
+ G.lock=t+REC[mv];if(AC)nz(AC.currentTime,0.12,0.07,'bandpass',1800,2);flourish(t)}
+/* a free move on a beat, with no note due within a beat, is a flourish (Runner's dance): a coin and a note in the music. Once per beat */
+function flourish(t){const sg=LV&&LV.song,n=curNote();if(!sg||G.mode!=='descent'||(n&&!n.j&&n.time-t<sg.spb))return;const lt=levelAt(t),i=bIdx(sg.beats,lt),bi=Math.abs(sg.beats[i+1]-lt)<Math.abs(lt-sg.beats[i])?i+1:i;
+ if(!(Math.abs(sg.beats[bi]-lt)<=W_G)||bi===G.flB)return;G.flB=bi;addCoins(1);judgeShow('Flourish','#f2c46d','+1 coin','p');if(!AC)return;const c=AC.currentTime;
+ if(sg.proc!==undefined){const ch=MUSIC[sg.proc].ch[Math.floor((((bi-sg.lead)%16)+16)%16/4)];voice('sine',mtof(ch[bi%4]+24),c,0.003,0.5,0.07,[dly,rev])}else nz(c,0.06,0.18,'bandpass',3400,3)}
 function offBal(n,t){if(n&&!n.j&&Math.abs(n.time-t)<=W_S){judgeShow('Off balance','#cdbfa8','still recovering','e');if(G.fx&&!G.fx.done){G.fx.done=true;G.fx.el.style.borderColor='#9a8fae'}}}
 function tooEarly(n,t){const ahead=n.time-t;if(ahead>W_G&&ahead<0.5){judgeShow('Too early','#cdbfa8','wait for the marker','e');addErr(-ahead,'e');if(G.fx&&!G.fx.done){G.fx.done=true;G.fx.el.style.borderColor='#9a8fae'}}}
 /* id tells fingers (pointerId) and keys (code) apart, for two-finger notes */
@@ -985,15 +1006,16 @@ function startNode(first){const nd=RUN[G.node];if(!nd)return;saveBest(G.node);if
 function nextNode(){if(G.state!=='clear'&&G.state!=='vendor')return;if(G.custom){playCustom();return}showOnly(null);G.node=Math.min(G.node+1,RUN.length-1);startNode(false)}
 function relight(){G.hearts=Math.min(G.maxH,G.hearts+(G.up.oil?2:1))}
 /* anchor the level: level time 0 plays a moment from now; music files start there, built-in songs count in first */
-function beginPlay(intro){const sg=LV.song;G.errs=[];G.jtxt='';Object.assign(G,{state:'play',trip:-9,zip:null,combo:0,pullT:-99,shake:0,cd:0,duck:-9,hurt:-9,atk:-9,jump:-9,kick:-9,brace:-9,heave:-9,both:null,lock:-9,busy:-9,fp:null,hatUsed:false,lvCoins:0,lvMax:0,ni:0,freezeLt:null});
+function beginPlay(intro){const sg=LV.song;G.errs=[];G.jtxt='';Object.assign(G,{state:'play',trip:-9,zip:null,combo:0,pullT:-99,shake:0,cd:0,duck:-9,hurt:-9,atk:-9,jump:-9,kick:-9,brace:-9,heave:-9,both:null,lock:-9,busy:-9,fp:null,tier:GROW.start,gs:0,flB:-1,hatUsed:false,lvCoins:0,lvMax:0,ni:0,freezeLt:null});
  anchorT=ctxNow()+(intro?0.45:0.55);WARPS=[];nextBeat=0;ACT=sg.notes;retime();G.goT=timeOf(sg.first);G.startT=clock();G.intro=intro;heartsUI();judgeShow('','#fff','');if(sg.buf)trackPlay(sg,anchorT)}
 /* a level plays its music file when it has one; otherwise (or if the file fails) the built-in chart and procedural music */
 async function songFor(nd,first){
- if(nd.custom)return trackSong(CU.T,cuChart());
+ if(nd.custom){const sg=trackSong(CU.T,cuChart());sg.stems=CU.stems||null;return sg}
  if(nd.track){try{const T=await loadTrack(nd.track),st=LSTYLE[nd.L],ch=makeChart(T.A,{from:nd.from,to:nd.to,diff:nd.diff==null?0.5:nd.diff,mix:st.mix,gap:st.gap});
    /* startM (temporary, per song): no notes until the depth counter reaches this many metres, to let a song's intro play out */
    if(nd.startM){const a=LAYERS[nd.L].m,c=nd.L===4?MAXM:LAYERS[nd.L+1].m,t0=(nd.startM-a)/(c-a)*ch.end;ch.notes=ch.notes.filter(n=>n.at>=t0);if(ch.notes.length)ch.first=ch.notes[0].at}
-   return trackSong(T,ch)}
+   const sg=trackSong(T,ch);if(nd.stems)try{sg.stems=await Promise.all(nd.stems.map(async x=>({buf:await loadBuf(x.src),lv:x.lv||0})))}catch(e){console.warn('Could not load the stems of '+nd.track+', playing the mix.',e)}
+   return sg}
   catch(e){console.warn('Could not use '+nd.track+', playing the built-in level instead.',e)}}
  return procSong(nd.L,CHART[nd.L],32,first?8:4)}
 let loadId=0;
@@ -1063,12 +1085,12 @@ function cuInfo(){const A=CU.T.A,ch=cuChart(),c={tap:0,up:0,duck:0,hold:0,kick:0
  $('sgInfo').innerHTML=Math.round(A.bpm)+' bpm · '+(A.steady?'steady beat':'loose beat')+' · '+Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0')+' level<br>'+ch.notes.length+' moves: '+c.tap+' critters, '+c.up+' jumps, '+c.duck+' swoopers, '+c.hold+' ziplines'+(c.kick?', '+c.kick+' barricades':'')+(c.brace?', '+c.brace+' rockfalls':'')+(c.both?', '+c.both+' carts':'')}
 function playCustom(){if(!CU.T)return;audioInit();trackStop();showOnly(null);G.custom=true;resetRun();startLevel({kind:'descent',L:CU.theme,custom:true},false)}
 $('songB').onclick=()=>{audioInit();showOnly('song')};$('sgBack').onclick=()=>showOnly('start');$('sgGo').onclick=playCustom;$('clBack').onclick=toTitle;$('fBack').onclick=toTitle;
-$('sgFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;$('sgGo').disabled=true;CU.T=null;const name=f.name.replace(/\.[^.]+$/,'');CU.name=name;$('sgInfo').textContent='Listening to '+name+'…';
+$('sgFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)return;$('sgGo').disabled=true;CU.T=null;CU.stems=null;const name=f.name.replace(/\.[^.]+$/,'');CU.name=name;$('sgInfo').textContent='Listening to '+name+'…';
  try{const ab=await (f.arrayBuffer?f.arrayBuffer():new Response(f).arrayBuffer());const T=await readTrack(ab,p=>{$('sgInfo').textContent='Listening to '+name+'… '+Math.round(p*100)+'%'});if(CU.name!==name)return;CU.T=T;cuInfo();$('sgGo').disabled=false}
  catch(err){console.warn(err);$('sgInfo').textContent='Could not read that file. Try an MP3, M4A, WAV or OGG.'}};
 [['sgDiff','diff',Number],['sgLen','len',String],['sgTheme','theme',Number]].forEach(([id,key,cv])=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{
  CU[key]=cv(b.dataset.v);$(id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(CU.T)cuInfo()}));
-window.__pit={analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},PV,get WARPS(){return WARPS},warpRate,levelAt,clock,onPress,onSwipe,G,S,C,CUT};
+window.__pit={analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},PV,get WARPS(){return WARPS},warpRate,levelAt,clock,onPress,onSwipe,G,S,C,CUT,GROW,growHit,growMiss};
 /* ---------- dev test helpers on window.__pit (the browser pane's tools run in an isolated world: inject a <script> and read results back from the DOM) ---------- */
 /* synth(o): a drum loop with a steady tone, rendered offline. song(buf,o): analyse it and start a custom level. measure(o): watch a music bus and
    report clean vs during-mistake loudness and spectrum peaks. report(x): put a short JSON on document.body.dataset.test. errs: errors since load */
@@ -1076,8 +1098,8 @@ window.__pit={analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV
  P.synth=async o=>{o=Object.assign({bpm:120,dur:20,off:0.3,gain:1,tone:220,jit:0,intro:0},o);const sr=44100,spb=60/o.bpm,oc=new OAC(2,sr*o.dur,sr),nb=oc.createBuffer(1,sr,sr),d=nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
   const hit=(t,type,f,q,v,len)=>{const s=oc.createBufferSource(),fl=oc.createBiquadFilter(),g=oc.createGain();s.buffer=nb;fl.type=type;fl.frequency.value=f;fl.Q.value=q;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.001,t+len);s.connect(fl);fl.connect(g);g.connect(oc.destination);s.start(t);s.stop(t+len+0.01)};
   for(let k=0;o.off+k*spb<o.dur-1;k++){const t0=o.off+k*spb;if(t0<o.intro)continue;const t=t0+(Math.random()-0.5)*2*o.jit,G=o.gain;
-   const kk=oc.createOscillator(),kg=oc.createGain();kk.frequency.setValueAtTime(150,t);kk.frequency.exponentialRampToValueAtTime(45,t+0.12);kg.gain.setValueAtTime((k%4?0.6:0.9)*G,t);kg.gain.exponentialRampToValueAtTime(0.001,t+0.25);kk.connect(kg);kg.connect(oc.destination);kk.start(t);kk.stop(t+0.3);
-   if(k%2)hit(t,'bandpass',1800,0.8,0.6*G,0.18);hit(t,'highpass',7000,1,0.25*G,0.05);hit(t+spb/2,'highpass',7000,1,0.25*G,0.05);
+   if(o.drums!==false){const kk=oc.createOscillator(),kg=oc.createGain();kk.frequency.setValueAtTime(150,t);kk.frequency.exponentialRampToValueAtTime(45,t+0.12);kg.gain.setValueAtTime((k%4?0.6:0.9)*G,t);kg.gain.exponentialRampToValueAtTime(0.001,t+0.25);kk.connect(kg);kg.connect(oc.destination);kk.start(t);kk.stop(t+0.3);
+   if(k%2)hit(t,'bandpass',1800,0.8,0.6*G,0.18);hit(t,'highpass',7000,1,0.25*G,0.05);hit(t+spb/2,'highpass',7000,1,0.25*G,0.05)}
    if(o.tone){const p=oc.createOscillator(),pg=oc.createGain();p.frequency.value=o.tone;pg.gain.setValueAtTime(0.2*G,t);pg.gain.setValueAtTime(0.2*G,t+spb-0.02);pg.gain.linearRampToValueAtTime(0,t+spb);p.connect(pg);pg.connect(oc.destination);p.start(t);p.stop(t+spb)}}
   return oc.startRendering()};
  /* sync(url): analyse a music file and report, per 15 s, how far the beat grid sits from the nearest onset peak (ms, median) and on- vs off-beat onset strength */
@@ -1089,6 +1111,8 @@ window.__pit={analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV
   const k=dp.map(t=>Math.round((t-dp[0])/per));let sk=0,stt=0,skk=0,skt=0;const n=k.length;for(let i=0;i<n;i++){sk+=k[i];stt+=dp[i];skk+=k[i]*k[i];skt+=k[i]*dp[i]}const sl=(n*skt-sk*stt)/(n*skk-sk*sk),ic=(stt-sl*sk)/n,res=dp.map((t,i)=>t-(ic+sl*k[i]));
   P.lastSync={A,notes,res};
   return{anMs,fitBpm:+(60/sl).toFixed(3),rms:Math.round(1000*Math.sqrt(res.reduce((a,r)=>a+r*r,0)/n)),resSeg:seg.map((_,j)=>{const r=res.filter((_,i)=>Math.floor(dp[i]/15)===j);return r.length?Math.round(1000*r.reduce((a,b)=>a+b,0)/r.length):null}),nNotes:notes.length,half:notes.filter(x=>x.u>0.1&&x.u<0.9).length,off25:notes.filter(x=>Math.abs(x.pk)>25).length,weak:notes.filter(x=>x.s<1.5).length,bpm:+A.bpm.toFixed(3),steady:A.steady,beat0:+A.beats[0].toFixed(3),dpBpm:+(60*(dp.length-1)/(dp[dp.length-1]-dp[0])).toFixed(2),seg:seg.map(S=>[med(S.o),S.o.length+'/'+S.n,+(S.on/S.n).toFixed(1),+(S.off/S.n).toFixed(1)])}};
+ /* stems(o): like song(), from a synth mix, with the drums as a stem at lv 0 and the tone as a stem at lv 2 */
+ P.stems=async o=>{o=Object.assign({bpm:120,dur:30},o);const [mix,dr,tn]=await Promise.all([P.synth(o),P.synth({...o,tone:0}),P.synth({...o,drums:false})]);CU.stems=[{buf:dr,lv:0},{buf:tn,lv:2}];return P.song(mix,o)};
  P.song=async(buf,o)=>{o=Object.assign({name:'Test song',diff:2,theme:0,len:'full'},o);const A=await analyse(await monoAt(buf,AN.sr));Object.assign(CU,{T:{buf,A},name:o.name,diff:o.diff,theme:o.theme,len:o.len});playCustom();return{bpm:+A.bpm.toFixed(2),steady:A.steady}};
  P.measure=async o=>{o=Object.assign({bus:'musT',secs:8,freqs:[]},o);const b=o.bus==='musT'?musT:musP,an=b.spy,fb=new Float32Array(an.frequencyBinCount),tb=new Float32Array(an.fftSize),bin=f=>Math.round(f*an.fftSize/AC.sampleRate);
   const acc={clean:{n:0,rms:0,pk:o.freqs.map(()=>0)},mistake:{n:0,rms:0,pk:o.freqs.map(()=>0)}},t0=performance.now();
