@@ -23,6 +23,7 @@ body{background:var(--ink);color:var(--paper);font-family:var(--serif);-webkit-u
 .vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 45%,transparent calc(50% - var(--dmg,0)*28%),rgba(10,6,14,calc(.6 + var(--dmg,0)*.35)) 100%)}
 .fxe{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .35s}
 #feverFx{box-shadow:inset 0 0 110px 24px rgba(255,180,70,.55)}body.fever #feverFx{opacity:1;animation:fvp .45s ease-in-out infinite alternate}
+#iris{position:absolute;inset:0;pointer-events:none;display:none}
 #dareFx{box-shadow:inset 0 0 90px 18px rgba(230,60,50,.55)}body.dare #dareFx{opacity:1}
 @keyframes fvp{from{filter:brightness(.8)}to{filter:brightness(1.25)}}
 #shake{position:absolute;inset:0;pointer-events:none;background:rgba(200,40,60,.18);opacity:0}
@@ -113,7 +114,7 @@ body{background:var(--ink);color:var(--paper);font-family:var(--serif);-webkit-u
 
 <div id="game">
   <canvas id="cv" aria-label="Descent into the pit"></canvas>
-  <div class="vig"></div><div class="fxe" id="feverFx"></div><div class="fxe" id="dareFx"></div>
+  <div class="vig"></div><div class="fxe" id="feverFx"></div><div class="fxe" id="dareFx"></div><div id="iris"></div>
   <div id="shake"></div>
   <div id="gauge" hidden><div class="rail"></div></div>
   <div id="depth" hidden><b id="dM">0 m</b><i id="dL">The Rim</i><div id="hearts" aria-label="Lanterns left"></div><div id="coins">0 coins</div></div>
@@ -420,7 +421,7 @@ function buildLevel(L,sg,th0,y0){if(LVG)dropGroup(LVG);const g=LVG=new THREE.Gro
  addTo(g,tiles,kind==='caps'?new THREE.CylinderGeometry(0.5,0.42,0.2,10):new THREE.BoxGeometry(1,1,1),toon({}));
  addTo(g,struts,new THREE.BoxGeometry(1,1,1),toon({}));addTo(g,posts,new THREE.CylinderGeometry(0.05,0.06,1,5),toon({}));addTo(g,lan,new THREE.SphereGeometry(0.13,8,6),new THREE.MeshBasicMaterial({}));
  if(rope.length)g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(rope),new THREE.LineBasicMaterial({color:'#2e1f12'})));
- sign(st.sign,th0+0.1,y0+2.0,g);(sg.dares||[]).forEach(d=>{const q=pathPt(P,SPEED*d.a);sign('DARE?',q.th,q.y+2.0,g)});clearLedge(P,len);
+ sign(st.sign,th0+0.1,y0+2.0,g);(sg.dares||[]).forEach(d=>{d.s=SPEED*(d.a+d.b)/2;const q=pathPt(P,d.s);dareDoor(q.th,q.y,g)});clearLedge(P,len);
  /* what each note puts on the ledge */
  sg.notes.forEach(n=>{if(n.boss)return;const s=SPEED*n.at;n.pos=pathPt(P,s);
   if(n.type==='up'){n.mid=pathPt(P,SPEED*(n.at+n.w/2));if(!n.gap){const o=obstacle(L),m=n.mid;o.position.set(m.x,m.y-0.05,m.z);o.lookAt(0,m.y-0.05,0);g.add(o);n.obj=o;if(L>=3)glowAt(g,o.position.clone().add(new THREE.Vector3(0,0.7,0)),L===3?'#2fd6b8':'#b48cff',2.2)}}
@@ -442,6 +443,12 @@ function buildCamp(th,y){if(CAMPG)dropGroup(CAMPG);const g=CAMPG=new THREE.Group
  const fire=new THREE.Mesh(new THREE.ConeGeometry(0.28,0.7,6),new THREE.MeshBasicMaterial({color:'#ff9a3c'}));fire.position.copy(onLedge(th,24.2,-1.3,y+0.35));g.add(fire);
  glowAt(g,fire.position.clone().add(new THREE.Vector3(0,0.3,0)),'#ff9a3c',3);FIRE_L.position.copy(fire.position).add(new THREE.Vector3(0,1,0));FIRE_L.intensity=0.9;window.__fire=fire}
 
+/* the dare: a dark doorway in the wall (a black box sunk into the rock, its face just in front of the wall's nearest bump), a stone frame, a faint red glow and the DARE? sign above */
+function dareDoor(th,y,g){let r0=99;for(const dy of[0.2,1.4,2.6])for(const o of[-0.9,0,0.9])r0=Math.min(r0,wallR(th+o/HR,y+dy));r0-=0.1;
+ const dark=new THREE.Mesh(new THREE.BoxGeometry(1.8,2.8,3),new THREE.MeshBasicMaterial({color:'#050307'}));dark.position.copy(onLedge(th,r0+1.5,0,y+1.3));dark.lookAt(0,y+1.3,0);g.add(dark);
+ const st=toon({color:'#4a4038'});[[-1.1,1.4,0.4,3],[1.1,1.4,0.4,3],[0,2.95,2.6,0.45]].forEach(([o,h,w,hh])=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,hh,0.6),st);b.position.copy(onLedge(th,r0-0.2,o,y+h));b.lookAt(0,y+h,0);g.add(b)});
+ const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:'#ff3b2a',transparent:true,opacity:0.45,blending:THREE.AdditiveBlending,depthWrite:false}));gl.position.copy(onLedge(th,r0+0.3,0,y+1.1));gl.scale.set(2.2,2.6,1);g.add(gl);
+ sign('DARE?',th,y+3.9,g);return r0}
 /* ---------- signs ---------- */
 function sign(text,th,y,par){const t=canvasTex(320,110,(x,w,h)=>{x.fillStyle='#8a6238';x.fillRect(0,0,w,h);x.fillStyle='rgba(0,0,0,.18)';for(let i=0;i<5;i++)x.fillRect(0,i*22+20,w,2);x.strokeStyle='#4a3220';x.lineWidth=8;x.strokeRect(4,4,w-8,h-8);
   x.fillStyle='#2a1a0e';x.font='600 46px Georgia,serif';x.textAlign='center';x.textBaseline='middle';x.fillText(text,w/2,h/2+3)});t._own=true;
@@ -672,6 +679,13 @@ const FVN=90,fvPos=new Float32Array(FVN*3),fvInfo=[];for(let i=0;i<FVN;i++)fvInf
 const fvG=new THREE.BufferGeometry();fvG.setAttribute('position',new THREE.BufferAttribute(fvPos,3));
 const FEVP=new THREE.Points(fvG,new THREE.PointsMaterial({size:0.26,map:glowTex,color:'#ffb347',transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));FEVP.frustumCulled=false;S.add(FEVP);
 const AURA=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:'#ffb347',transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));S.add(AURA);let fvAcc=0;
+/* iris: a black circle closing on the explorer as they enter the dare, and opening on the dare room. r: 1 open, 0 shut */
+function irisFx(now){const el=$('iris');let r=null;
+ if(G.enter&&(G.state==='enter'||G.state==='loading')){const k=(now-G.enter.t0-ENTER.walk-ENTER.inn*0.5)/ENTER.iris;if(k>0)r=1-clamp(k,0,1)}
+ else if(G.irisOpen!=null){const k=(now-G.irisOpen)/0.8;if(k>=1)G.irisOpen=null;else r=clamp(k,0,1)}
+ if(r==null){if(el.style.display!=='none')el.style.display='none';return}
+ const v=HERO.position.clone();v.y+=HH*0.45;v.project(C);const w=cv.clientWidth,h=cv.clientHeight,R=Math.hypot(w,h)*smooth(r);
+ el.style.display='block';el.style.background='radial-gradient(circle at '+((v.x+1)/2*w).toFixed(0)+'px '+((1-v.y)/2*h).toFixed(0)+'px,transparent '+R.toFixed(1)+'px,#000 '+(R+2).toFixed(1)+'px)'}
 function fevFx(dt,on,pulse){const H=HERO.position;if(on){fvAcc+=dt*70;for(let i=0;i<FVN&&fvAcc>=1;i++){const s=fvInfo[i];if(s.life>0)continue;fvAcc--;const a=rnd()*6.28,r=rr(0.25,0.6);s.life=1;s.x=H.x+Math.cos(a)*r;s.y=H.y+rr(0.1,HH*0.9);s.z=H.z+Math.sin(a)*r;s.vx=Math.cos(a)*0.4;s.vz=Math.sin(a)*0.4;s.vy=rr(0.4,1.4)}}else fvAcc=0;
  for(let i=0;i<FVN;i++){const s=fvInfo[i];if(s.life>0){s.life-=dt*1.4;s.x+=s.vx*dt;s.y+=s.vy*dt;s.z+=s.vz*dt;fvPos.set([s.x,s.y,s.z],i*3)}else fvPos.set([0,-999,0],i*3)}fvG.attributes.position.needsUpdate=true;
  const m=AURA.material;m.opacity+=((on?0.35+0.3*pulse:0)-m.opacity)*Math.min(1,dt*10);AURA.visible=m.opacity>0.01;AURA.position.set(H.x,H.y+HH*0.45,H.z);const k=HH*(1.3+0.25*pulse);AURA.scale.set(k,k,1)}
@@ -995,9 +1009,12 @@ function curNote(){return ACT[G.ni]}
 const REC={tap:0.24,up:0.55,duck:0.42,kick:0.3,brace:0.4,both:0.4};
 function freeAct(mv,t,id){if(t<G.busy)return;const c=clock();if(mv==='tap'){G.fp={t,id};G.atk=c}else if(mv==='both'){G.atk=-9;G.heave=c}else if(mv==='up')G.jump=c;else if(mv==='duck')G.duck=c;else if(mv==='kick')G.kick=c;else G.brace=c;
  G.lock=t+(clock()<G.grace?0:REC[mv]);dareTry(t);if(AC)nz(AC.currentTime,0.12,0.07,'bandpass',1800,2);flourish(t)}
-function dareTry(t){const d=LV&&LV.song.dares;if(!d||G.mode!=='descent')return;const lt=levelAt(t),x=d.find(x=>x.on==null&&lt>=x.a-W_G&&lt<x.b);if(!x)return;x.on=true;if(AC)nz(AC.currentTime,0.2,0.3,'bandpass',900,3);startDare(lt)}
-/* the dare room starts from where the explorer stands; the rest of the level is skipped, and the run goes on to the next node after it */
-function startDare(lt){G.pathEnd=pathPt(LV.path,SPEED*lt);startLevel(Object.assign({},LV.nd,{dare:true}),false)}
+function dareTry(t){const d=LV&&LV.song.dares;if(!d||G.mode!=='descent')return;const lt=levelAt(t),x=d.find(x=>x.on==null&&lt>=x.a-W_G&&lt<x.b);if(!x)return;x.on=true;if(AC)nz(AC.currentTime,0.2,0.3,'bandpass',900,3);enterDare(x,lt)}
+/* accepting a dare: the level stops (G.state 'enter'), the explorer walks to the doorway (ENTER.walk s) and into the dark (ENTER.inn s), the view irises shut on them (ENTER.iris s, see irisFx) and the dare room opens. The rest of the level is skipped; after the dare room the run goes on to the next node */
+const ENTER={walk:0.7,inn:1.0,iris:0.7};
+function enterDare(x,lt){const P=LV.path,a=pathPt(P,SPEED*clamp(lt,0,LV.song.end)),b=pathPt(P,x.s);let r1=99;for(const dy of[0.2,1.4,2.6])r1=Math.min(r1,wallR(b.th,b.y+dy));G.state='enter';G.enter={t0:clock(),a,b,s:x.s,r1:r1+0.8};
+ if(AC){const c=AC.currentTime;nz(c+ENTER.walk,0.9,0.25,'lowpass',260,1,[rev]);voice('sine',55,c+ENTER.walk,0.2,1.4,0.12,[rev])}}
+function startDare(){G.pathEnd=pathPt(LV.path,G.enter.s);startLevel(Object.assign({},LV.nd,{dare:true}),false)}
 /* a free move on a beat, with no note due within a beat, is a flourish (Runner's dance): a coin and a note in the music. Once per beat */
 function flourish(t){const sg=LV&&LV.song,n=curNote();if(!sg||G.mode!=='descent'||(n&&!n.j&&n.time-t<sg.spb))return;const lt=levelAt(t),i=bIdx(sg.beats,lt),bi=Math.abs(sg.beats[i+1]-lt)<Math.abs(lt-sg.beats[i])?i+1:i;
  if(!(Math.abs(sg.beats[bi]-lt)<=W_G)||bi===G.flB)return;G.flB=bi;addCoins(1);judgeShow('Flourish','#f2c46d','+1 coin','p');if(!AC)return;const c=AC.currentTime;
@@ -1059,7 +1076,7 @@ async function startLevel(nd,first){const id=++loadId;G.mode='descent';G.state='
  const L=nd.L,pe=G.pathEnd,th0=pe?pe.th:TH0+L*1.3,y0=pe?pe.y:L?layerTop(L)-0.5:1.5;
  SPEED=clamp(PACE*song.bpm/60,3,6);const path=buildLevel(L,song,th0,y0);LV={L,song,path,nd};G.pathEnd=pathPt(path,SPEED*song.end);
  if(first){beginPlay(true);$('card').classList.remove('show');setTimeout(()=>{if(G.state==='play'&&LV.song===song)showCard(L,4200)},1400)}
- else{beginPlay(false);if(nd.dare)cardText('A dare','The side passage','no refunds, no way back',3000);else showCard(L,3000)}}
+ else{beginPlay(false);if(nd.dare){G.enter=null;G.irisOpen=clock();cardText('A dare','The side passage','no refunds, no way back',3000)}else showCard(L,3000)}}
 function levelClear(){G.state='clear';const nd=LV.nd;$('clBack').hidden=!G.custom;
  if(G.custom){const tot=Math.max(1,G.p+G.g+G.m);$('clN').textContent=CU.name;$('clL').textContent='The pit listened to the whole thing. It has notes.';
   $('clS').textContent='Accuracy '+Math.round((G.p+G.g*0.6)/tot*100)+'% · best combo '+G.lvMax+' · '+G.m+' stumbles';$('clGo').textContent='Play it again';showOnly('clear');return}
@@ -1123,7 +1140,7 @@ $('sgFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)r
  catch(err){console.warn(err);$('sgInfo').textContent='Could not read that file. Try an MP3, M4A, WAV or OGG.'}};
 [['sgDiff','diff',Number],['sgLen','len',String],['sgTheme','theme',Number]].forEach(([id,key,cv])=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{
  CU[key]=cv(b.dataset.v);$(id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(CU.T)cuInfo()}));
-window.__pit={score,fail,dareTry,startDare,GROW,analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},PV,get WARPS(){return WARPS},warpRate,levelAt,clock,onPress,onSwipe,G,S,C,CUT,GROW,growHit,growMiss};
+window.__pit={score,fail,dareTry,enterDare,step:()=>frame(true),HERO,GROW,analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},PV,get WARPS(){return WARPS},warpRate,levelAt,clock,onPress,onSwipe,G,S,C,CUT,GROW,growHit,growMiss};
 /* ---------- dev test helpers on window.__pit (the browser pane's tools run in an isolated world: inject a <script> and read results back from the DOM) ---------- */
 /* synth(o): a drum loop with a steady tone, rendered offline. song(buf,o): analyse it and start a custom level. measure(o): watch a music bus and
    report clean vs during-mistake loudness and spectrum peaks. report(x): put a short JSON on document.body.dataset.test. errs: errors since load */
@@ -1283,7 +1300,7 @@ function envAt(y,L){let lf=layerF(y);if(L!==undefined)lf=clamp(lf,L,L+0.999);con
  hemi.color.copy(a.skyC).lerp(b.skyC,f);hemi.groundColor.copy(a.gndC).lerp(b.gndC,f);hemi.intensity=a.hemi+(b.hemi-a.hemi)*f;sun.intensity=a.sun+(b.sun-a.sun)*f;under.intensity=a.up+(b.up-a.up)*f;under.color.copy(a.skyC).lerp(b.skyC,f);
  lamp.intensity=a.lamp+(b.lamp-a.lamp)*f;HERO.material.color.copy(a.tintC).lerp(b.tintC,f);HGLOW.material.opacity=Math.min(0.55,(a.lamp+(b.lamp-a.lamp)*f)*0.4)}
 const introPose=a=>[new THREE.Vector3(Math.cos(a)*6,55,Math.sin(a)*6),new THREE.Vector3(Math.cos(a)*-3,-80,Math.sin(a)*-3)];
-function frame(){requestAnimationFrame(frame);{const h=G.state!=='play'||G.paused;if($('pauseB').hidden!==h)$('pauseB').hidden=h;const k=skipTo()==null;if($('skipB').hidden!==k)$('skipB').hidden=k}const pn=performance.now(),rdt=Math.min(0.5,(pn-last)/1000),dt=Math.min(0.05,rdt);last=pn;const now=clock(),tn=now-offsetMs/1000,tt=pn/1000;
+function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.state!=='play'||G.paused;if($('pauseB').hidden!==h)$('pauseB').hidden=h;const k=skipTo()==null;if($('skipB').hidden!==k)$('skipB').hidden=k}const pn=performance.now(),rdt=Math.min(0.5,(pn-last)/1000),dt=Math.min(0.05,rdt);last=pn;const now=clock(),tn=now-offsetMs/1000,tt=pn/1000;
  const sg=LV&&LV.song,lt=levelAt(tn),sp=spbNow(lt);
  /* fever (top music tier), dare zones, camera pull-in */
  {const fev=G.state==='play'&&G.mode==='descent'&&G.tier>=GROW.max,bc=document.body.classList;bc.toggle('fever',fev);bc.toggle('dare',G.state==='play'&&!!(LV&&LV.nd&&LV.nd.dare));const dd=G.state==='play'&&G.mode==='descent'&&sg.dares&&sg.dares.find(x=>x.on==null&&!x.hint&&lt>=x.a&&lt<x.b);if(dd){dd.hint=1;judgeShow('DARE?','#ff7a5c','any move now: take the side passage')}const fz=fev?1.08:1;if(Math.abs(C.zoom-fz)>0.002){C.zoom+=(fz-C.zoom)*Math.min(1,dt*3);C.updateProjectionMatrix()}}
@@ -1313,6 +1330,9 @@ function frame(){requestAnimationFrame(frame);{const h=G.state!=='play'||G.pause
  let hTh,hy,shY,rad=HR,pose=(Math.floor(tt/0.45)%2?'sneakIdle2':'sneakIdle');
  if(G.state==='loading'&&G.hl){({hTh,hy,shY}=G.hl)}
  else if(G.mode==='boss'&&G.camp&&G.state!=='title'){hTh=G.camp.th;hy=shY=G.camp.y}
+ else if(G.state==='enter'&&G.enter){const e=G.enter,el=now-e.t0,f=smooth(clamp(el/ENTER.walk,0,1));hTh=e.a.th+(e.b.th-e.a.th)*f;hy=shY=e.a.y+(e.b.y-e.a.y)*f;rad=HR+(e.r1-HR)*smooth(clamp((el-ENTER.walk)/ENTER.inn,0,1));
+  let ph=el/0.4;const si=Math.floor(ph);ph-=si;const A=si%2?'B':'',Bn=(si+1)%2?'B':'';pose=ph<0.22?'sneakPlant'+A:ph<0.5?'sneakSettle'+A:ph<0.75?'sneakLift'+Bn:'sneakReach'+Bn;
+  if(el>ENTER.walk+ENTER.inn*0.5+ENTER.iris+0.2&&!e.go){e.go=1;startDare()}}
  else if(LV&&LV.path){const P=LV.path,on=G.state!=='title';let lc=on?clamp(lt,0,sg.end):0;if(G.state==='fallen'&&G.freezeLt!=null)lc=Math.min(lc,Math.max(0,G.freezeLt));
   const base=pathPt(P,SPEED*lc);hTh=base.th;hy=shY=base.y;
   /* walk cycle locked to the song's beats: the foot lands on each beat (every other beat when the song is fast) */
@@ -1334,7 +1354,7 @@ function frame(){requestAnimationFrame(frame);{const h=G.state!=='play'||G.pause
  else if(now-G.jump<REC.up){pose='vault';hy+=Math.sin(Math.PI*(now-G.jump)/REC.up)*1.4}
  const hx=Math.cos(hTh)*rad,hz=Math.sin(hTh)*rad;
  HERO.material.map=FR[pose];HSH.position.set(hx,shY+0.03,hz);
- HERO.position.set(hx,hy,hz);HERO.material.rotation=hurt?Math.sin(tt*30)*0.08:0;
+ HERO.position.set(hx,hy,hz);irisFx(now);HERO.material.rotation=hurt?Math.sin(tt*30)*0.08:0;
  HGLOW.position.set(hx+0.12,hy+(pose==='duck'?1.25:1.85),hz);const ra=Math.atan2(hz,hx);lamp.position.set(hx-Math.cos(ra)*1.5,hy+2.2,hz-Math.sin(ra)*1.5);
  /* cues: a fixed marker where the next move happens, a flash there as its beat hits, calm icons */
  let vn=null;if(G.state==='play')for(let k=G.ni;k<ACT.length;k++)if(!ACT[k].j){vn=ACT[k];break}
@@ -1368,7 +1388,7 @@ function frame(){requestAnimationFrame(frame);{const h=G.state!=='play'||G.pause
  for(let i=0;i<SPN;i++){const s=spInfo[i];if(s.life>0){s.life-=dt*1.6;s.vy-=9*dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.z+=s.vz*dt;spPos.set([s.x,s.y,s.z],i*3)}else spPos.set([0,-999,0],i*3)}spG.attributes.position.needsUpdate=true;
  {const fb=sg?bIdx(sg.beats,lt):0,b0=sg&&sg.beats[fb],b1=sg&&sg.beats[fb+1];fevFx(dt,G.state==='play'&&G.mode==='descent'&&G.tier>=GROW.max,b1>b0?Math.max(0,1-(lt-b0)/(b1-b0)):0)}
  /* environment */
- const kf=1-Math.exp(-rdt*7);fTh+=(hTh-fTh)*kf;fY+=(hy-fY)*kf;envAt(fY,G.mode==='boss'?4:LV?LV.L:undefined);if(hurt)HERO.material.color.set(Math.floor(tt*20)%2?'#ff7070':'#ffffff');else if(G.state==='play'&&now<G.grace&&Math.floor(tt*12)%2)HERO.material.color.multiplyScalar(0.4);
+ const kf=1-Math.exp(-rdt*7);fTh+=(hTh-fTh)*kf;fY+=(hy-fY)*kf;envAt(fY,G.mode==='boss'?4:LV?LV.L:undefined);if(hurt)HERO.material.color.set(Math.floor(tt*20)%2?'#ff7070':'#ffffff');else if(G.state==='play'&&now<G.grace&&Math.floor(tt*12)%2)HERO.material.color.multiplyScalar(0.4);if(G.state==='enter'&&G.enter)HERO.material.color.multiplyScalar(1-0.85*clamp((now-G.enter.t0-ENTER.walk)/ENTER.inn,0,1));
  for(let i=0;i<PN;i++){const inf=pInfo[i];let y=pPos[i*3+1]+inf.vy*dt;if(y>inf.yTop)y=inf.yBot;if(y<inf.yBot)y=inf.yTop;pPos[i*3+1]=y;pPos[i*3]+=Math.sin(tt*0.5+inf.ph)*dt*0.15;pPos[i*3+2]+=Math.cos(tt*0.4+inf.ph)*dt*0.15}window.__pg.attributes.position.needsUpdate=true;
  FALLS.forEach(t=>t.offset.y+=dt*1.6);SHAFTS.forEach(s=>s.mat.opacity=s.base*(0.75+0.25*Math.sin(tt*0.6+s.ph)));
  for(let i=0;i<BIRDN;i++){const b=birdInfo[i];const a=b.ph+tt*b.w;dmy.position.set(Math.cos(a)*b.r,b.y+Math.sin(tt*0.7+i)*0.8,Math.sin(a)*b.r);const a2=a+0.1*Math.sign(b.w);dmy.lookAt(Math.cos(a2)*b.r,dmy.position.y,Math.sin(a2)*b.r);dmy.scale.set(0.9,Math.sin(tt*b.f+i)*1.3,0.9);dmy.updateMatrix();BIRDS.setMatrixAt(i,dmy.matrix)}BIRDS.instanceMatrix.needsUpdate=true;
