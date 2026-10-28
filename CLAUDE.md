@@ -63,6 +63,7 @@ A small gameplay prototype of one chapter, in side view. The real game will be q
   - `timeOf(levelSeconds)` maps level time to AudioContext time and `levelAt(T)` back (`anchorT` = level start, minus the lag from any warps). Never use `anchorT` directly. A music file has no scheduled end: the frame loop fades it out near the level's end.
   - `clock()` returns the *heard* time: it compensates output latency and is smoothed against `performance.now()`.
   - Inputs use the event's own `timeStamp` through `clockAt()`.
+  - Move sounds play when the input lands, except a zipline's landing: its sound is scheduled on the landing beat (`n.snd`), whenever the player lets go or keeps holding.
   - The audio delay offset (`offsetMs`) is user-set or measured with the Calibrate screen, and saved in localStorage.
 - Built-in charts live in `CHART`: per layer, 32 beats of `[beat, type, holdBeats]`, with type `t`/`u`/`d`/`h`/`k` (kick)/`b` (brace)/`w` (both thumbs). The boss chart is `BOSS_CHART`, same format. `LV` is the level being played (`{L, song, path, nd}`) and `ACT` its notes being judged.
 

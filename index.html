@@ -389,7 +389,7 @@ function onLedge(th,r,o,y){return new THREE.Vector3(Math.cos(th)*r-Math.sin(th)*
 function addTo(g,list,geo,mat){if(!list.length)return;const m=inst(geo,mat,list);S.remove(m);g.add(m)}
 function glowAt(g,p,c,sz){const s=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:c,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,opacity:0.75}));s.position.copy(p);s.scale.set(sz,sz,1);g.add(s)}
 /* w = how long a jump lasts: it takes off on the note and lands before the next one */
-function prepNotes(sg){const N=sg.notes;N.forEach((n,i)=>{const nx=N[i+1];n.w=n.type==='up'?Math.min(clamp(sg.spb*0.9,0.36,0.62),nx?nx.at-n.at-0.04:9):0;n.j=n.hj=null;n.bonk=0;n.jt=0})}
+function prepNotes(sg){const N=sg.notes;N.forEach((n,i)=>{const nx=N[i+1];n.w=n.type==='up'?Math.min(clamp(sg.spb*0.9,0.36,0.62),nx?nx.at-n.at-0.04:9):0;n.j=n.hj=null;n.bonk=0;n.jt=0;n.snd=0})}
 function buildLevel(L,sg,th0,y0){if(LVG)dropGroup(LVG);const g=LVG=new THREE.Group();S.add(g);const st=LSTYLE[L],kind=st.path;
  prepNotes(sg);const len=SPEED*sg.end+3;
  const P={th0,y0,stairs:kind==='stairs',slope:clamp((y0-layerTop(L+1))/len,MINPITCH,0.12)};
@@ -783,7 +783,7 @@ function warp(){if(!AC||G.state!=='play'||!LV)return;const t=AC.currentTime,D=GL
  if(TRK){const end=Math.max(...WARPS.map(w=>w.t0+w.dur)),n=96,c=new Float32Array(n);for(let k=0;k<n;k++)c[k]=warpRate(t+(end-t)*k/(n-1));
   TRK.src.forEach(s=>{const pr=s.playbackRate;try{if(pr.cancelAndHoldAtTime)pr.cancelAndHoldAtTime(t);else pr.cancelScheduledValues(t);pr.setValueCurveAtTime(c,t+0.001,end-t)}catch(e){}})}}
 /* move sounds: short and unpitched, so they never clash with a song */
-function sfx(type){if(!AC)return;const t=AC.currentTime;
+function sfx(type,at){if(!AC)return;const t=Math.max(AC.currentTime,at||0);
  if(type==='tap'){nz(t,0.07,0.32,'bandpass',1500,1.5);voice('triangle',190,t,0.002,0.09,0.12,null,90)}
  else if(type==='kick'){nz(t,0.18,0.4,'bandpass',900,2);voice('triangle',140,t,0.002,0.12,0.14,null,60)}else if(type==='brace')nz(t,0.12,0.35,'lowpass',500);
  else if(type==='both'){nz(t,0.35,0.3,'lowpass',380);voice('sawtooth',110,t,0.01,0.3,0.06,null,55)}
@@ -944,7 +944,7 @@ function showHint(key){const tx=HINTS[key][G.kb?1:0];
 function showCard(L,ms){const l=LAYERS[L],bpm=Math.round(LV.song.bpm)+' bpm';if(G.custom)cardText('Your song · '+l.name,CU.name,bpm,ms);else cardText(l.ord,l.name,l.m+' m · '+bpm,ms)}
 function cardText(o,n,d,ms){$('cO').textContent=o;$('cN').textContent=n;$('cD').textContent=d;const c=$('card');c.classList.add('show');clearTimeout(cardText.t);cardText.t=setTimeout(()=>c.classList.remove('show'),ms||3200)}
 /* built-in songs answer a good move with a note from the current chord; music files get sfx only */
-function chime(n){if(!AC||!LV||LV.song.proc===undefined)return;const t=AC.currentTime;const ch=MUSIC[LV.song.proc].ch[Math.floor((((n.k||0)%16)+16)%16/4)];voice('sine',mtof(ch[G.combo%4]+24),t,0.003,0.6,0.09,[dly,rev]);nz(t,0.05,0.22,'bandpass',1100,3)}
+function chime(n,at){if(!AC||!LV||LV.song.proc===undefined)return;const t=Math.max(AC.currentTime,at||0);const ch=MUSIC[LV.song.proc].ch[Math.floor((((n.k||0)%16)+16)%16/4)];voice('sine',mtof(ch[G.combo%4]+24),t,0.003,0.6,0.09,[dly,rev]);nz(t,0.05,0.22,'bandpass',1100,3)}
 function creak(){if(!AC)return;const t=AC.currentTime;voice('sawtooth',320,t,0.01,0.28,0.05,null,170);nz(t,0.25,0.12,'bandpass',900,6)}
 function footstep(t,L){if(!AC)return;const f=[784,698,659,880,587,659][L];voice('triangle',f,t,0.002,0.07,0.05,[rev]);nz(t,0.02,0.07,'bandpass',3200,5)}
 function thud(){if(!AC)return;const t=AC.currentTime;nz(t,0.3,0.35,'lowpass',260);voice('sawtooth',90,t,0.005,0.25,0.05,null,45)}
@@ -953,7 +953,7 @@ function coinsUI(){$('coins').textContent=G.coins+' coins';$('vCoins').textConte
 function addCoins(k){G.coins+=k;G.lvCoins+=k;coinsUI()}
 function score(n,q){if(q==='g'&&G.up.fork)q='p';addErr(G.lastSd||0,q);n.j=q;G[q]++;G.combo++;G.max=Math.max(G.max,G.combo);G.lvMax=Math.max(G.lvMax,G.combo);
  addCoins(q==='p'?2+(G.up.purse?1:0):1);growHit();if(G.up.jar&&G.combo%8===0)addCoins(4);
- if(n.boss&&n.type!=='up'&&n.type!=='duck')bossDamage(n.type==='hold'?3:q==='p'?1.5:1);chime(n);sfx(n.type);praise(q);fxResult(q)}
+ if(n.boss&&n.type!=='up'&&n.type!=='duck')bossDamage(n.type==='hold'?3:q==='p'?1.5:1);if(!n.snd){const at=n.type==='hold'?n.endTime:0;chime(n,at);sfx(n.type,at)}praise(q);fxResult(q)}
 function loseHeart(){if(G.up.hat&&!G.hatUsed){G.hatUsed=true;G.jsub='the hat took it';return}
  G.hearts=Math.max(0,G.hearts-1);if(G.hearts<=0&&G.up.wind&&!G.windUsed){G.windUsed=true;G.hearts=2;G.jsub='second wind'}heartsUI();if(G.hearts<=0)setTimeout(fallOut,450)}
 function hit(n,q){score(n,q);n.jt=clock();if(n.type==='tap')G.atk=clock();else if(n.type==='up'&&n.boss)G.jump=clock();else if(n.type==='duck')G.duck=clock();else if(n.type==='kick')G.kick=clock();else if(n.type==='brace')G.brace=clock();else if(n.type==='both')G.heave=clock();if(n.type==='up'&&!n.boss)G.busy=n.time+n.w;
@@ -1272,7 +1272,8 @@ function frame(){requestAnimationFrame(frame);{const h=G.state!=='play'||G.pause
   for(let i=G.ni;i<Math.min(ACT.length,G.ni+3);i++){const m=ACT[i];const key=(m.boss?'boss':'')+m.type;if(HINTS[key]&&!G.seen[key]&&m.time-tn<Math.max(2.2,sp*4.5)){G.seen[key]=1;showHint(key)}}
   if(G.mode==='descent'&&tn>timeOf(sg.end)+0.45&&!G.zip)levelClear();else if(G.mode==='boss'&&G.ni>=ACT.length&&!G.zip)fallOut('The Inspector outlasted you');
   if(now<G.goT){const k=Math.ceil((G.goT-now)/sp);if(k<=4&&k!==G.cd){G.cd=k}}else if(G.cd){G.cd=0;judgeShow('Go','#f2c46d','')}}
- /* zipline input: auto-finish if the player keeps holding past the landing */
+ /* zipline: the landing sound is scheduled ahead, on the landing beat, whenever the player lets go (letting go too early is a miss well before this). Auto-finish if the player keeps holding past the landing */
+ if(G.zip&&G.state==='play'&&!G.zip.n.snd&&ctxNow()+0.1>=G.zip.n.endTime){const n=G.zip.n;n.snd=1;chime(n,n.endTime);sfx(n.type,n.endTime)}
  if(G.zip&&G.state==='play'){const n=G.zip.n;if(tn>n.endTime+W_G){G.lastSd=0;if(n.boss)G.atk=now;score(n,n.hj==='p'?'p':'g');holdFxEnd(n.j);G.ni++;G.zip=null}}
  /* hero: walks the ledge at a steady pace. Position is a pure function of level time, so the world stays on the beat whatever the player does;
     input only changes the outcome (a clean jump or a fall, a whack or a bite, riding the line or dropping into the chasm) */
