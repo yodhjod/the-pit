@@ -961,7 +961,7 @@ function hit(n,q){score(n,q);n.jt=clock();if(n.type==='tap')G.atk=clock();else i
 function fail(n,why){n.j='m';n.jt=clock();G.m++;G.combo=0;thud();glitch();fxResult('m');G.shake=0.35;judgeShow(why||'Missed','#f08a8a','','m');addErr(G.lastSd==null?0.25:G.lastSd,'m');G.lastSd=null;G.ni++;
  if(n.type==='tap'){if(n.boss){G.trip=clock();creak()}else G.hurt=clock()}else if(n.type==='up'){if(n.obj)n.obj.userData.hitT=clock();G.hurt=clock()}else if(n.type==='duck'){G.hurt=clock();n.bonk=clock()}else G.hurt=clock();
  if(G.up.cape&&n.type!=='tap'&&n.type!=='hold'){G.jsub='the cape caught you';return}loseHeart()}
-function holdStart(n,q){n.hj=q;G.zip={n,state:'ride'};chime(n);fxResult(q,true);addErr(G.lastSd||0,q);judgeShow('Hold…',q==='p'?'#f2c46d':'#bfe6ef','let go on the ring',q)}
+function holdStart(n,q,id){n.hj=q;G.holdPtr=id;G.zip={n,state:'ride'};chime(n);fxResult(q,true);addErr(G.lastSd||0,q);judgeShow('Hold…',q==='p'?'#f2c46d':'#bfe6ef','let go on the ring',q)}
 function holdRelease(t){const z=G.zip;if(!z||z.state!=='ride')return;const n=z.n;const d=t-n.endTime;
  if(d<-W_G){G.zip=null;n.j='m';G.m++;G.combo=0;thud();glitch();fxResult('m');holdFxEnd('m');G.shake=0.3;judgeShow('Let go too early','#f08a8a','','m');G.ni++;loseHeart()}
  else{G.lastSd=d;const q=(Math.abs(d)<=W_P&&n.hj==='p')?'p':'g';if(n.boss)G.atk=clock();score(n,q);holdFxEnd(q);G.zip=null;G.ni++}}
@@ -982,10 +982,10 @@ function onPress(t,id){const n=curNote();if(G.state!=='play'||G.zip)return;
  if(t<G.lock){offBal(n,t);return}if(!n||n.j){freeAct('tap',t,id);return}
  if(n.type==='both'){const b=G.both;if(b&&b.n===n&&b.id!==id&&t-b.t<=BOTHW){G.both=null;const m=(b.t+t)/2;G.lastSd=m-n.time;hit(n,Math.abs(m-n.time)<=W_P+0.02?'p':'g');return}}
  const d=Math.abs(n.time-t);G.lastSd=t-n.time;if(d>W_G){tooEarly(n,t);freeAct('tap',t,id);return}const q=d<=W_P?'p':'g';
- if(n.type==='tap')hit(n,q);else if(n.type==='hold')holdStart(n,q);else if(n.type==='both'){G.both={n,t,id}}else fail(n,'Wrong move · '+WRONG[n.type])}
-function onSwipe(dir,t){const n=curNote();if(G.state!=='play'||G.zip)return;if(t<G.lock){offBal(n,t);return}const mv=dir==='up'?'up':dir==='down'?'duck':dir===FWD?'kick':'brace';
+ if(n.type==='tap')hit(n,q);else if(n.type==='hold')holdStart(n,q,id);else if(n.type==='both'){G.both={n,t,id}}else fail(n,'Wrong move · '+WRONG[n.type])}
+function onSwipe(dir,t,id){const n=curNote();if(G.state!=='play'||G.zip)return;if(t<G.lock){offBal(n,t);return}const mv=dir==='up'?'up':dir==='down'?'duck':dir===FWD?'kick':'brace';
  if(!n||n.j){freeAct(mv,t);return}const sw=isSw(n);const d=Math.abs(n.time-t);G.lastSd=t-n.time;if(d>(sw?W_S:W_G)){tooEarly(n,t);freeAct(mv,t);return}const q=d<=W_P+(sw?0.02:0)?'p':'g';
- if(n.type==='tap'||SWT[n.type]===dir)hit(n,q);else if(n.type==='hold')holdStart(n,q);else fail(n,'Wrong move · '+WRONG[n.type])}
+ if(n.type==='tap'||SWT[n.type]===dir)hit(n,q);else if(n.type==='hold')holdStart(n,q,id);else fail(n,'Wrong move · '+WRONG[n.type])}
 
 /* ---------- run flow: newRun → nodes (descent / vendor / boss); death ends the run ---------- */
 /* dev switches for testing: ?autoplay plays perfectly, ?node=N starts the run at RUN[N], ?coins=N starts rich */
@@ -1134,15 +1134,15 @@ let W_S=0.18;const SW_DIST=16;
 /* the axis the next move expects wins diagonal swipes */
 function swipeDir(dx,dy){const ax=Math.abs(dx),ay=Math.abs(dy),n=curNote(),hz=n&&(n.type==='kick'||n.type==='brace'),v=dy<0?'up':'down',h=dx>0?'right':'left';
  if(hz)return ax>=SW_DIST&&ax>=ay*0.7?h:ay>=SW_DIST?v:null;return ay>=SW_DIST&&ay>=ax*0.7?v:ax>=SW_DIST?h:null}
-function resolveSwipe(p,dir,ts){p.done=true;if(G.fx&&!G.fx.done)G.fx.swipe=dir;onSwipe(dir,nowIn(ts)-0.02)}
+function resolveSwipe(p,dir,ts,id){p.done=true;if(G.fx&&!G.fx.done)G.fx.swipe=dir;onSwipe(dir,nowIn(ts)-0.02,id)}
 gameEl.addEventListener('pointerdown',e=>{if(e.target.closest('.overlay,#pauseB,#skipB'))return;e.preventDefault();if(G.state!=='play'||G.paused)return;G.kb=false;const t=nowIn(e.timeStamp);const n=curNote();{const r=gameEl.getBoundingClientRect();newFx(e.clientX-r.left,e.clientY-r.top)}
  try{gameEl.setPointerCapture(e.pointerId)}catch(_){}
  if(!G.zip&&!(n&&!n.j&&!isSw(n)&&n.time-t<0.6)){pend[e.pointerId]={x:e.clientX,y:e.clientY,t,done:false};return}
- pend[e.pointerId]={x:e.clientX,y:e.clientY,t,done:true};G.holdPtr=e.pointerId;onPress(t,e.pointerId)});
+ pend[e.pointerId]={x:e.clientX,y:e.clientY,t,done:true};onPress(t,e.pointerId)});
 gameEl.addEventListener('pointermove',e=>{const p=pend[e.pointerId];if(!p||p.done)return;let evs=e.getCoalescedEvents?e.getCoalescedEvents():[];if(!evs||!evs.length)evs=[e];
- for(const ev of evs){const dir=swipeDir(ev.clientX-p.x,ev.clientY-p.y);if(dir){resolveSwipe(p,dir,ev.timeStamp||e.timeStamp);break}}});
+ for(const ev of evs){const dir=swipeDir(ev.clientX-p.x,ev.clientY-p.y);if(dir){resolveSwipe(p,dir,ev.timeStamp||e.timeStamp,e.pointerId);break}}});
 function ptrEnd(e,cancel){const p=pend[e.pointerId];delete pend[e.pointerId];if(G.paused)return;
- if(p&&!p.done){const dir=swipeDir(e.clientX-p.x,e.clientY-p.y);if(dir)resolveSwipe(p,dir,e.timeStamp);else if(!cancel){G.holdPtr=e.pointerId;onPress(p.t,e.pointerId)}}
+ if(p&&!p.done){const dir=swipeDir(e.clientX-p.x,e.clientY-p.y);if(dir)resolveSwipe(p,dir,e.timeStamp,e.pointerId);else if(!cancel){onPress(p.t,e.pointerId)}}
  if(G.zip&&G.zip.state==='ride'&&G.holdPtr===e.pointerId)holdRelease(nowIn(e.timeStamp))}
 gameEl.addEventListener('pointerup',e=>ptrEnd(e,false));gameEl.addEventListener('pointercancel',e=>ptrEnd(e,true));
 gameEl.addEventListener('touchmove',e=>{if(!e.target.closest('.overlay'))e.preventDefault()},{passive:false});
@@ -1151,8 +1151,8 @@ function menuKey(e){if(e.repeat||(e.code!=='Enter'&&e.code!=='Space'))return;con
  const o=OVERLAYS.find(id=>!$(id).hidden);if(!o||performance.now()-(G.ovT||0)<700)return;e.preventDefault();$(o).querySelector('button.btn').click()}
 const UPK=['ArrowUp','KeyW'],DNK=['ArrowDown','KeyS'],RTK=['ArrowRight','KeyD'],LTK=['ArrowLeft','KeyA'],kdir=c=>UPK.includes(c)?'up':DNK.includes(c)?'down':RTK.includes(c)?'right':LTK.includes(c)?'left':null;
 addEventListener('keydown',e=>{if(G.state==='play'&&!e.repeat&&(e.code==='Escape'||e.code==='KeyP')){G.paused?resumeGame():pauseGame();e.preventDefault();return}if(G.state!=='play'||G.paused){menuKey(e);return}if(e.repeat)return;if(['Tab','Escape','MetaLeft','MetaRight','AltLeft','AltRight','ControlLeft','ControlRight'].includes(e.code))return;G.kb=true;const t=nowIn(e.timeStamp);const kd=kdir(e.code);{const [px,py]=markerXY();newFx(px,py);G.fx.swipe=kd}
- if(kd)onSwipe(kd,t);else{G.holdPtr='key';onPress(t,e.code)}e.preventDefault()});
-addEventListener('keyup',e=>{if(!G.paused&&G.zip&&G.zip.state==='ride'&&G.holdPtr==='key'&&!kdir(e.code))holdRelease(nowIn(e.timeStamp))});
+ if(kd)onSwipe(kd,t,e.code);else onPress(t,e.code);e.preventDefault()});
+addEventListener('keyup',e=>{if(!G.paused&&G.zip&&G.zip.state==='ride'&&G.holdPtr===e.code)holdRelease(nowIn(e.timeStamp))});
 /* pause: the audio clock stops (AC.suspend), and with it the level, the music and the judging. Resume counts in 3-2-1 first */
 let pzCd=null;
 function pauseGame(){if(G.state!=='play')return;if(pzCd){clearInterval(pzCd);pzCd=null}if(!G.paused){CK.hold=clock();G.pzLt=LV?levelAt(CK.hold-offsetMs/1000):0;G.paused=true;if(AC)AC.suspend()}
@@ -1262,7 +1262,7 @@ function frame(){requestAnimationFrame(frame);{const h=G.state!=='play'||G.pause
  if(G.state==='play'){
   if(DEV.auto){const n=curNote();if(n&&!n.j&&!G.zip&&tn>=n.time){G.lastSd=0;if(n.type==='hold')holdStart(n,'p');else hit(n,'p')}if(G.zip&&tn>=G.zip.n.endTime)holdRelease(tn)}
   /* pending swipes that never moved become presses */
-  for(const id in pend){const p=pend[id];if(!p.done&&tn-p.t>0.5){p.done=true;G.holdPtr=+id;onPress(p.t,+id)}}
+  for(const id in pend){const p=pend[id];if(!p.done&&tn-p.t>0.5){p.done=true;onPress(p.t,+id)}}
   /* missed notes */
   const n=curNote();const swN=isSw(n);const pendOn=swN&&Object.keys(pend).some(k=>!pend[k].done),one=G.both&&G.both.n===n;
   if(one&&!n.j&&tn>G.both.t+BOTHW){G.both=null;G.lastSd=null;fail(n,'One thumb is not enough')}
