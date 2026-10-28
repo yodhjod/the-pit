@@ -78,6 +78,8 @@ body{background:var(--ink);color:var(--paper);font-family:var(--serif);-webkit-u
 .ht.off{background:rgba(246,234,210,.18);box-shadow:none}
 #hint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(158px + env(safe-area-inset-bottom,0px));max-width:min(86vw,440px);text-align:center;font-family:var(--serif);font-style:italic;font-size:19px;line-height:1.25;background:rgba(13,10,18,.72);border:1px solid var(--line);border-radius:14px;padding:8px 16px;pointer-events:none;opacity:0;transition:opacity .4s}
 #hint.show{opacity:1}
+#phase{position:absolute;left:50%;top:64%;transform:translate(-50%,-50%);font-family:var(--serif);font-style:italic;font-weight:600;font-size:48px;letter-spacing:.04em;text-shadow:0 2px 18px rgba(0,0,0,.85);pointer-events:none;opacity:0;transition:opacity .12s}
+#phase.show{opacity:1}
 #coins{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--gold);margin-top:6px}
 #boss{position:absolute;top:calc(92px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(70vw,320px);text-align:center;pointer-events:none;font-style:italic;font-weight:600;font-size:22px;text-shadow:0 1px 10px rgba(0,0,0,.7)}
 #boss .bar{height:8px;border-radius:4px;background:rgba(246,234,210,.18);margin-top:4px;overflow:hidden}
@@ -120,6 +122,7 @@ body{background:var(--ink);color:var(--paper);font-family:var(--serif);-webkit-u
   <div id="depth" hidden><b id="dM">0 m</b><i id="dL">The Rim</i><div id="hearts" aria-label="Lanterns left"></div><div id="coins">0 coins</div></div>
   <div id="boss" hidden>The Inspector<div class="bar"><i id="bossHp"></i></div></div>
   <div id="hint"></div>
+  <div id="phase"></div>
   <div id="card"><small id="cO">Edge of the Pit</small><h2 id="cN">The Rim</h2><span id="cD">0 m</span></div>
   <div id="fx"></div>
   <button id="pauseB" hidden aria-label="Pause">&#10074;&#10074;</button>
@@ -309,20 +312,22 @@ const BOSS_LEN=32,BOSS_LOOPS=3,BOSS_HP=40;
 /* the dare room: a short, hard side level (played twice, faster the second time) with its own song (MUSIC[6], BPMS[6]) */
 const DARE_CHART=[[0,'t'],[0.5,'t'],[1,'t'],[2,'u'],[3,'d'],[3.5,'t'],[4,'t'],[5,'u'],[6,'t'],[6.5,'t'],[7,'d'],[8,'h',2],[10.5,'t'],[11,'t'],[12,'u'],[13,'d'],[13.5,'t'],[14,'t'],[14.5,'t'],[15,'u'],[16,'d'],[16.5,'t'],[17,'t'],[18,'u'],[19,'t'],[19.5,'t'],[20,'d'],[21,'u'],[22,'t'],[22.5,'t'],[23,'t'],[24,'h',2],[26.5,'t'],[27,'d'],[28,'u'],[29,'t'],[29.5,'t'],[30,'d'],[31,'t'],[31.5,'t']];
 /* minibosses: one at the end of each descent level (not after a dare room or your own song), a call-and-response fight in the spirit of Melatonin.
-   Each phrase is one bar: the miniboss plays it (the call: it points at each spot it will strike, with that strike's sound), then strikes on the same rhythm in the next bar (the answer).
+   A phrase is three bars: the call (the miniboss flies to the middle of the screen and strikes a ghost of the explorer on the phrase's rhythm, the ghost dodging, each strike with its growl),
+   an empty bar (it flies back in front of the explorer; the music is drums and bass only in these two bars, see sg.thin) and the answer (it strikes the explorer on the same rhythm, full music).
+   A label names the phase: Listen, Ready 3 2 1, Go (sg.phr, #phase).
    Inputs are only tap (dodge a strike) and hold (brace against a beam for as long as it lasts); the game picks how the explorer dodges each strike (kind: low sweep → jump, high swipe → duck, slam from the left/right → hop aside).
    A phrase answered with no mistake costs it 1 HP. Phrases (MPH, easiest first) get denser through the fight and start harder deeper down.
-   A cycle is MINI_PH phrases after a bar's breather; each cycle plays faster (RAMP). If MINI_CYC cycles run out first, it wins. Music: MUSIC[7+L] at BPMS[7+L] */
+   A cycle is MINI_PH phrases after a bar's breather (64 beats); each cycle plays faster (RAMP). If MINI_CYC cycles run out first, it wins. Music: MUSIC[7+L] at BPMS[7+L] */
 const MINIS=[
- {name:'Pitty the Mascot',sub:'The official mascot. Costume sold separately.',hp:4,col:'#e8a23c',eye:'#ffe066'},
- {name:'The Conductor',sub:'Your ticket has been punched. Repeatedly.',hp:5,col:'#4f8a8b',eye:'#9fffe0'},
- {name:'The Curator',sub:'You would look lovely in the collection.',hp:5,col:'#cfc3a6',eye:'#ff6a3d'},
- {name:'The Choir',sub:'It knows the words. You do not.',hp:6,col:'#b05ea8',eye:'#c9ff6a'},
- {name:'The Notary',sub:'Sign here. And here. And here, with your soul.',hp:6,col:'#3a3850',eye:'#ff3b5c'}];
+ {name:'Pitty the Mascot',sub:'The official mascot. Costume sold separately.',hp:3,col:'#e8a23c',eye:'#ffe066'},
+ {name:'The Conductor',sub:'Your ticket has been punched. Repeatedly.',hp:4,col:'#4f8a8b',eye:'#9fffe0'},
+ {name:'The Curator',sub:'You would look lovely in the collection.',hp:4,col:'#cfc3a6',eye:'#ff6a3d'},
+ {name:'The Choir',sub:'It knows the words. You do not.',hp:5,col:'#b05ea8',eye:'#c9ff6a'},
+ {name:'The Notary',sub:'Sign here. And here. And here, with your soul.',hp:5,col:'#3a3850',eye:'#ff3b5c'}];
 const MPH=[[[0,'t'],[2,'t']],[[0,'t'],[1,'t'],[2,'t']],[[0,'t'],[2,'t'],[3,'t']],[[0,'h',2],[3,'t']],[[0,'t'],[1,'t'],[2,'t'],[3,'t']],[[0,'t'],[1,'t'],[1.5,'t'],[3,'t']],
  [[0,'t'],[0.5,'t'],[1,'t'],[3,'t']],[[0,'t'],[1,'h',1.5],[3,'t']],[[0,'t'],[1.5,'t'],[2,'t'],[3,'t']],[[0,'t'],[0.5,'t'],[1.5,'t'],[2,'t'],[3,'t']],
  [[0,'h',1],[1.5,'t'],[2,'t'],[2.5,'t'],[3,'t']],[[0,'t'],[0.5,'t'],[1,'t'],[2,'t'],[2.5,'t'],[3,'t']],[[0,'t'],[0.75,'t'],[1.5,'t'],[2,'t'],[3,'t'],[3.5,'t']],[[0,'t'],[0.5,'t'],[1,'t'],[1.5,'t'],[2,'h',1.5]]];
-const MINI_PH=7,MINI_CYC=3;
+const MINI_PH=5,MINI_CYC=3;
 const BOSS_CHART=[[0,'t'],[1,'t'],[2,'d'],[3,'t'],[4,'t'],[5,'u'],[6,'t'],[6.5,'t'],[7,'t'],[8,'h',2],[11,'t'],[12,'d'],[13,'u'],[14,'t'],[15,'t'],
  [16,'t'],[16.5,'t'],[17,'t'],[18,'d'],[19,'u'],[20,'t'],[21,'d'],[22,'t'],[22.5,'t'],[23,'t'],[24,'h',3],[28,'u'],[29,'d'],[30,'t'],[31,'t']];
 
@@ -694,6 +699,12 @@ const MCOL={low:'#ffd166',high:'#7fd4ff',left:'#ff7a9c',right:'#c58cff'},MINIG=n
  const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:'#ffffff',transparent:true,opacity:0.35,blending:THREE.AdditiveBlending,depthWrite:false}));gl.scale.set(7,7,1);gl.position.z=-1;MINIG.add(gl);MINIG.userData.gl=gl;
  const cg=new THREE.ConeGeometry(0.26,1,7);cg.translate(0,0.5,0);for(let i=0;i<2;i++){const a=new THREE.Mesh(cg,MARM);a.visible=false;S.add(a);MARMS.push(a)}
  MBEAM.visible=false;S.add(MBEAM);MINIG.visible=false;S.add(MINIG);[MINIG,MBEAM,...MARMS].forEach(o=>o.traverse(c=>c.userData.noCut=true))})();
+/* the call's ghost: a faint copy of the explorer that the miniboss strikes in the middle of the screen, dodging each strike the way the explorer will */
+const GHOST=new THREE.Sprite(new THREE.SpriteMaterial({map:FR.idle,transparent:true,opacity:0,color:'#9fc4ff',depthWrite:false}));GHOST.center.copy(HERO.center);GHOST.scale.copy(HERO.scale);GHOST.visible=false;S.add(GHOST);
+/* how the explorer (or the ghost) dodges a strike of kind k, d s after its beat: [pose, rise, sidestep along the ledge] or null. A beam (len s) is braced */
+function dodge(k,d,len){if(k==='beam')return d>=-0.1&&d<=len+0.1?['brace',0,0]:null;if(d<-0.12||d>0.5)return null;const u=(d+0.12)/0.62;
+ if(k==='low')return[u<0.2?'push':u<0.7?'vault':'fall',Math.sin(Math.PI*u)*1.3,0];if(k==='high')return['duck',0,0];
+ const e=u<0.3?smooth(u/0.3):1-smooth((u-0.3)/0.7);return[u<0.45?'push':'land',u<0.45?Math.sin(Math.PI*u/0.45)*0.45:0,(k==='left'?1:-1)*1.1*e]}
 
 /* ---------- sparkles ---------- */
 const SPN=60,spPos=new Float32Array(SPN*3),spInfo=[];for(let i=0;i<SPN;i++)spInfo.push({life:0});
@@ -778,13 +789,13 @@ const MUSIC=[
 function musicBeat(L,k,t){if(LIVE.length>300){const now=AC.currentTime;for(let i=LIVE.length-1;i>=0;i--)if(LIVE[i].end<now)LIVE.splice(i,1)}OUT=musP.in;try{musicBeat0(L,k,t)}finally{OUT=VG.fx}}
 function musicBeat0(L,k,t){const sp=BSP||SPBL[L],mu=MUSIC[L],rel=((k%16)+16)%16,ci=Math.floor(rel/4),chord=mu.ch[ci],T=G.tier;
  if(rel===0&&dly)dly.delayTime.setValueAtTime(sp*0.75,t);
- if(rel%4===0)pad(chord,t,sp*4.2,mu.cut,L===4?0.03:0.022);
+ if(rel%4===0&&!THIN)pad(chord,t,sp*4.2,mu.cut,L===4?0.03:0.022);
  if(k<0){if(k===-8||k===-4)voice('sine',mtof(chord[3]+12),t,0.01,1.4,0.05,[dly,rev]);return}
  voice('sine',120,t,0.004,0.3,L===4&&k%2?0.35:0.55,null,40);nz(t,0.025,0.09,'highpass',5200);
  if(T<1)return;
  if(mu.shk){nz(t+sp/2,0.05,0.06,'highpass',7000);nz(t,0.03,0.03,'highpass',8000)}
  if(rel%2===0||L<2)voice('triangle',mtof(mu.bass[ci]),t,0.01,sp*1.5,0.16);
- if(T<2)return;
+ if(T<2||THIN)return;
  const top=chord.map(n=>n+12);
  if(T>=3)voice('triangle',mtof(top[(rel*3+1)%4]+12),t+sp/2,0.006,sp*0.8,0.022,[dly,rev]);
  if(mu.arp==='bell'){[0,0.5].forEach((o,k)=>voice('sine',mtof(top[(rel*2+k)%4]),t+o*sp,0.005,0.9,0.045,[dly,rev]))}
@@ -817,7 +828,8 @@ function growApply(rise){if(!AC||!TRK)return;const sg=LV&&LV.song;let t=AC.curre
 /* the distorted copy comes out at near full scale whatever the song's level, so its level is matched to each song's own loudness (WET_RMS = its typical level before matching). The built-in music's level is fixed (0.05, measured) */
 /* pitch: semitones the song is shifted during a mistake, as clean copies laid over the crunch; several make a clashing cluster. shift = their level next to the song. The built-in music bends by pitch[0] */
 const GL={dur:0.5,dry:0.03,wet:0.95,drive:40,bits:3,cut:250,q:4,slow:0.5,slowDur:0.9,pitch:[1,-1],shift:0.7},WET_RMS=0.75;
-const LIVE=[];let BSP=0;
+/* THIN: the beat being generated plays drums and bass only (a miniboss's call and empty bar) */
+const LIVE=[];let BSP=0,THIN=false;
 let OUT=null,musP=null,musT=null;
 function mkBus(out){const i=AC.createGain(),dry=AC.createGain(),sh=AC.createWaveShaper(),f=AC.createBiquadFilter(),wet=AC.createGain(),c=new Float32Array(1024);
  const st=Math.pow(2,GL.bits-1);for(let k=0;k<1024;k++)c[k]=Math.round(Math.tanh((k/511.5-1)*GL.drive)*st)/st*0.9;sh.curve=c;f.type='lowpass';f.frequency.value=6000;f.Q.value=GL.q;wet.gain.value=0;
@@ -846,11 +858,10 @@ function warp(){if(!AC||G.state!=='play'||!LV)return;const t=AC.currentTime,D=GL
  if(TRK){const end=Math.max(...WARPS.map(w=>w.t0+w.dur)),n=96,c=new Float32Array(n);for(let k=0;k<n;k++)c[k]=warpRate(t+(end-t)*k/(n-1));
   TRK.src.forEach(s=>{const pr=s.playbackRate;try{if(pr.cancelAndHoldAtTime)pr.cancelAndHoldAtTime(t);else pr.cancelScheduledValues(t);pr.setValueCurveAtTime(c,t+0.001,end-t)}catch(e){}})}}
 /* move sounds: short and unpitched, so they never clash with a song */
-/* miniboss strikes: each kind has its own sound, played on the call and again, softer, when you answer it (v = level, len = a beam's length) */
-function miniCue(k,t,v,len){if(!AC)return;v=v||1;t=Math.max(AC.currentTime,t);
- if(k==='low')voice('square',98,t,0.004,0.2,0.07*v,[rev],62);else if(k==='high')voice('square',392,t,0.004,0.16,0.045*v,[rev],520);
- else if(k==='beam')voice('sawtooth',147,t,0.03,Math.max(0.2,len||0.4),0.045*v,[rev]);else voice('triangle',k==='left'?262:330,t,0.003,0.22,0.09*v,[dly,rev],k==='left'?196:440);
- nz(t,0.04,0.12*v,'bandpass',k==='low'?600:k==='high'?3000:1500,4)}
+/* miniboss strikes: each kind has its own growl (two saws a tritone apart, falling, over a sub and a hit), played on the call and again, as loud, when you answer it (v = level, len = a beam's length) */
+function miniCue(k,t,v,len){if(!AC)return;v=v||1;t=Math.max(AC.currentTime,t);const f={low:110,high:233,left:147,right:165,beam:123}[k],bm=k==='beam',d=bm?Math.max(0.25,len||0.4):0.28;
+ voice('sawtooth',f,t,0.004,d,0.12*v,[rev],bm?0:f*0.7);voice('sawtooth',f*1.414,t,0.004,d,0.08*v,[rev],bm?0:f);voice('square',f/2,t,0.004,d*0.8,0.08*v,null,bm?0:f*0.35);
+ nz(t,0.07,0.4*v,'bandpass',k==='high'?2600:k==='low'?500:1200,2)}
 function sfx(type,at){if(!AC)return;const t=Math.max(AC.currentTime,at||0);
  if(type==='tap'){nz(t,0.07,0.32,'bandpass',1500,1.5);voice('triangle',190,t,0.002,0.09,0.12,null,90)}
  else if(type==='kick'){nz(t,0.18,0.4,'bandpass',900,2);voice('triangle',140,t,0.002,0.12,0.14,null,60)}else if(type==='brace')nz(t,0.12,0.35,'lowpass',500);
@@ -1027,7 +1038,7 @@ function score(n,q){if(q==='g'&&G.up.fork)q='p';addErr(G.lastSd||0,q);n.j=q;G[q]
  /* chains: notes a beat or less apart, all hit. From the third on, +1 coin each */
  G.chain=G.lastHit!=null&&!n.boss&&n.at-G.lastHit<=spbNow(n.at)*1.02?G.chain+1:1;G.lastHit=n.at+(n.len||0);
  addCoins(((q==='p'?2+(G.up.purse?1:0):1)+(G.chain>=3?1:0))*(G.tier>=GROW.max&&!n.boss?2:1));growHit();if(G.up.jar&&G.combo%8===0)addCoins(4);
- if(n.boss&&n.type!=='up'&&n.type!=='duck')bossDamage(n.type==='hold'?3:q==='p'?1.5:1);if(!n.snd){const at=n.type==='hold'?n.endTime:0;chime(n,at);if(n.mini&&n.type==='tap')miniCue(n.kind,0,0.6);else sfx(n.type,at)}praise(q);fxResult(q);if(n.mini&&n.last)miniPhrase(n)}
+ if(n.boss&&n.type!=='up'&&n.type!=='duck')bossDamage(n.type==='hold'?3:q==='p'?1.5:1);if(!n.snd){const at=n.type==='hold'?n.endTime:0;chime(n,at);if(n.mini&&n.type==='tap')miniCue(n.kind,0,1);else sfx(n.type,at)}praise(q);fxResult(q);if(n.mini&&n.last)miniPhrase(n)}
 /* grace: after losing a lantern (or the hat taking it), misses cost nothing more and don't warp the music again, and whiffs don't knock the explorer off balance, for GRACE beats (at least GRACE_MIN s). A mistake slows the song and moves the next notes late, so without it one miss in a dense stretch snowballs */
 const GRACE=3,GRACE_MIN=1.4;
 function loseHeart(){if(clock()<G.grace)return;G.grace=clock()+Math.max(GRACE_MIN,GRACE*spbNow());if(G.up.hat&&!G.hatUsed){G.hatUsed=true;G.jsub='the hat took it';return}
@@ -1120,11 +1131,13 @@ const MINI={L:0,hp:4,max:4,dead:-1,hitT:-9};
 /* the fight as a song: a bar's breather, then MINI_PH phrases of call bar + answer bar, MINI_CYC times. Call notes become cues (sg.cues, not judged); answer notes are judged.
    Both carry the phrase's strike kinds (picked per note, fixed per run), ph (phrase index), and the answer's callT (its call's start, level s) */
 function miniSong(L){const ch=[],meta=[];let ph=0;
- for(let c=0;c<MINI_CYC;c++)for(let p=0;p<MINI_PH;p++){const b=c*64+4+p*8,P=MPH[Math.min(MPH.length-1,Math.floor(L*1.2+p*0.75+c*3)+(h3(ph,L,7)<0.5?1:0))];
+ const B=[];for(let c=0;c<MINI_CYC;c++)for(let p=0;p<MINI_PH;p++){const b=c*64+4+p*12,P=MPH[Math.min(MPH.length-1,Math.floor(L*1.2+p+c*3)+(h3(ph,L,7)<0.5?1:0))];B.push(b);
   P.forEach(([o,ty,hl],i)=>{const kind=ty==='h'?'beam':['low','high','left','right'][Math.floor(h3(ph*8+i,L,13)*4)%4];
-   ch.push([b+o,ty,hl]);meta.push({call:true,kind,ph});ch.push([b+4+o,ty,hl]);meta.push({call:false,kind,ph,last:i===P.length-1,callB:b})});ph++}
- const sg=procSong(7+L,ch,MINI_CYC*64,4,true,RAMP,64);sg.notes.forEach((n,i)=>Object.assign(n,meta[i],{boss:false,mini:true}));
- sg.cues=sg.notes.filter(n=>n.call);sg.notes=sg.notes.filter(n=>!n.call);sg.notes.forEach(n=>n.callT=sg.beats[n.callB+sg.lead]);return sg}
+   ch.push([b+o,ty,hl]);meta.push({call:true,kind,ph});ch.push([b+8+o,ty,hl]);meta.push({call:false,kind,ph,last:i===P.length-1,callB:b})});ph++}
+ const sg=procSong(7+L,ch,MINI_CYC*64,4,true,RAMP,64),bt=x=>sg.beats[x+sg.lead];sg.notes.forEach((n,i)=>Object.assign(n,meta[i],{boss:false,mini:true}));
+ sg.cues=sg.notes.filter(n=>n.call);sg.notes=sg.notes.filter(n=>!n.call);sg.notes.forEach(n=>n.callT=bt(n.callB));
+ /* phr: each phrase's call, empty bar, answer and end (level s). thin: music beats with drums and bass only (the breathers, calls and empty bars) */
+ sg.phr=B.map(b=>({c:bt(b),g:bt(b+4),r:bt(b+8),e:bt(b+12)}));sg.thin=k=>{const p=((k%64)+64)%64;return p<4||(p-4)%12<8};return sg}
 function startMini(){const L=LV.L,M=MINIS[L],lc=G.lvCoins,lm=G.lvMax;G.mode='mini';loadId++;trackStop(1.2);
  const song=miniSong(L);prepNotes(song);LV={L,song,path:LV.path,nd:LV.nd};G.mini=G.pathEnd;G.cueI=0;
  Object.assign(MINI,{L,hp:M.hp,max:M.hp,dead:-1,hitT:-9});MEYE.color.set(M.eye);MINIG.userData.gl.material.color.set(M.eye);
@@ -1364,7 +1377,7 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
  if(TRK&&G.mode==='descent'&&G.state==='play'&&lt>sg.end-1.4)trackStop(1.8);
  /* music: built-in songs are generated a moment ahead, beat by beat; music files are already playing */
  if(G.state==='play'&&AC&&sg.proc!==undefined){while(nextBeat<sg.beats.length&&timeOf(sg.beats[nextBeat])<ctxNow()+0.3){const b=sg.beats[nextBeat],bt=timeOf(b),k=nextBeat-sg.lead;nextBeat++;if(b>sg.end+0.01||bt<ctxNow()-0.05)continue;
-   if(k<0&&k>=-4)nz(bt,0.08,0.35,'bandpass',k===-1?2400:1700,6,[rev]);BSP=sg.beats[nextBeat]!=null?sg.beats[nextBeat]-b:0;musicBeat(sg.proc,k,bt);BSP=0;if(k>=0&&G.mode==='descent')footstep(bt,sg.proc)}
+   if(k<0&&k>=-4)nz(bt,0.08,0.35,'bandpass',k===-1?2400:1700,6,[rev]);BSP=sg.beats[nextBeat]!=null?sg.beats[nextBeat]-b:0;THIN=!!(sg.thin&&sg.thin(k));musicBeat(sg.proc,k,bt);BSP=0;THIN=false;if(k>=0&&G.mode==='descent')footstep(bt,sg.proc)}
   /* a miniboss's call: each strike's sound, scheduled ahead like the music */
   if(sg.cues)while(G.cueI<sg.cues.length){const c=sg.cues[G.cueI],ct=timeOf(c.at);if(ct>=ctxNow()+0.3)break;G.cueI++;if(ct>ctxNow()-0.05)miniCue(c.kind,ct,1,c.len)}}
  if(G.state==='play'){
@@ -1391,12 +1404,8 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
  else if(G.mode==='boss'&&G.camp&&G.state!=='title'){hTh=G.camp.th;hy=shY=G.camp.y}
  /* miniboss: the explorer stands at the end of the ledge; the game picks the dodge for each answered strike: low sweep → jump, high swipe → duck, a slam from one side → hop to the other, a beam → brace while the hold lasts */
  else if(G.mode==='mini'&&G.mini&&G.state!=='title'){hTh=G.mini.th;hy=shY=G.mini.y;
-  for(let k=Math.max(0,G.ni-3);k<Math.min(ACT.length,G.ni+2);k++){const n=ACT[k],d=lt-n.at;
-   if(n.kind==='beam'){if(((G.zip&&G.zip.n===n)||n.j==='p'||n.j==='g')&&d>=-0.1&&d<=n.len+0.1)pose='brace';continue}
-   if(!n.j||n.j==='m'||d<-0.12||d>0.5)continue;const u=(d+0.12)/0.62;
-   if(n.kind==='low'){hy+=Math.sin(Math.PI*u)*1.3;pose=u<0.2?'push':u<0.7?'vault':'fall'}
-   else if(n.kind==='high')pose='duck';
-   else{const e=u<0.3?smooth(u/0.3):1-smooth((u-0.3)/0.7);hTh+=(n.kind==='left'?1:-1)*1.1*e/HR;if(u<0.45)hy+=Math.sin(Math.PI*u/0.45)*0.45;pose=u<0.45?'push':'land'}}}
+  for(let k=Math.max(0,G.ni-3);k<Math.min(ACT.length,G.ni+2);k++){const n=ACT[k],ok=n.j==='p'||n.j==='g'||(n.kind==='beam'&&G.zip&&G.zip.n===n),r=ok&&dodge(n.kind,lt-n.at,n.len);
+   if(r){pose=r[0];hy+=r[1];hTh+=r[2]/HR}}}
  else if(G.state==='enter'&&G.enter){const e=G.enter,el=now-e.t0,f=smooth(clamp(el/ENTER.walk,0,1));hTh=e.a.th+(e.b.th-e.a.th)*f;hy=shY=e.a.y+(e.b.y-e.a.y)*f;rad=HR+(e.r1-HR)*smooth(clamp((el-ENTER.walk)/ENTER.inn,0,1));
   let ph=el/0.4;const si=Math.floor(ph);ph-=si;const A=si%2?'B':'',Bn=(si+1)%2?'B':'';pose=ph<0.22?'sneakPlant'+A:ph<0.5?'sneakSettle'+A:ph<0.75?'sneakLift'+Bn:'sneakReach'+Bn;
   if(el>ENTER.walk+ENTER.inn*0.5+ENTER.iris+0.2&&!e.go){e.go=1;startDare()}}
@@ -1472,29 +1481,39 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
   BOSSG.position.copy(p);BOSSG.scale.setScalar(sc);if(!(BOSS.dead>0))BOSSG.lookAt(new THREE.Vector3(hx,hy+1.2,hz).lerp(camPos,0.55));
   BIRIS.color.set(col);BEYE.color.set(hit<0.15?'#ff9a9a':'#f3ead8');
   BOSSG.children.forEach(c=>{if(c.userData.a!==undefined)c.rotation.z=c.userData.a-Math.PI/2+Math.sin(tt*3+c.userData.a*4)*0.15})}
- /* miniboss: floats in the pit just ahead of the explorer. On the call it points a claw at each spot it will strike (a flash there and the strike's sound) and shows a faint beam for holds;
-    on the answer the claw strikes on the beat: sweeps cross the explorer's spot at feet or head height, slams come down on it from one side. Arm 0 does low sweeps and left slams, arm 1 the rest */
- const miniOn=G.mode==='mini'&&!!G.mini&&G.state!=='title'&&G.state!=='end';MINIG.visible=miniOn&&!(MINI.dead>0&&now-MINI.dead>2.4);MBEAM.visible=false;MARMS.forEach(a=>a.visible=MINIG.visible&&!(MINI.dead>0));
- if(MINIG.visible){const E=G.mini,th=E.th+0.2,r=HR-3.6,hit=now-MINI.hitT,U=new THREE.Vector3(0,1,0),T=new THREE.Vector3(-Math.sin(E.th),0,Math.cos(E.th)),H=new THREE.Vector3(Math.cos(E.th)*HR,E.y,Math.sin(E.th)*HR);
-  const body=new THREE.Vector3(Math.cos(th)*r,E.y+3.3+Math.sin(tt*1.8)*0.25,Math.sin(th)*r);if(hit<0.3)body.add(new THREE.Vector3((Math.random()-0.5)*0.4,(Math.random()-0.5)*0.4,0));
+ /* miniboss: in front of the explorer (home) for the answer, in the middle of the screen (stage) for the call, where it strikes the ghost (see MINIS) */
+ const miniOn=G.mode==='mini'&&!!G.mini&&G.state!=='title'&&G.state!=='end';MINIG.visible=miniOn&&!(MINI.dead>0&&now-MINI.dead>2.4);MBEAM.visible=false;GHOST.visible=false;MARMS.forEach(a=>a.visible=MINIG.visible&&!(MINI.dead>0));
+ if(MINIG.visible){const E=G.mini,hit=now-MINI.hitT,U=new THREE.Vector3(0,1,0),T=new THREE.Vector3(-Math.sin(E.th),0,Math.cos(E.th)),H=new THREE.Vector3(Math.cos(E.th)*HR,E.y,Math.sin(E.th)*HR),PH=LV.song.phr||[];
+  /* st: 0 home → 1 stage. On stage through the breather and the call, it flies home over the empty bar's first two beats, and back to the stage in the answer's last half beat */
+  const at=(th,r,y)=>new THREE.Vector3(Math.cos(th)*r,y,Math.sin(th)*r),home=at(E.th+0.2,HR-3.6,E.y+3.3),stage=at(E.th+0.1,HR-4,E.y+4.6),gh=at(E.th+0.08,HR-4,E.y+1.1);
+  let st=1;for(const q of PH){if(lt<q.g)break;const hb=(q.e-q.r)/8;st=lt<q.r?1-smooth(clamp((lt-q.g)/((q.r-q.g)/2),0,1)):lt<q.e?smooth(clamp((lt-q.e+hb)/hb,0,1)):1}
+  const body=home.clone().lerp(stage,st);body.y+=Math.sin(tt*1.8)*0.25;if(hit<0.3)body.add(new THREE.Vector3((Math.random()-0.5)*0.4,(Math.random()-0.5)*0.4,0));
   let sc=1+(hit<0.2?0.12:0);if(MINI.dead>0){const a=clamp((now-MINI.dead)/2.4,0,1);sc*=1-a;body.y-=a*a*9;MINIG.rotation.z+=dt*7}
-  MINIG.position.copy(body);MINIG.scale.setScalar(sc);if(!(MINI.dead>0))MINIG.lookAt(H.clone().addScaledVector(U,1.2).lerp(camPos,0.5));MBODY.color.set(hit<0.15?'#ff9a9a':MINIS[MINI.L].col);
-  const P=(t,s)=>H.clone().addScaledVector(T,t).addScaledVector(U,s),sw=k=>k==='low'||k==='high',hh=k=>k==='high'?1.9:0.35;
-  /* [wind-up spot, strike end] per kind */
-  const aim=k=>sw(k)?[P(2.6,hh(k)),P(-2.2,hh(k))]:[P(k==='left'?-1.8:1.8,4.2),P(0,0.25)];
+  MINIG.position.copy(body);MINIG.scale.setScalar(sc);if(!(MINI.dead>0))MINIG.lookAt((st>0.5?gh:H).clone().addScaledVector(U,1.2).lerp(camPos,0.5));MBODY.color.set(hit<0.15?'#ff9a9a':MINIS[MINI.L].col);
+  const P=(B,t,s)=>B.clone().addScaledVector(T,t).addScaledVector(U,s),sw=k=>k==='low'||k==='high',hh=k=>k==='high'?1.9:0.35;
+  /* [wind-up spot, strike end] per kind, around the target B (the explorer or the ghost) */
+  const aim=(k,B)=>sw(k)?[P(B,2.6,hh(k)),P(B,-2.2,hh(k))]:[P(B,k==='left'?-1.8:1.8,4.2),P(B,0,0.25)];
   const sh=[0,1].map(i=>body.clone().addScaledVector(T,i?-0.9:0.9).addScaledVector(U,-0.5)),tip=[0,1].map(i=>sh[i].clone().addScaledVector(T,i?-0.6:0.6).addScaledVector(U,-1.6+Math.sin(tt*2.2+i*2)*0.25));
-  const beam=(op,col)=>{const dv=P(0,1.1).sub(body),L=dv.length();MBEAM.visible=true;MBEAM.position.copy(body).addScaledVector(dv,0.5);MBEAM.quaternion.setFromUnitVectors(U,dv.divideScalar(L));const w=1+Math.sin(tt*40)*0.15;MBEAM.scale.set(w,L,w);MBEAM.material.opacity=op;MBEAM.material.color.set(col)};
-  if(!(MINI.dead>0)&&LV.song.cues){const wb=Math.min(0.5,sp*0.8);
-   for(const c of LV.song.cues){const d=lt-c.at;if(d<-0.2)break;if(d>Math.max(0.4,c.len+0.1))continue;
-    if(c.kind==='beam'){if(d>=0&&d<=c.len)beam(0.25,MINIS[MINI.L].eye);continue}
-    const [a0]=aim(c.kind),i=c.kind==='low'||c.kind==='left'?0:1;tip[i].lerp(sw(c.kind)?a0.lerp(P(0,hh(c.kind)),0.45):a0,Math.sin(Math.PI*clamp((d+0.15)/0.5,0,1))*0.85);
-    if(!c.fl&&d>=0){c.fl=1;landFlash(sw(c.kind)?P(0,hh(c.kind)):P(0,0.05),MCOL[c.kind])}}
+  const beam=(B,op,col)=>{const dv=P(B,0,1.1).sub(body),L=dv.length();MBEAM.visible=true;MBEAM.position.copy(body).addScaledVector(dv,0.5);MBEAM.quaternion.setFromUnitVectors(U,dv.divideScalar(L));const w=1+Math.sin(tt*40)*0.15;MBEAM.scale.set(w,L,w);MBEAM.material.opacity=op;MBEAM.material.color.set(col)};
+  /* one strike d s after its beat on target B: wind up, sweep across or slam down on the beat, recover. Arm 0 does low sweeps and left slams, arm 1 the rest */
+  const wb=Math.min(0.5,sp*0.8),strike=(k,d,B)=>{if(d<-wb||d>0.55)return false;const [a0,a1]=aim(k,B),i=k==='low'||k==='left'?0:1,end=sw(k)?0.12:0.15;
+   if(d<-0.12)tip[i].lerp(a0,smooth((d+wb)/(wb-0.12)));else if(d<end)tip[i].copy(a0.lerp(a1,sw(k)?(d+0.12)/0.24:clamp((d+0.12)/0.12,0,1)));else tip[i].copy(a1.lerp(tip[i],smooth((d-end)/0.4)));return true};
+  if(!(MINI.dead>0)&&LV.song.cues){
+   /* the call: it strikes the ghost, which dodges */
+   let gp='sneakIdle',gr=0,gs=0;
+   for(const c of LV.song.cues){const d=lt-c.at;if(d<-wb)break;if(d>Math.max(0.6,c.len+0.15))continue;
+    if(c.kind==='beam'){if(d>=0&&d<=c.len)beam(gh,0.7,MINIS[MINI.L].eye)}else strike(c.kind,d,gh);
+    const r=dodge(c.kind,d,c.len);if(r){gp=r[0];gr=r[1];gs=r[2]}
+    if(!c.fl&&d>=0){c.fl=1;if(c.kind!=='beam')burst(sw(c.kind)?P(gh,0,hh(c.kind)):P(gh,0,0.3),6,MCOL[c.kind])}}
+   if(st>0.05){GHOST.visible=true;GHOST.material.opacity=0.4*st;GHOST.material.map=FR[gp];GHOST.position.copy(P(gh,gs,gr))}
+   /* the answer: it strikes the explorer */
    for(let k=Math.max(0,G.ni-4);k<Math.min(ACT.length,G.ni+3);k++){const n=ACT[k],d=lt-n.at;
-    if(n.kind==='beam'){if(d>=0&&d<=n.len+0.05)beam(n.j==='m'?1:0.85,n.j==='m'?'#ff2020':'#ff5a3c');continue}
-    if(d<-wb||d>0.55)continue;const [a0,a1]=aim(n.kind),i=n.kind==='low'||n.kind==='left'?0:1,end=sw(n.kind)?0.12:0.15;
-    if(d<-0.12)tip[i].lerp(a0,smooth((d+wb)/(wb-0.12)));else if(d<end)tip[i].copy(a0.lerp(a1,sw(n.kind)?(d+0.12)/0.24:clamp((d+0.12)/0.12,0,1)));else tip[i].copy(a1.lerp(tip[i],smooth((d-end)/0.4)));
-    if(!n.sp&&d>=0&&n.j&&n.j!=='m'){n.sp=1;burst(sw(n.kind)?P(0,hh(n.kind)):P(0,0.3),6,'#ffffff')}}}
+    if(n.kind==='beam'){if(d>=0&&d<=n.len+0.05)beam(H,n.j==='m'?1:0.85,n.j==='m'?'#ff2020':'#ff5a3c');continue}
+    if(strike(n.kind,d,H)&&!n.sp&&d>=0&&n.j&&n.j!=='m'){n.sp=1;burst(sw(n.kind)?P(H,0,hh(n.kind)):P(H,0,0.3),6,'#ffffff')}}}
   MARMS.forEach((m,i)=>{const dv=tip[i].clone().sub(sh[i]),L=Math.max(0.1,dv.length());m.position.copy(sh[i]);m.quaternion.setFromUnitVectors(U,dv.divideScalar(L));m.scale.set(1,L,1)})}
+ /* the phase label: Listen (the call), Ready 3 2 1 (the empty bar), Go (the answer's first beat) */
+ {let tx='';if(G.mode==='mini'&&G.state==='play'&&LV.song.phr)for(const q of LV.song.phr){if(lt<q.c)break;tx=lt<q.g?'Listen':lt<q.r?['Ready','3','2','1'][clamp(Math.floor((lt-q.g)/((q.r-q.g)/4)),0,3)]:lt<q.r+(q.e-q.r)/4?'Go':''}
+  if(tx!==G.phTx){G.phTx=tx;const el=$('phase');if(tx){el.textContent=tx;el.style.color=tx==='Listen'?MINIS[MINI.L].eye:'#f2c46d'}el.classList.toggle('show',!!tx)}}
  /* camera */
  const port=C.aspect<1;const D=(port?13.5:13);const pull=Math.sin(Math.PI*clamp((now-G.pullT)/3.2,0,1));const endPull=G.state==='end'?smooth(clamp((now-G.endT)/3,0,1)):0;const pw=Math.max(pull,endPull);
  const rc=HR-D-pw*14,thc=fTh+CAMA;let tp=new THREE.Vector3(Math.cos(thc)*rc,fY+3.1+pw*5,Math.sin(thc)*rc),tl=new THREE.Vector3(Math.cos(fTh+CAML)*(HR+1),fY-0.7-pw*3,Math.sin(fTh+CAML)*(HR+1));
