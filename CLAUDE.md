@@ -7,7 +7,7 @@ A mobile web game made for a group of friends. The player descends a giant pit t
 - Must run on both Android and iPhone in the browser, with no install. Touch first, keyboard as a fallback.
 - Genres voted: adventure/RPG (Pokémon Black/White, X/Y era), hack 'n' slash, survival.
 - Tone: sarcastic and parodic on the surface, genuinely dark underneath. The rim town is a tourist trap and the bureaucracy is absurd (delver permits, "NO REFUNDS" signs).
-- The real city and its landmarks will anchor the setting. Not decided yet: which city, which places, the friends' names and looks.
+- The city is **Cagliari**, Sardinia (see "Cagliari reskin" below). Not decided yet: the friends' names and looks.
 
 ## Game structure (planned)
 
@@ -52,8 +52,28 @@ A small gameplay prototype of one chapter, in side view. The real game will be q
 - **Feedback:** the rhythm track at the bottom is the main timing UI, with an early/late meter. There's also a ring under the finger, a fixed marker on the ledge where the next move happens, and a flash when its beat hits.
 - **Skip intro** (`#skipB`, `skipIntro`): on a music-file level, while the first note is more than ~2 s past the skip point, a button next to Pause jumps level time to 4 beats (at least 2 s) before the first note: it moves `anchorT` and restarts the track at that offset (`trackPlay(sg,when,at)`).
 - **Pause** (`pauseGame`, `resumeGame`): the button top left, Escape or P, or the tab going hidden. It suspends the AudioContext, so level time, music and judging all stop (`CK.hold` freezes `clock()`); Resume counts in 3-2-1 first. The Master / Music / Effects sliders (one element, `#pzV`, moved into whichever of the pause menu or the title's Settings screen `#set` is open; Settings also holds the audio delay and Calibrate) set `VOL`, saved as `pitVol`, on gains `VG.out` (after the compressor), `VG.mu`/`VG.muT` (both music buses) and `VG.fx` (the default `OUT` for move sounds). Dragging a slider previews it through its own small AudioContext (`PV`, `pvMusic`, `pvTap`), so it works while the game's is suspended: Music plays the paused song from where you stopped (or the layer's chord) and fades out on release; Master and Effects play the tap sound.
-- **Cagliari reskin** (`docs/cagliari-greenlight.md` lists what's approved): the Rim is now Il Bastione (Castello & Marina). Enemies vary per note (`vIdx(n,k,seed)`, fixed by note time): critters `FOEVAR[L]`, swoopers `BATVAR[L]` (pixel sprites from `pixTex(rows,palette)`), and `obstacle(L,v)`, `barricade(v)`, `cart(v)`, `potRock(v)` for the 3D props. Other layers have one variant each for now. Callouts use the group's catchphrases: Perfect = "Al burro!", coins = "Moneteeee!", fever = "Arroddugò!", Go = "Poba!", miniboss hit = "Suga!".
 - **Explorer:** a rigged pixel-art sprite generated in code (`drawPose` and `POSES`). Its walk is a cartoon sneak (modelled on a classic sneak-cycle reference): hunched forward and low on tiptoe, arms swinging low and opposite to the legs like a march, hands dangling, swapping with each step (`armSwap`); the far leg and arm are drawn much darker so the alternation reads at small size. The knee lifts high before the beat, then a long toe-first stride lands on the beat. Poses are skeleton coordinates, so friends can be built later by swapping hat, hair, glasses and colours.
+
+## Cagliari reskin (in progress)
+
+Goal: make the game more fun by changing how it looks, not how it plays. Everything visual becomes Cagliari: landmarks, local brands, political satire, the city's problems, local memes. Private game among friends, so real brand names and real politicians are fine. Pixel art must be recognisable to be funny: look at real photos/logos before drawing a brand (CTM bus: white with a cyan-blue lower band; CRAI: white italic on a red slanted shape with a green swoosh; Ichnusa: red label, white lettering, amber bottle; Nonna Isa: red band, white text, blue square with a lady in Sardinian costume).
+
+`docs/cagliari-greenlight.md` has the research with sources and what the user approved. Its "Round 2/3" sections override the tables below them.
+
+**Layers (approved):** L1 Bastione + Marina (done), L2 sunken Via Roma (metro works, transenne, drowned CTM buses), L3 Tuvixeddu (Punic rock tombs), L4 Rotatorie (a spiral of roundabouts: Zedda's roundabout plans), L5 Sant'Elia (the user's "bad neighbourhood": palazzoni, old abandoned stadium, Lazzaretto, Unipol Domus). No nuraghi, Mont'e Prama or Mamuthones: not Cagliari.
+
+**Approved content:**
+- Enemies: seagulls ("i gabbiani con il becco woo woo", a Cagliari meme), flamingoes, gaggi/burdi (local word for maranza: draw them by style, never ethnicity), ultras in Cagliari Calcio shirts, rats, pigeons, tourists.
+- Brands: Ichnusa, CRAI, Nonna Isa, CTM, ARST metro, Abbanoa, Tiscali, Moby/Tirrenia, Saras, Cagliari Calcio/Unipol Domus, L'Unione Sarda, mirto, pizzette sarde.
+- Politicians: Todde (decadenza, €40k fine), Zedda (transenne, roundabouts), Truzzu ("Caddozzi, vi guardiamo!", lost his own city), Solinas (trial: Poetto house, Albanian degree), Soru (Tiscali founder), Giulini (the stadium never built). **Not** Salvini or Meloni.
+- City problems: endless works, Abbanoa water and bills, rubbish and seagulls, the stadium, flight/ferry prices, Poetto's dark sand.
+- Culture: Sant'Efisio procession, Four Moors flag, CTM.
+- People in **kind** roles only: Checco/Kekkeddu (the "al burro" guy from Pirri, mocked online: give him a nice role, e.g. friendly guide at vendors), Antonello Lai "Tziu Lai" (beloved Sant'Elia journalist, died 2024, TCS *Zona Franca*: narrator of L5 lore), Sensational Gianni (Cagliari creator of surreal re-edits: *Sa Burra*, *Agente 007 – Operazione P.O.B.A.*, *La Puliga*; ask the user for his lines, they're video only). Gigi Riva: no satire.
+- Catchphrases (slang exclamations, like "damn!"): "Al burro!" (Perfect), "Moneteeee!" (coins), "Arroddugò!" (fever), "Poba!" (Go), "Suga!" (miniboss hit). "Cancaru" is out.
+
+**Done (layer 0 only):** Marina house fronts on the wall (columns of facades, shutters, balconies, laundry, Four Moors/rossoblù flags, signs: Ichnusa, "VIETATO DAR DA MANGIARE AI GABBIANI", "CADDOZZI, VI GUARDIAMO.", CTM stop, pizzette), limestone Bastione steps with a balustrade, Torre dell'Elefante and San Pancrazio on the rim, white gulls, Cagliari pastels. Enemies vary per note (`vIdx(n,k,seed)`, fixed by note time): critters `FOEVAR[L]` (gaggio, white-tracksuit gaggio, ultrà, cruise tourist, flamingo), swoopers `BATVAR[L]` (gull, gull with pizzetta, young gull, pigeon), all pixel sprites from `pixTex(rows,palette)`; 3D props `obstacle(L,v)` (rubbish bags, mastelli, scooter, cones+puddle), `barricade(v)` (transenna, lavori trestle, bar table and chairs), `cart(v)` (CRAI or Nonna Isa trolley), `potRock(v)` (geraniums, cornice, satellite dish, Ichnusa crate). Layers 1–4 still have one variant each. `__pit.FOEVAR`/`BATVAR` expose the sprites for previewing (draw `v.t.image` scaled up into an overlay).
+
+**Next:** the L1 miniboss "Su Gabbianu Woo Woo" is only renamed and recoloured: give it a real seagull model. Then reskin L2–L5 the same way (palette in `LAYERS`, `LSTYLE`, the layer's decor section, sprites and prop variants, lore lines in `RUN`, `MINIS`, gauge labels). Vendors: CRAI cashier, Poetto kiosk, Checco as guide. Boss: Todde at the Regione in Viale Trento.
 
 ## Tech
 
@@ -103,7 +123,7 @@ Everything in the conversation is re-read on every later step, so what goes in e
 
 ## Open questions
 
-- The city, the landmarks, and the friends' looks and quirks.
+- The friends' looks and quirks.
 - Boss gameplay: the Inspector is a placeholder. What should bosses really be?
 - The upgrades: the prototype's set is a first guess. Which ones are fun, and what's the price curve?
 - The vendor types and their currencies, beyond coins.
