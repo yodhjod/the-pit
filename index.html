@@ -264,10 +264,10 @@ const toon=(o)=>new THREE.MeshToonMaterial(Object.assign({gradientMap:toonGrad},
 /* ---------- chart: built-in levels, used when a level has no music file ---------- */
 /* t = whack a critter (tap), u = jump a gap or an obstacle (swipe up), d = duck a swooper (swipe down), h = ride a zipline (hold),
    k = kick through a barricade (swipe forward), b = brace for a falling rock (swipe back), w = shove a cart with both thumbs (two-finger tap). [beat, type, holdBeats] */
-const BPMS=[98,108,116,124,132,140,144,104,112,120,126,134],SPBL=BPMS.map(b=>60/b),TYPES={t:'tap',u:'up',d:'duck',h:'hold',k:'kick',b:'brace',w:'both'};
+const BPMS=[98,108,116,124,132,140,144,104,112,120,126,134],SPBL=BPMS.map(b=>60/b),TYPES={t:'tap',u:'up',d:'duck',h:'hold',k:'kick',b:'brace',w:'both',l:'duck'};
 const CHART=[
  [[0,'t'],[1,'t'],[2,'u'],[4,'t'],[5,'t'],[6,'u'],[8,'k'],[9,'t'],[10,'t'],[10.5,'t'],[11,'d'],[12,'u'],[13,'t'],[14,'t'],[15,'d'],[16,'b'],[17,'t'],[18,'w'],[19,'t'],[20,'u'],[21,'t'],[22,'d'],[23,'t'],[24,'k'],[25,'t'],[26,'w'],[28,'h',2],[31,'b']],
- [[0,'t'],[1,'t'],[2,'u'],[4,'h',3],[8,'t'],[9,'t'],[9.5,'t'],[10,'d'],[11,'t'],[12,'u'],[13,'d'],[14,'t'],[14.5,'t'],[15,'t'],[16,'h',3],[20,'d'],[21,'t'],[22,'u'],[23,'t'],[24,'t'],[24.5,'t'],[25,'t'],[26,'d'],[27,'t'],[28,'u'],[29,'d'],[30,'t'],[30.5,'t'],[31,'t']],
+ [[0,'t'],[1,'t'],[2,'u'],[4,'h',3],[8,'t'],[9,'t'],[9.5,'t'],[10,'d'],[11,'t'],[12,'u'],[13,'d'],[14,'t'],[14.5,'t'],[15,'t'],[16,'h',3],[20,'l'],[23,'t'],[24,'t'],[24.5,'t'],[25,'t'],[26,'d'],[27,'t'],[28,'u'],[29,'d'],[30,'t'],[30.5,'t'],[31,'t']],
  [[0,'t'],[1,'t'],[2,'d'],[3,'t'],[4,'t'],[5,'u'],[6,'d'],[7,'d'],[8,'t'],[8.5,'t'],[9,'t'],[10,'u'],[12,'d'],[13,'t'],[14,'u'],[15,'t'],[16,'t'],[17,'d'],[18,'t'],[18.5,'t'],[19,'u'],[20,'h',2],[23,'t'],[24,'d'],[25,'u'],[26,'t'],[27,'t'],[28,'d'],[29,'u'],[30,'t'],[31,'t']],
  [[0,'t'],[1,'u'],[2,'d'],[3,'t'],[3.5,'t'],[4,'h',2],[7,'u'],[8,'d'],[9,'t'],[9.5,'t'],[10,'u'],[11,'d'],[12,'h',3],[16,'t'],[17,'u'],[18,'d'],[19,'t'],[19.5,'t'],[20,'u'],[21,'t'],[22,'d'],[23,'u'],[24,'h',2],[27,'t'],[27.5,'t'],[28,'d'],[29,'u'],[30,'t'],[31,'d']],
  [[0,'d'],[1,'t'],[2,'u'],[3,'t'],[4,'h',3],[8,'d'],[8.5,'d'],[9,'t'],[10,'u'],[11,'t'],[12,'d'],[13,'u'],[14,'t'],[14.5,'t'],[15,'t'],[16,'u'],[17,'d'],[18,'h',2],[21,'t'],[22,'u'],[23,'d'],[24,'t'],[24.5,'t'],[25,'u'],[26,'d'],[27,'t'],[28,'h',2],[31,'u']]];
@@ -277,7 +277,10 @@ const CHART=[
 const RAMP=[1,1.06,1.12];
 function procSong(L,chart,len,lead,boss,ramp,seg=32){const spb=SPBL[L],R=ramp||[1],sp=i=>spb/R[Math.min(R.length-1,i)],
  bt=x=>{if(x<0)return(x+lead)*spb;let t=lead*spb,i=0;while(x>=seg){t+=seg*sp(i);x-=seg;i++}return t+x*sp(i)},beats=[];for(let k=-lead;k<=len+4;k++)beats.push(bt(k));
- const notes=chart.map(([o,ty,hl],i)=>({k:o,at:bt(o),type:TYPES[ty],len:hl?bt(o+hl)-bt(o):0,boss:!!boss,gap:!boss&&ty==='u'&&h3(i,L,31)<(LSTYLE[L]||LSTYLE[0]).gap}));
+ /* 'l' (gaggio lanciatore) becomes two notes: his bottle on the beat (a duck, or a tap to bat it back: thr) and him, 2 beats on, to be whacked (lanc) */
+ const ch=chart.flatMap(([o,ty,hl],i)=>ty==='l'?[[o,ty,0,i],[o+2,'t',0,i,1]]:[[o,ty,hl,i]]).sort((a,b)=>a[0]-b[0]);
+ const notes=ch.map(([o,ty,hl,i,fo])=>({k:o,at:bt(o),type:TYPES[ty],len:hl?bt(o+hl)-bt(o):0,boss:!!boss,gap:!boss&&ty==='u'&&h3(i,L,31)<(LSTYLE[L]||LSTYLE[0]).gap,thr:ty==='l',lanc:!!fo}));
+ notes.forEach((n,i)=>{if(n.thr){const f=notes.find((m,j)=>j>i&&m.lanc&&!m.thrN);if(f){f.thrN=n;n.fol=f}}});
  return{proc:L,bpm:BPMS[L],spb,beats,lead,bar0:0,notes,first:lead*spb,end:bt(len),spbAt:t=>{const i=bIdx(beats,t);return(beats[i+1]||beats[i]+spb)-beats[i]}}}
 
 /* ---------- the run: one fixed chapter of levels, rest stops and a boss ---------- */
@@ -451,11 +454,12 @@ function buildLevel(L,sg,th0,y0){if(LVG)dropGroup(LVG);const g=LVG=new THREE.Gro
    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:'#24160c'})));
    [[a,2.85],[b,2.35]].forEach(([p,h])=>{const post=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.1,h,6),toon({color:'#5b3d22'}));post.position.set(Math.cos(p.th)*(CABR-0.1),p.y+h/2,Math.sin(p.th)*(CABR-0.1));g.add(post);
     const cap=new THREE.Mesh(new THREE.SphereGeometry(0.14,8,6),new THREE.MeshBasicMaterial({color:'#ffd58a'}));cap.position.set(post.position.x,p.y+h,post.position.z);g.add(cap);glowAt(g,cap.position,'#ffbe6a',1.6)})}
+  else if(n.thr){const b=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,alphaTest:0.1}));b.visible=false;g.add(b);n.bot=b}
   else if(n.type==='duck'){const bv=BATVAR[L][vIdx(n,BATVAR[L].length,1)],b=new THREE.Sprite(new THREE.SpriteMaterial({map:bv.t,alphaTest:0.5}));b.userData.sz=bv.sz;b.scale.set(bv.sz[0],bv.sz[1],1);b.visible=false;g.add(b);n.bat=b}
   else if(n.type==='kick'||n.type==='both'){n.fpos=pathPt(P,s+(n.type==='kick'?0.6:0.75));const o=n.type==='kick'?barricade(L===0?vIdx(n,3,4):0):cart(vIdx(n,2,5)),p=n.fpos;o.position.set(p.x,p.y,p.z);o.lookAt(0,p.y,0);g.add(o);n[n.type==='kick'?'wall':'cart']=o}
   else if(n.type==='brace'){const r=L===0?potRock(vIdx(n,4,6)):new THREE.Mesh(new THREE.DodecahedronGeometry(0.42,0),toon({color:ROCKCOL[L]}));r.visible=false;g.add(r);n.rock=r;
    const sh=new THREE.Mesh(new THREE.CircleGeometry(0.5,12),new THREE.MeshBasicMaterial({color:'#000',transparent:true,opacity:0,depthWrite:false}));sh.rotation.x=-Math.PI/2;sh.position.set(n.pos.x,n.pos.y+0.08,n.pos.z);g.add(sh);n.rsh=sh}
-  else{const fv=FOEVAR[L][vIdx(n,FOEVAR[L].length,2)],f=new THREE.Sprite(new THREE.SpriteMaterial({map:fv.frames?fv.frames[0]:fv.t,transparent:true,alphaTest:0.1}));const fz=f.userData.sz=fv.frames?fv.fsz:fv.sz;f.userData.fr=fv.frames;f.userData.hit=fv.hit;f.userData.hsz=fv.hsz;f.userData.parts=fv.hitParts;f.userData.atk=fv.atk;f.userData.asz=fv.asz;f.userData.acx=fv.acx;f.center.set(0.5,fz[2]);f.scale.set(fz[0],fz[1],1);n.fpos=pathPt(P,s+0.8);n.fpos.x*=FOE_R/HR;n.fpos.z*=FOE_R/HR;f.position.set(n.fpos.x,n.fpos.y,n.fpos.z);g.add(f);n.foe=f}});
+  else{const fv=n.lanc?FOES.GL:FOEVAR[L][vIdx(n,FOEVAR[L].length,2)],f=new THREE.Sprite(new THREE.SpriteMaterial({map:fv.frames?fv.frames[0]:fv.t,transparent:true,alphaTest:0.1}));const fz=f.userData.sz=fv.frames?fv.fsz:fv.sz;f.userData.fr=fv.frames;f.userData.hit=fv.hit;f.userData.hsz=fv.hsz;f.userData.parts=fv.hitParts;f.userData.atk=fv.atk;f.userData.asz=fv.asz;f.userData.acx=fv.acx;f.userData.v=fv;f.center.set(0.5,fz[2]);f.scale.set(fz[0],fz[1],1);n.fpos=pathPt(P,s+0.8);n.fpos.x*=FOE_R/HR;n.fpos.z*=FOE_R/HR;f.position.set(n.fpos.x,n.fpos.y,n.fpos.z);g.add(f);n.foe=f}});
  return P}
 /* the camp at the bottom, where the boss waits */
 function buildCamp(th,y){if(CAMPG)dropGroup(CAMPG);const g=CAMPG=new THREE.Group();S.add(g);
@@ -480,7 +484,7 @@ function sign(text,th,y,par){const t=canvasTex(320,110,(x,w,h)=>{x.fillStyle='#8
    Each is one image; the game animates them only by squash and stretch. Critters stand on the bottom edge of their canvas */
 /* each note picks a look from its layer's variants, fixed by its time, so a level looks the same every run but no two neighbours need match */
 const vIdx=(n,k,sd)=>{const x=Math.sin(n.at*91.7+sd*13.1)*43758.5453;return Math.floor((x-Math.floor(x))*k)};
-const{FOEVAR,BATVAR}=(()=>{let FOEVAR,BATVAR;const OL='#1a1418';
+const{FOEVAR,BATVAR,FOES}=(()=>{let FOEVAR,BATVAR;const OL='#1a1418';
 function vtex(w,h,draw){const t=canvasTex(w,h,(x,W,H)=>{x.lineJoin=x.lineCap='round';x.strokeStyle=OL;x.lineWidth=5;draw(x,W,H)});t.anisotropy=4;return t}
 const sh=(x,fill,path,lw)=>{x.beginPath();path(x);if(fill){x.fillStyle=fill;x.fill()}if(lw!==0){x.lineWidth=lw||5;x.strokeStyle=OL;x.stroke()}};
 const E=(cx,cy,rx,ry,r)=>x=>x.ellipse(cx,cy,rx,ry,r||0,0,Math.PI*2);
@@ -552,24 +556,31 @@ const GU={t:bird(GULL),sz:[1.75,0.88]},GP={t:bird({...GULL,piz:true}),sz:[1.75,0
  GY={t:bird({body:'#d6c6b0',wing:'#8a7660',tip:'#4a3a2a',beak:'#3a3530',eye:'#5a4a3a',dots:'#7a6650'}),sz:[1.65,0.82]},
  PI={t:bird({body:'#a9aec2',wing:'#8a90a8',tip:'#4a4e5e',beak:'#3a3a40',eye:'#ff7a20',neck:['#4a9a7a','#8a5ab0'],bars:true,small:true}),sz:[1.35,0.68]};
 BATVAR=[[GU,GP,GY,PI],[GU,GP,PI],[PI,GY,PI],[GU,PI,GP],[GU,GY,PI]];
-const MAN=[1.1,2.2,6/256],F={GA:{t:GA,sz:MAN},GW:{t:GW,sz:MAN},UL:{t:UL,sz:MAN},TR:{t:UL,sz:MAN},TO:{t:TO,sz:MAN},T2:{t:T2,sz:MAN},FL:{t:FL,sz:[1.3,2.6,6/256]},RA:{t:RA,sz:[1.75,0.88,4/128]}};
+const MAN=[1.1,2.2,6/256],F={GA:{t:GA,sz:MAN},GL:{t:GA,sz:MAN},GW:{t:GW,sz:MAN},UL:{t:UL,sz:MAN},TR:{t:UL,sz:MAN},TO:{t:TO,sz:MAN},T2:{t:T2,sz:MAN},FL:{t:FL,sz:[1.3,2.6,6/256]},RA:{t:RA,sz:[1.75,0.88,4/128]}};
 FOEVAR=[[F.GA,F.GW,F.TR,F.TO,F.FL],[F.GA,F.RA,F.GW,F.TR],[F.RA,F.TO,F.T2,F.RA],[F.FL,F.GA,F.TR,F.GW],[F.GA,F.GW,F.TR,F.RA]];
-return{FOEVAR,BATVAR}})();
+return{FOEVAR,BATVAR,FOES:F}})();
 /* painted enemies (Gemini, cut by tools/cutsheet.py): an idle loop of frames, swapped on the beat. Until they load, or if one fails, the drawn sprite stays.
    fr: frame files; h: height in world units (the width follows the image); hit: the pose shown when it's whacked (cutsheet.py --one --parts: <hit>.png is the body, <hit>.json lists the loose bits thrown off it), cut at the same pixel scale as the frames */
-const ART=[{v:FOEVAR[0][0],fr:['art/enemies/gaggio-0.png','art/enemies/gaggio-1.png'],hit:'art/enemies/gaggio-hit',h:3},
- {v:FOEVAR[0][2],fr:['art/enemies/truzzo-1.png','art/enemies/truzzo-2.png'],hit:'art/enemies/truzzo-hit',atk:'art/enemies/truzzo-atk.png',acx:0.64,h:3.2}];
+/* painted critters: idle frames swapped on the beat, plus optional poses, each an image (with loose parts if it has a json):
+   hit (whacked, anchored 35% up), atk (attacking when missed) and wind (wind-up in the beat before its note), both anchored at the feet:
+   acx/wcx are where the feet are across the image (0-1), so they stay put when the pose changes */
+const ART=[{v:FOES.GA,fr:['art/enemies/gaggio-0.png','art/enemies/gaggio-1.png'],hit:'art/enemies/gaggio-hit',h:3},
+ /* the gaggio lanciatore: the same gaggio, but he throws an Ichnusa bottle from a distance (not placed in any layer yet) */
+ {v:FOES.GL,fr:['art/enemies/gaggio-0.png','art/enemies/gaggio-1.png'],hit:'art/enemies/gaggio-hit',atk:'art/enemies/lanciatore-throw',ap:1,acx:0.49,wind:'art/enemies/lanciatore-wind',wcx:0.725,h:3},
+ {v:FOES.TR,fr:['art/enemies/truzzo-1.png','art/enemies/truzzo-2.png'],hit:'art/enemies/truzzo-hit',atk:'art/enemies/truzzo-atk',acx:0.64,h:3.2}];
 /* painted art: no mipmaps, they blend in a half-size copy and the sprite goes soft at the size it shows on screen */
 const sharp=t=>{t.minFilter=THREE.LinearFilter;t.generateMipmaps=false;return t};
-ART.forEach(a=>{const ld=new THREE.TextureLoader(),tx=[];let left=a.fr.length+1+(a.atk?1:0),hit=null,atk=null;
- /* the body's sprite is anchored 35% up from its bottom edge; part offsets are from that point, in world units */
- const done=()=>{if(--left)return;const im=tx[0].image,k=a.h/im.height;a.v.frames=tx;a.v.fsz=[k*im.width,a.h,0.01];
-  /* attack pose (shown when the critter is missed): acx is where its feet are across the image, so they stay put */
-  if(atk){a.v.atk=atk;a.v.asz=[k*atk.image.width,k*atk.image.height];a.v.acx=a.acx||0.5}
-  if(hit){const m=hit.m;a.v.hit=hit.t;a.v.hsz=[k*m.w,k*m.h];a.v.hitParts=m.parts.filter(q=>q.t).map(q=>({t:q.t,x:k*(q.x-m.w/2),y:k*(m.h*0.65-q.y),w:k*q.w,h:k*q.h}))}};
- a.fr.forEach((u,i)=>ld.load(u,t=>{tx[i]=sharp(t);done()}));if(a.atk)ld.load(a.atk,t=>{atk=sharp(t);done()},undefined,done);if(!a.hit){done();return}
- fetch(a.hit+'.json').then(r=>r.json()).then(m=>{let n=1+m.parts.length,bt=null;const one=()=>{if(--n)return;if(bt)hit={t:bt,m};done()};
-  ld.load(a.hit+'.png',t=>{bt=sharp(t);one()},undefined,one);m.parts.forEach(q=>ld.load('art/enemies/'+q.f,t=>{q.t=sharp(t);one()},undefined,one))}).catch(done)});
+ART.forEach(a=>{const ld=new THREE.TextureLoader(),img=u=>new Promise(res=>ld.load(u,t=>res(sharp(t)),undefined,()=>res(null)));
+ const pose=(base,parts)=>!base?Promise.resolve(null):!parts?img(base+'.png').then(t=>t&&{t}):
+  fetch(base+'.json').then(r=>r.json()).then(m=>Promise.all([img(base+'.png'),...m.parts.map(q=>img('art/enemies/'+q.f).then(t=>{q.t=t}))]).then(([t])=>t&&{t,m})).catch(()=>null);
+ Promise.all([Promise.all(a.fr.map(img)),pose(a.hit,1),pose(a.atk,a.ap),pose(a.wind)]).then(([tx,hit,atk,wind])=>{if(tx.some(t=>!t))return;
+  const v=a.v,im=tx[0].image,k=a.h/im.height,sz=t=>[k*t.image.width,k*t.image.height];
+  /* part offsets in world units from the pose's anchor (cx, cy as fractions of the image) */
+  const parts=(P,cx,cy)=>P.m.parts.filter(q=>q.t).map(q=>({t:q.t,x:k*(q.x-cx*P.m.w),y:k*((1-cy)*P.m.h-q.y),w:k*q.w,h:k*q.h}));
+  v.frames=tx;v.fsz=[k*im.width,a.h,0.01];
+  if(hit){v.hit=hit.t;v.hsz=sz(hit.t);v.hitParts=parts(hit,0.5,0.35)}
+  if(atk){v.atk=atk.t;v.asz=sz(atk.t);v.acx=a.acx||0.5;if(atk.m)v.atkParts=parts(atk,v.acx,0)}
+  if(wind){v.wind=wind.t;v.wsz=sz(wind.t);v.wcx=a.wcx||0.5}})});
 /* jump obstacles: named builders, four per layer (OBSV), picked per note by vIdx */
 function oba(g){return(geo,c,x,y,z)=>{const m=new THREE.Mesh(geo,toon({color:c}));m.position.set(x,y,z);g.add(m);return m}}
 const AMPH=new THREE.LatheGeometry([[0,0],[0.06,0.02],[0.15,0.16],[0.19,0.4],[0.15,0.6],[0.065,0.72],[0.065,0.84],[0.1,0.86]].map(([x,y])=>new THREE.Vector2(x,y)),10);
@@ -1250,7 +1261,7 @@ const DMGCUT=[20000,8000,4500,2600,1600];
 function heartsUI(){const lost=clamp(G.maxH-G.hearts,0,4);document.body.style.setProperty('--dmg',lost/4);if(AC)[musP,musT].forEach(b=>b&&b.dmg&&b.dmg.frequency.setTargetAtTime(DMGCUT[lost],AC.currentTime,0.4));const h=$('hearts');h.innerHTML='';for(let i=0;i<G.maxH;i++){const d=document.createElement('i');d.className='ht'+(i<G.hearts?'':' off');h.appendChild(d)}}
 const HINTS={tap:['Tap to whack the critter','Press Space to whack the critter'],up:['Swipe up to jump','Press ↑ to jump'],duck:['Swipe down to duck','Press ↓ to duck'],hold:['Press and hold to ride the line. Let go as you land.','Hold Space to ride the line. Let go as you land.'],
  kick:['Swipe '+FWD+' to kick it down','Press '+(FWD==='right'?'→':'←')+' to kick it down'],brace:['Rock! Swipe '+BACK+' to brace','Rock! Press '+(BACK==='left'?'←':'→')+' to brace'],both:['Tap with both thumbs at once to shove it','Press two keys at once to shove it'],
- bosstap:['Tap on the beat to strike','Press Space on the beat to strike'],bossup:['It sweeps low: swipe up to jump','It sweeps low: press ↑ to jump'],bossduck:['It swipes high: swipe down to duck','It swipes high: press ↓ to duck'],bosshold:['Hold to charge a big strike. Let go on the ring.','Hold Space to charge a big strike. Let go on the ring.'],
+ bosstap:['Tap on the beat to strike','Press Space on the beat to strike'],bossup:['It sweeps low: swipe up to jump','It sweeps low: press ↑ to jump'],bossduck:['It swipes high: swipe down to duck','It swipes high: press ↓ to duck'],bottleduck:['Bottle! Swipe down to duck it, or tap to bat it back','Bottle! Press ↓ to duck it, or Space to bat it back'],bosshold:['Hold to charge a big strike. Let go on the ring.','Hold Space to charge a big strike. Let go on the ring.'],
  minitap:['Watch its rhythm, then tap it back to dodge','Watch its rhythm, then press Space on it to dodge'],minihold:['A beam: hold for as long as it held','A beam: hold Space for as long as it held']};
 function showHint(key){const tx=HINTS[key][G.kb?1:0];
  const el=$('hint');el.textContent=tx;el.classList.add('show');clearTimeout(showHint.t);showHint.t=setTimeout(()=>el.classList.remove('show'),3600)}
@@ -1283,6 +1294,9 @@ function holdStart(n,q,id){n.hj=q;G.holdPtr=id;G.zip={n,state:'ride'};chime(n);f
 function holdRelease(t){const z=G.zip;if(!z||z.state!=='ride')return;const n=z.n;const d=t-n.endTime;
  if(d<-W_G){G.zip=null;n.j='m';G.m++;G.combo=0;thud();glitch();fxResult('m');holdFxEnd('m');G.shake=0.3;judgeShow('Let go too early','#f08a8a','','m');G.ni++;loseHeart()}
  else{G.lastSd=d;const q=(Math.abs(d)<=W_P&&n.hj==='p')?'p':'g';if(n.boss)G.atk=clock();score(n,q);holdFxEnd(q);G.zip=null;G.ni++}}
+/* batting a lanciatore's bottle back: it scores like the duck, the explorer swings, and the bottle flies back and knocks him out (his note counts as done) */
+const BATBACK=0.35,THROWF=0.6;/* THROWF: the bottle's flight to the explorer, in beats */
+function batBack(n,q){score(n,q);n.jt=n.batT=clock();G.atk=n.jt;if(n.fol){n.fol.j='p';n.fol.jt=n.jt+BATBACK}judgeShow('Al mittente!','#f2c46d','bottle batted back','p');G.ni++}
 function curNote(){return ACT[G.ni]}
 /* free moves: input away from any note's window still moves the explorer (REC = how long each move lasts). A whiff leaves them off balance for that long, and no input counts until it's over */
 const REC={tap:0.24,up:0.55,duck:0.42,kick:0.3,brace:0.4,both:0.4};
@@ -1317,7 +1331,7 @@ function onPress(t,id){const n=curNote();if(G.state!=='play'||G.zip)return;
  if(t<G.lock){offBal(n,t);return}if(!n||n.j){freeAct('tap',t,id);return}
  if(n.type==='both'){const b=G.both;if(b&&b.n===n&&b.id!==id&&t-b.t<=BOTHW){G.both=null;const m=(b.t+t)/2;G.lastSd=m-n.time;hit(n,Math.abs(m-n.time)<=W_P+0.02?'p':'g');return}}
  const d=Math.abs(n.time-t);G.lastSd=t-n.time;if(d>W_G){tooEarly(n,t);freeAct('tap',t,id);return}const q=d<=W_P?'p':'g';
- if(n.type==='tap')hit(n,q);else if(n.type==='hold')holdStart(n,q,id);else if(n.type==='both'){G.both={n,t,id}}else fail(n,'Wrong move · '+WRONG[n.type])}
+ if(n.type==='tap')hit(n,q);else if(n.thr)batBack(n,q);else if(n.type==='hold')holdStart(n,q,id);else if(n.type==='both'){G.both={n,t,id}}else fail(n,'Wrong move · '+WRONG[n.type])}
 function onSwipe(dir,t,id){const n=curNote();if(G.state!=='play'||G.zip)return;if(t<G.lock){offBal(n,t);return}const mv=dir==='up'?'up':dir==='down'?'duck':dir===FWD?'kick':'brace';
  if(!n||n.j){freeAct(mv,t);return}const sw=isSw(n);const d=Math.abs(n.time-t);G.lastSd=t-n.time;if(d>(sw?W_S:W_G)){tooEarly(n,t);freeAct(mv,t);return}const q=d<=W_P+(sw?0.02:0)?'p':'g';
  if(n.type==='tap'||SWT[n.type]===dir)hit(n,q);else if(n.type==='hold')holdStart(n,q,id);else fail(n,'Wrong move · '+WRONG[n.type])}
@@ -1454,7 +1468,7 @@ $('sgFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)r
  catch(err){console.warn(err);$('sgInfo').textContent='Could not read that file. Try an MP3, M4A, WAV or OGG.'}};
 [['sgDiff','diff',Number],['sgLen','len',String],['sgTheme','theme',Number]].forEach(([id,key,cv])=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{
  CU[key]=cv(b.dataset.v);$(id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(CU.T)cuInfo()}));
-window.__pit={FOEVAR,BATVAR,dareExit,startMini,MINI,score,fail,dareTry,enterDare,step:()=>frame(true),HERO,GROW,analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},PV,get WARPS(){return WARPS},warpRate,levelAt,clock,onPress,onSwipe,G,S,C,CUT,GROW,growHit,growMiss};
+window.__pit={FOEVAR,BATVAR,FOES,batBack,dareExit,startMini,MINI,score,fail,dareTry,enterDare,step:()=>frame(true),HERO,GROW,analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},PV,get WARPS(){return WARPS},warpRate,levelAt,clock,onPress,onSwipe,G,S,C,CUT,GROW,growHit,growMiss};
 /* ---------- dev test helpers on window.__pit (the browser pane's tools run in an isolated world: inject a <script> and read results back from the DOM) ---------- */
 /* synth(o): a drum loop with a steady tone, rendered offline. song(buf,o): analyse it and start a custom level. measure(o): watch a music bus and
    report clean vs during-mistake loudness and spectrum peaks. report(x): put a short JSON on document.body.dataset.test. errs: errors since load */
@@ -1629,13 +1643,14 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
   if(DEV.auto){const n=curNote();if(n&&!n.j&&!G.zip&&tn>=n.time){G.lastSd=0;if(n.type==='hold')holdStart(n,'p');else hit(n,'p')}if(G.zip&&tn>=G.zip.n.endTime)holdRelease(tn)}
   /* pending swipes that never moved become presses */
   for(const id in pend){const p=pend[id];if(!p.done&&tn-p.t>0.5){p.done=true;onPress(p.t,+id)}}
-  /* missed notes */
+  /* missed notes (notes already judged, like a lanciatore knocked out by his own bottle, are stepped over) */
+  while(G.ni<ACT.length&&ACT[G.ni].j)G.ni++;
   const n=curNote();const swN=isSw(n);const pendOn=swN&&Object.keys(pend).some(k=>!pend[k].done),one=G.both&&G.both.n===n;
   if(one&&!n.j&&tn>G.both.t+BOTHW){G.both=null;G.lastSd=null;fail(n,'One thumb is not enough')}
   else if(n&&!n.j&&!(G.zip&&G.zip.n===n)&&tn>n.time+(swN?W_S+(pendOn?0.12:0):W_G+(one?BOTHW:0))){if(n.type==='hold'){n.j='m';n.jt=now;G.m++;G.combo=0;thud();glitch();judgeShow('Missed the line','#f08a8a','','m');addErr(0.25,'m');G.ni++;G.hurt=now;loseHeart()}
-   else{G.lastSd=null;fail(n,n.type==='duck'?'Missed · hit by a bat':n.type==='kick'?'Missed · bonk':n.type==='brace'?'Missed · rock to the head':n.type==='both'?'Missed · the cart held':n.type==='up'?(n.gap?'Missed · fell in':'Missed · bonk'):n.boss?'Missed':n.mini?'Missed · hit':'Missed · bitten')}}
+   else{G.lastSd=null;fail(n,n.type==='duck'?(n.thr?'Missed · bottled':'Missed · hit by a bat'):n.type==='kick'?'Missed · bonk':n.type==='brace'?'Missed · rock to the head':n.type==='both'?'Missed · the cart held':n.type==='up'?(n.gap?'Missed · fell in':'Missed · bonk'):n.boss?'Missed':n.mini?'Missed · hit':'Missed · bitten')}}
   /* first-time hints */
-  for(let i=G.ni;i<Math.min(ACT.length,G.ni+3);i++){const m=ACT[i];const key=(m.boss?'boss':m.mini?'mini':'')+m.type;if(HINTS[key]&&!G.seen[key]&&m.time-tn<Math.max(2.2,sp*4.5)){G.seen[key]=1;showHint(key)}}
+  for(let i=G.ni;i<Math.min(ACT.length,G.ni+3);i++){const m=ACT[i];const key=(m.boss?'boss':m.mini?'mini':m.thr?'bottle':'')+m.type;if(HINTS[key]&&!G.seen[key]&&m.time-tn<Math.max(2.2,sp*4.5)){G.seen[key]=1;showHint(key)}}
   if(G.mode==='descent'&&tn>timeOf(sg.end)+0.45&&!G.zip)levelEnd();else if(G.mode==='boss'&&G.ni>=ACT.length&&!G.zip)fallOut('The Inspector outlasted you');
   else if(G.mode==='mini'&&G.ni>=ACT.length&&!G.zip)fallOut(MINIS[MINI.L].name+' outlasted you');
   if(now<G.goT){const k=Math.ceil((G.goT-now)/sp);if(k<=4&&k!==G.cd){G.cd=k}}else if(G.cd){G.cd=0;judgeShow('Poba!','#f2c46d','')}}
@@ -1695,6 +1710,15 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
   if(n.bat){if(G.state==='title'||!n.time){n.bat.visible=false;continue}const u=(tn-n.time)/(sp*2.2);if(u<-1||u>0.8){n.bat.visible=false;continue}const P=n.pos;n.bat.visible=true;
    let th=P.th-u*0.22,y=P.y+1.3+Math.sin(tt*7+k)*0.08,r=HR-0.15;if(u>0&&n.j&&n.j!=='m'){y+=u*1.2}if(n.bonk&&u>0){y+=u*3;r-=u*2}
    n.bat.position.set(Math.cos(th)*r,y,Math.sin(th)*r);const fl=0.55+0.45*Math.abs(Math.sin(tt*16+k));n.bat.scale.set(n.bat.userData.sz[0],n.bat.userData.sz[1]*fl,1);n.bat.material.rotation=Math.sin(tt*5)*0.15}
+  /* a lanciatore's bottle: leaves his hand THROWF beats before the note and reaches the explorer's head on it; ducked it flies on, batted it flies back at him, missed it bounces off and drops */
+  if(n.bot){const b=n.bot,pt=FOES.GL.atkParts&&FOES.GL.atkParts[0],f2=n.fol;if(G.state==='title'||!n.time||!pt||!f2){b.visible=false;continue}
+   if(b.material.map!==pt.t){b.material.map=pt.t;b.material.needsUpdate=true;b.scale.set(pt.w,pt.h,1)}
+   const fly=sp*THROWF,u=(tn-n.time+fly)/fly;if(u<0){b.visible=false;continue}const R=new THREE.Vector3().setFromMatrixColumn(C.matrixWorld,0),B=new THREE.Vector3(f2.fpos.x,f2.fpos.y,f2.fpos.z),H=B.clone().addScaledVector(R,pt.x).addScaledVector(UPV,pt.y),E=new THREE.Vector3(n.pos.x,n.pos.y+1.5,n.pos.z);
+   let q=null,rot=u*10,op=1;
+   if(u<=1)q=H.clone().lerp(E,u).setY(H.y+(E.y-H.y)*u+Math.sin(Math.PI*u)*0.8);
+   else if(n.batT){const w=(now-n.batT)/BATBACK,Bc=B.clone().setY(B.y+1.6);q=w<=1?E.clone().lerp(Bc,w).setY(E.y+(Bc.y-E.y)*w+Math.sin(Math.PI*w)*0.6):Bc.setY(Bc.y-(w-1)*(w-1)*1.5);rot=-w*14;op=1-clamp(w-1.6,0,1);if(w>2.6)q=null}
+   else{const d=tn-n.time;if(n.j==='m'){q=E.clone().addScaledVector(R,0.8*d).setY(E.y+1.2*d-9*d*d)}else q=E.clone().addScaledVector(E.clone().sub(H).setY(0),d/fly).setY(E.y-6*d*d);op=1-clamp(d/0.6,0,1);if(d>0.6)q=null}
+   if(!q){b.visible=false;continue}b.visible=true;b.position.copy(q);b.material.rotation=rot;b.material.opacity=op}
   /* kicked boards fly into the pit; a missed barricade just falls apart */
   if(n.wall&&n.j){const a=now-n.jt,f=n.j==='m'?0.35:1;if(a>1.3)n.wall.visible=false;else n.wall.children.forEach(c=>{const u=c.userData,v=u.v;c.position.set(u.p0.x+v.x*a*f,u.p0.y+v.y*a*f-7*a*a,u.p0.z+v.z*a*f);c.rotation.set(u.r0.x+a*v.z*f,u.r0.y,u.r0.z+a*v.x*3*f)})}
   /* the rock drops onto the explorer's head on the beat (its shadow grows first); braced, it bounces off into the pit */
@@ -1706,7 +1730,7 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
   if(n.cart&&n.j){const a=now-n.jt,c=n.cart,p=n.fpos;if(a>1.8)c.visible=false;else{const d=n.j==='m'?Math.max(0,a-0.35)*0.7:a,R0=Math.hypot(p.x,p.z),ri=R0-d*d*6,y=p.y-Math.max(0,d-0.3)**2*16;
    c.position.set(Math.cos(p.th)*ri,y,Math.sin(p.th)*ri);c.lookAt(0,y,0);c.rotateX(Math.min(1.6,d*3))}}
   if(n.foe){const f=n.foe,p=n.fpos;
-   if(n.j==='p'||n.j==='g'){const a=now-n.jt,ud=f.userData;
+   if(n.j==='p'||n.j==='g'){const a=now-n.jt,ud=f.userData;if(a<0)continue;/* batted: knocked out once his bottle gets back to him */
     /* a painted critter shows its hit pose, holds it for a tenth of a second, then tumbles off forwards, turning slowly so the face stays readable */
     if(ud.hit&&f.material.map!==ud.hit){f.material.map=ud.hit;f.center.set(0.5,0.35);f.scale.set(ud.hsz[0],ud.hsz[1],1);
      /* the loose bits (cap, phone, bottle) start where they were drawn and are thrown forwards, up and a little out over the pit, each with its own spin */
@@ -1717,13 +1741,23 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
     if(n.bits)for(const q of n.bits){q.sp.visible=a<1.3;q.sp.position.copy(q.p0).addScaledVector(q.v,b).y-=9*b*b;q.sp.material.rotation=b*q.w;q.sp.material.opacity=1-Math.max(0,b-0.7)/0.5}
     if(a>1){f.visible=false;continue}
     const th=p.th+b*0.12,r=FOE_R-b*2.2;f.position.set(Math.cos(th)*r,p.y+(ud.hit?ud.hsz[1]*0.35:0)+b*4.5-b*b*9,Math.sin(th)*r);f.material.rotation=ud.hit?-b*3:b*14;f.material.opacity=1-b/0.9}
-   else if(n.j==='m'){const a=now-n.jt,ud=f.userData;if(a>1.2){f.visible=false;continue}
+   else if(n.j==='m'){const a=now-n.jt,ud=f.userData;if(a>1.2){f.visible=false;if(n.bits)for(const q of n.bits)q.sp.visible=false;continue}
     /* a painted critter lunges in its attack pose instead of hopping */
-    if(ud.atk&&f.material.map!==ud.atk){f.material.map=ud.atk;f.center.set(ud.acx,0.01);f.scale.set(ud.asz[0],ud.asz[1],1);f.material.rotation=0}
+    if(ud.atk&&f.material.map!==ud.atk){f.material.map=ud.atk;f.center.set(ud.acx,0.01);f.scale.set(ud.asz[0],ud.asz[1],1);f.material.rotation=0;
+     /* a thrown thing (the gaggio's bottle) leaves the hand and flies back along the ledge at the explorer, spinning */
+     if(ud.v.atkParts&&!n.bits){const R=new THREE.Vector3().setFromMatrixColumn(C.matrixWorld,0),tg=new THREE.Vector3(-Math.sin(p.th),0,Math.cos(p.th)),o=new THREE.Vector3(Math.cos(p.th)*FOE_R,p.y,Math.sin(p.th)*FOE_R);
+      n.bits=ud.v.atkParts.map(q=>{const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:q.t,transparent:true,alphaTest:0.1}));sp.scale.set(q.w,q.h,1);f.parent.add(sp);
+       return{sp,p0:o.clone().addScaledVector(R,q.x).addScaledVector(UPV,q.y),v:tg.clone().multiplyScalar(-6).setY(1.5),w:9}})}}
+    if(n.bits)for(const q of n.bits){q.sp.visible=a<0.9;q.sp.position.copy(q.p0).addScaledVector(q.v,a).y-=9*a*a;q.sp.material.rotation=a*q.w;q.sp.material.opacity=1-Math.max(0,a-0.6)/0.3}
     const th=p.th-Math.min(1,a/0.15)*0.03;f.position.set(Math.cos(th)*FOE_R,p.y+(ud.atk?0:Math.sin(Math.PI*Math.min(1,a/0.3))*0.5),Math.sin(th)*FOE_R);f.material.opacity=a>0.8?1-(a-0.8)/0.4:1}
    else{let hop=Math.abs(Math.sin(tt*5+n.at*3));f.visible=true;
     /* painted frames: head down on the beat (frame 1 for the first 40% of each beat), no extra hop */
-    if(f.userData.fr&&sg){const b=sg.beats,i=bIdx(b,lt),u=i<b.length-1?(lt-b[i])/(b[i+1]-b[i]):0;f.material.map=f.userData.fr[u>=0&&u<0.4?1:0];hop=1}f.material.opacity=1;f.material.rotation=0;f.position.set(p.x,p.y+hop*0.12,p.z);f.scale.set(f.userData.sz[0]*(1+0.06*(1-hop)),f.userData.sz[1]*(1-0.06*(1-hop)),1)}}}
+    const wv=f.userData.v,tz=n.thrN,tr=tz&&tz.time?tz.time-sp*THROWF:0,ps=(m,cx,z)=>{f.material.map=m;f.center.set(cx,0.01);f.scale.set(z[0],z[1],1);f.material.opacity=1;f.material.rotation=0;f.position.set(p.x,p.y,p.z)};
+    /* a lanciatore winds up a beat before he lets the bottle go, then holds the throw a moment */
+    if(tr&&wv&&wv.wind&&wv.atk&&tn>=tr-sp&&tn<tr+0.45){if(tn<tr)ps(wv.wind,wv.wcx,wv.wsz);else ps(wv.atk,wv.acx,wv.asz)}
+    /* the wind-up: from one beat before its note the critter holds its wind-up pose, so a whack on the beat cuts it short */
+    else if(wv&&wv.wind&&sg&&lt>=n.at-(sg.spbAt?sg.spbAt(n.at):0.5))ps(wv.wind,wv.wcx,wv.wsz)
+    else{if(f.userData.fr&&sg){const b=sg.beats,i=bIdx(b,lt),u=i<b.length-1?(lt-b[i])/(b[i+1]-b[i]):0;f.material.map=f.userData.fr[u>=0&&u<0.4?1:0];hop=1}f.center.set(0.5,f.userData.sz[2]);f.material.opacity=1;f.material.rotation=0;f.position.set(p.x,p.y+hop*0.12,p.z);f.scale.set(f.userData.sz[0]*(1+0.06*(1-hop)),f.userData.sz[1]*(1-0.06*(1-hop)),1)}}}}
  /* sparks */
  for(let i=0;i<SPN;i++){const s=spInfo[i];if(s.life>0){s.life-=dt*1.6;s.vy-=9*dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.z+=s.vz*dt;spPos.set([s.x,s.y,s.z],i*3)}else spPos.set([0,-999,0],i*3)}spG.attributes.position.needsUpdate=true;
  {const fb=sg?bIdx(sg.beats,lt):0,b0=sg&&sg.beats[fb],b1=sg&&sg.beats[fb+1];fevFx(dt,G.state==='play'&&G.mode==='descent'&&G.tier>=GROW.max,b1>b0?Math.max(0,1-(lt-b0)/(b1-b0)):0)}
