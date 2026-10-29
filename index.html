@@ -455,7 +455,7 @@ function buildLevel(L,sg,th0,y0){if(LVG)dropGroup(LVG);const g=LVG=new THREE.Gro
   else if(n.type==='kick'||n.type==='both'){n.fpos=pathPt(P,s+(n.type==='kick'?0.6:0.75));const o=n.type==='kick'?barricade(L===0?vIdx(n,3,4):0):cart(vIdx(n,2,5)),p=n.fpos;o.position.set(p.x,p.y,p.z);o.lookAt(0,p.y,0);g.add(o);n[n.type==='kick'?'wall':'cart']=o}
   else if(n.type==='brace'){const r=L===0?potRock(vIdx(n,4,6)):new THREE.Mesh(new THREE.DodecahedronGeometry(0.42,0),toon({color:ROCKCOL[L]}));r.visible=false;g.add(r);n.rock=r;
    const sh=new THREE.Mesh(new THREE.CircleGeometry(0.5,12),new THREE.MeshBasicMaterial({color:'#000',transparent:true,opacity:0,depthWrite:false}));sh.rotation.x=-Math.PI/2;sh.position.set(n.pos.x,n.pos.y+0.08,n.pos.z);g.add(sh);n.rsh=sh}
-  else{const fv=FOEVAR[L][vIdx(n,FOEVAR[L].length,2)],f=new THREE.Sprite(new THREE.SpriteMaterial({map:fv.frames?fv.frames[0]:fv.t,transparent:true,alphaTest:0.1}));const fz=f.userData.sz=fv.frames?fv.fsz:fv.sz;f.userData.fr=fv.frames;f.userData.hit=fv.hit;f.userData.hsz=fv.hsz;f.userData.parts=fv.hitParts;f.center.set(0.5,fz[2]);f.scale.set(fz[0],fz[1],1);n.fpos=pathPt(P,s+0.8);n.fpos.x*=FOE_R/HR;n.fpos.z*=FOE_R/HR;f.position.set(n.fpos.x,n.fpos.y,n.fpos.z);g.add(f);n.foe=f}});
+  else{const fv=FOEVAR[L][vIdx(n,FOEVAR[L].length,2)],f=new THREE.Sprite(new THREE.SpriteMaterial({map:fv.frames?fv.frames[0]:fv.t,transparent:true,alphaTest:0.1}));const fz=f.userData.sz=fv.frames?fv.fsz:fv.sz;f.userData.fr=fv.frames;f.userData.hit=fv.hit;f.userData.hsz=fv.hsz;f.userData.parts=fv.hitParts;f.userData.atk=fv.atk;f.userData.asz=fv.asz;f.userData.acx=fv.acx;f.center.set(0.5,fz[2]);f.scale.set(fz[0],fz[1],1);n.fpos=pathPt(P,s+0.8);n.fpos.x*=FOE_R/HR;n.fpos.z*=FOE_R/HR;f.position.set(n.fpos.x,n.fpos.y,n.fpos.z);g.add(f);n.foe=f}});
  return P}
 /* the camp at the bottom, where the boss waits */
 function buildCamp(th,y){if(CAMPG)dropGroup(CAMPG);const g=CAMPG=new THREE.Group();S.add(g);
@@ -558,14 +558,16 @@ return{FOEVAR,BATVAR}})();
 /* painted enemies (Gemini, cut by tools/cutsheet.py): an idle loop of frames, swapped on the beat. Until they load, or if one fails, the drawn sprite stays.
    fr: frame files; h: height in world units (the width follows the image); hit: the pose shown when it's whacked (cutsheet.py --one --parts: <hit>.png is the body, <hit>.json lists the loose bits thrown off it), cut at the same pixel scale as the frames */
 const ART=[{v:FOEVAR[0][0],fr:['art/enemies/gaggio-0.png','art/enemies/gaggio-1.png'],hit:'art/enemies/gaggio-hit',h:3},
- {v:FOEVAR[0][2],fr:['art/enemies/truzzo-1.png','art/enemies/truzzo-2.png'],hit:'art/enemies/truzzo-hit',h:3.2}];
+ {v:FOEVAR[0][2],fr:['art/enemies/truzzo-1.png','art/enemies/truzzo-2.png'],hit:'art/enemies/truzzo-hit',atk:'art/enemies/truzzo-atk.png',acx:0.64,h:3.2}];
 /* painted art: no mipmaps, they blend in a half-size copy and the sprite goes soft at the size it shows on screen */
 const sharp=t=>{t.minFilter=THREE.LinearFilter;t.generateMipmaps=false;return t};
-ART.forEach(a=>{const ld=new THREE.TextureLoader(),tx=[];let left=a.fr.length+1,hit=null;
+ART.forEach(a=>{const ld=new THREE.TextureLoader(),tx=[];let left=a.fr.length+1+(a.atk?1:0),hit=null,atk=null;
  /* the body's sprite is anchored 35% up from its bottom edge; part offsets are from that point, in world units */
  const done=()=>{if(--left)return;const im=tx[0].image,k=a.h/im.height;a.v.frames=tx;a.v.fsz=[k*im.width,a.h,0.01];
+  /* attack pose (shown when the critter is missed): acx is where its feet are across the image, so they stay put */
+  if(atk){a.v.atk=atk;a.v.asz=[k*atk.image.width,k*atk.image.height];a.v.acx=a.acx||0.5}
   if(hit){const m=hit.m;a.v.hit=hit.t;a.v.hsz=[k*m.w,k*m.h];a.v.hitParts=m.parts.filter(q=>q.t).map(q=>({t:q.t,x:k*(q.x-m.w/2),y:k*(m.h*0.65-q.y),w:k*q.w,h:k*q.h}))}};
- a.fr.forEach((u,i)=>ld.load(u,t=>{tx[i]=sharp(t);done()}));if(!a.hit){done();return}
+ a.fr.forEach((u,i)=>ld.load(u,t=>{tx[i]=sharp(t);done()}));if(a.atk)ld.load(a.atk,t=>{atk=sharp(t);done()},undefined,done);if(!a.hit){done();return}
  fetch(a.hit+'.json').then(r=>r.json()).then(m=>{let n=1+m.parts.length,bt=null;const one=()=>{if(--n)return;if(bt)hit={t:bt,m};done()};
   ld.load(a.hit+'.png',t=>{bt=sharp(t);one()},undefined,one);m.parts.forEach(q=>ld.load('art/enemies/'+q.f,t=>{q.t=sharp(t);one()},undefined,one))}).catch(done)});
 /* jump obstacles: named builders, four per layer (OBSV), picked per note by vIdx */
@@ -1715,7 +1717,10 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
     if(n.bits)for(const q of n.bits){q.sp.visible=a<1.3;q.sp.position.copy(q.p0).addScaledVector(q.v,b).y-=9*b*b;q.sp.material.rotation=b*q.w;q.sp.material.opacity=1-Math.max(0,b-0.7)/0.5}
     if(a>1){f.visible=false;continue}
     const th=p.th+b*0.12,r=FOE_R-b*2.2;f.position.set(Math.cos(th)*r,p.y+(ud.hit?ud.hsz[1]*0.35:0)+b*4.5-b*b*9,Math.sin(th)*r);f.material.rotation=ud.hit?-b*3:b*14;f.material.opacity=1-b/0.9}
-   else if(n.j==='m'){const a=now-n.jt;if(a>1.2){f.visible=false;continue}const th=p.th-Math.min(1,a/0.15)*0.03;f.position.set(Math.cos(th)*FOE_R,p.y+Math.sin(Math.PI*Math.min(1,a/0.3))*0.5,Math.sin(th)*FOE_R);f.material.opacity=a>0.8?1-(a-0.8)/0.4:1}
+   else if(n.j==='m'){const a=now-n.jt,ud=f.userData;if(a>1.2){f.visible=false;continue}
+    /* a painted critter lunges in its attack pose instead of hopping */
+    if(ud.atk&&f.material.map!==ud.atk){f.material.map=ud.atk;f.center.set(ud.acx,0.01);f.scale.set(ud.asz[0],ud.asz[1],1);f.material.rotation=0}
+    const th=p.th-Math.min(1,a/0.15)*0.03;f.position.set(Math.cos(th)*FOE_R,p.y+(ud.atk?0:Math.sin(Math.PI*Math.min(1,a/0.3))*0.5),Math.sin(th)*FOE_R);f.material.opacity=a>0.8?1-(a-0.8)/0.4:1}
    else{let hop=Math.abs(Math.sin(tt*5+n.at*3));f.visible=true;
     /* painted frames: head down on the beat (frame 1 for the first 40% of each beat), no extra hop */
     if(f.userData.fr&&sg){const b=sg.beats,i=bIdx(b,lt),u=i<b.length-1?(lt-b[i])/(b[i+1]-b[i]):0;f.material.map=f.userData.fr[u>=0&&u<0.4?1:0];hop=1}f.material.opacity=1;f.material.rotation=0;f.position.set(p.x,p.y+hop*0.12,p.z);f.scale.set(f.userData.sz[0]*(1+0.06*(1-hop)),f.userData.sz[1]*(1-0.06*(1-hop)),1)}}}
