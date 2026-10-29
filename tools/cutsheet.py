@@ -9,11 +9,18 @@ python tools/cutsheet.py --one [--flip] <image> <output file> <scale>
      --flip mirrors it: a whacked critter flies to the right (away from the explorer), so it must fall that way.
      --parts (after --one/--flip) splits off the loose bits: <file> keeps only the body, each other blob is saved as
      <file minus .png>-p0.png, -p1.png..., and <file minus .png>.json lists them with their centres in the body's pixels.
+python tools/cutsheet.py --n <N> <sheet image> <output prefix> [height]
+  -> same as the first form, for sheets where neighbouring figures touch or overlap in x: the N biggest blobs are the
+     figures, smaller ones (smoke, a loose cigarette) go with the nearest figure.
 """
 import sys
 import numpy as np
 from PIL import Image
 
+nfig = 0
+if sys.argv[1] == '--n':
+    nfig = int(sys.argv[2])
+    del sys.argv[1:3]
 one = sys.argv[1] == '--one'
 if one:
     sys.argv.pop(1)
@@ -72,7 +79,7 @@ if one:
     px = np.array(im)
     lab, sizes = blobs(px[..., 3] > 100)
     body = int(np.argmax(sizes))
-    keep = [i for i, n in enumerate(sizes) if i != body and n >= 200]
+    keep = [i for i, n in enumerate(sizes) if i != body and n >= 40]
     near = np.zeros_like(lab) - 1  # grow labels a few pixels so soft edges go with their blob
     for i in [body] + keep:
         near[lab == i] = i
@@ -113,9 +120,33 @@ while x < len(col):
             runs.append((s, x))
     x += 1
 
+own = None
+if nfig:
+    # figures by connected blobs (labelled at quarter size: the flood fill is pure Python)
+    sm = solid[::4, ::4]
+    lab, sizes = blobs(sm)
+    big = list(np.argsort(sizes)[::-1][:nfig])
+    cx = {i: np.where(lab == i)[1].mean() for i in range(len(sizes))}
+    to = {i: min(big, key=lambda j: abs(cx[i] - cx[j])) for i in range(len(sizes))}
+    big.sort(key=lambda j: cx[j])
+    fl = np.vectorize(lambda v: big.index(to[v]) if v >= 0 else -1, otypes=[np.int32])(lab)
+    own = np.repeat(np.repeat(fl, 4, 0), 4, 1)[:solid.shape[0], :solid.shape[1]]
+    own = np.pad(own, ((0, solid.shape[0] - own.shape[0]), (0, solid.shape[1] - own.shape[1])), constant_values=-1)
+    # soft edges dropped by the quarter-size labels: grow each figure's label a few pixels
+    for _ in range(6):
+        g2 = own.copy()
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            sh = np.roll(own, (dy, dx), (0, 1))
+            g2 = np.where((g2 < 0) & (sh >= 0), sh, g2)
+        own = g2
+    runs = []
+    for i in range(nfig):
+        xs = np.where((own == i).any(0))[0]
+        runs.append((xs[0], xs[-1] + 1))
+
 frames = []
-for s, e in runs:
-    m = solid[:, s:e]
+for fi, (s, e) in enumerate(runs):
+    m = solid[:, s:e] if own is None else solid[:, s:e] & (own[:, s:e] == fi)
     rows = np.where(m.any(1))[0]
     y0, y1 = rows[0], rows[-1] + 1
     foot = m[y1 - max(4, (y1 - y0) // 12):y1]  # the feet: anchor point for alignment
@@ -125,13 +156,14 @@ for s, e in runs:
 half = int(max(max(fx - s, e - fx) for s, e, _, _, fx in frames)) + 4
 W, Hs = 2 * half, max(y1 - y0 for _, _, y0, y1, _ in frames) + 4
 for i, (s, e, y0, y1, fx) in enumerate(frames):
+    al = alpha if own is None else alpha * (own == i)
     img = np.zeros((Hs, W, 4), np.uint8)
     x0, ys = int(round(fx)) - half, max(0, y1 - Hs)
     for dx in range(W):
         sx = x0 + dx
         if s <= sx < e:
             img[Hs - (y1 - ys):, dx, :3] = a[ys:y1, sx]
-            img[Hs - (y1 - ys):, dx, 3] = alpha[ys:y1, sx] * 255
+            img[Hs - (y1 - ys):, dx, 3] = al[ys:y1, sx] * 255
     im = Image.fromarray(img, 'RGBA')
     im = im.resize((round(W * H / Hs), H), Image.LANCZOS)
     im.save(f'{out}-{i}.png', optimize=True)

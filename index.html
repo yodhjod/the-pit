@@ -559,12 +559,13 @@ const GU={t:bird(GULL),sz:[1.75,0.88]},GP={t:bird({...GULL,piz:true}),sz:[1.75,0
  GY={t:bird({body:'#d6c6b0',wing:'#8a7660',tip:'#4a3a2a',beak:'#3a3530',eye:'#5a4a3a',dots:'#7a6650'}),sz:[1.65,0.82]},
  PI={t:bird({body:'#a9aec2',wing:'#8a90a8',tip:'#4a4e5e',beak:'#3a3a40',eye:'#ff7a20',neck:['#4a9a7a','#8a5ab0'],bars:true,small:true}),sz:[1.35,0.68]};
 BATVAR=[[GU,GP,GY,PI],[GU,GP,PI],[PI,GY,PI],[GU,PI,GP],[GU,GY,PI]];
-const MAN=[0.8,1.6,6/256],F={GA:{t:GA,sz:MAN},GW:{t:GW,sz:MAN},UL:{t:UL,sz:MAN},TO:{t:TO,sz:MAN},T2:{t:T2,sz:MAN},FL:{t:FL,sz:[0.95,1.9,6/256]},RA:{t:RA,sz:[1.3,0.65,4/128]}};
-FOEVAR=[[F.GA,F.GW,F.UL,F.TO,F.FL],[F.GA,F.RA,F.GW,F.UL],[F.RA,F.TO,F.T2,F.RA],[F.FL,F.GA,F.UL,F.GW],[F.GA,F.GW,F.UL,F.RA]];
+const MAN=[0.8,1.6,6/256],F={GA:{t:GA,sz:MAN},GW:{t:GW,sz:MAN},UL:{t:UL,sz:MAN},TR:{t:UL,sz:MAN},TO:{t:TO,sz:MAN},T2:{t:T2,sz:MAN},FL:{t:FL,sz:[0.95,1.9,6/256]},RA:{t:RA,sz:[1.3,0.65,4/128]}};
+FOEVAR=[[F.GA,F.GW,F.TR,F.TO,F.FL],[F.GA,F.RA,F.GW,F.TR],[F.RA,F.TO,F.T2,F.RA],[F.FL,F.GA,F.TR,F.GW],[F.GA,F.GW,F.TR,F.RA]];
 return{FOEVAR,BATVAR}})();
 /* painted enemies (Gemini, cut by tools/cutsheet.py): an idle loop of frames, swapped on the beat. Until they load, or if one fails, the drawn sprite stays.
    fr: frame files; h: height in world units (the width follows the image); hit: the pose shown when it's whacked (cutsheet.py --one --parts: <hit>.png is the body, <hit>.json lists the loose bits thrown off it), cut at the same pixel scale as the frames */
-const ART=[{v:FOEVAR[0][0],fr:['art/enemies/gaggio-0.png','art/enemies/gaggio-1.png'],hit:'art/enemies/gaggio-hit',h:2.2}];
+const ART=[{v:FOEVAR[0][0],fr:['art/enemies/gaggio-0.png','art/enemies/gaggio-1.png'],hit:'art/enemies/gaggio-hit',h:2.2},
+ {v:FOEVAR[0][2],fr:['art/enemies/truzzo-1.png','art/enemies/truzzo-2.png'],hit:'art/enemies/truzzo-hit',h:2.35}];
 ART.forEach(a=>{const ld=new THREE.TextureLoader(),tx=[];let left=a.fr.length+1,hit=null;
  /* the body's sprite is anchored 35% up from its bottom edge; part offsets are from that point, in world units */
  const done=()=>{if(--left)return;const im=tx[0].image,k=a.h/im.height;a.v.frames=tx;a.v.fsz=[k*im.width,a.h,0.01];
