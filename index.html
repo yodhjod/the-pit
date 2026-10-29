@@ -426,16 +426,11 @@ function buildLevel(L,sg,th0,y0){if(LVG)dropGroup(LVG);const g=LVG=new THREE.Gro
  /* holes: missing steps to jump over, chasms under the ziplines */
  const holes=[];sg.notes.forEach(n=>{const s=SPEED*n.at;if(n.type==='up'&&n.gap)holes.push([s+0.2,SPEED*(n.at+n.w)-0.2]);if(n.type==='hold')holes.push([s+0.55,SPEED*(n.at+n.len)-0.55])});
  const inHole=s=>holes.some(h=>s>h[0]&&s<h[1]);
- const tiles=[],struts=[],posts=[],lan=[],rope=[],rails=[],city=L===0,plate=kind==='plates',WD=city?LIMES:plate?STONES[1]:WOODS;let lastTop=null;const step=kind==='caps'?0.9:0.62,wood=kind==='planks'||kind==='stairs'||plate;
- for(let s=-5,i=0;s<len+4;s+=step,i++){if(inHole(s)){lastTop=null;continue}const p=pathPt(P,s),wr=wallR(p.th,p.y),outer=wr+0.5,depth=outer-LEDGE_IN,rc=(LEDGE_IN+outer)/2;
+ const tiles=[],struts=[],posts=[],lan=[],city=L===0,plate=kind==='plates',WD=city?LIMES:plate?STONES[1]:WOODS;const step=kind==='caps'?0.9:0.62,wood=kind==='planks'||kind==='stairs'||plate;
+ for(let s=-5,i=0;s<len+4;s+=step,i++){if(inHole(s))continue;const p=pathPt(P,s),wr=wallR(p.th,p.y),outer=wr+0.5,depth=outer-LEDGE_IN,rc=(LEDGE_IN+outer)/2;
   if(wood){tiles.push({p:onLedge(p.th,rc,0,p.y-0.08),s:[step-0.05,city?0.3:plate?0.1:0.16,depth+(city||plate?0:(rnd()-0.5)*0.3)],c:pick(WD)});
    if(i%2===0){const a=onLedge(p.th,LEDGE_IN+0.3,0,p.y-0.15),b=onLedge(p.th,wr+0.2,0,p.y-2.2),d=b.clone().sub(a);struts.push({p:a.clone().add(b).multiplyScalar(0.5),q:qFrom(d),s:city?[0.3,d.length(),0.3]:[0.13,d.length(),0.13],c:city?'#cdbb94':plate?'#8a9096':'#5b3d22'})}
-   if(i%(city?2:3)===0){const pp=onLedge(p.th,LEDGE_IN+0.12,0,p.y+0.5),top=pp.clone().setY(p.y+0.92);posts.push({p:pp,s:city?[1.8,1,1.8]:[1,1,1],c:city?'#e9dfc6':plate?'#c9cdd0':'#4a3220'});
-    if(lastTop&&city){const d=top.clone().sub(lastTop);rails.push({p:lastTop.clone().add(top).multiplyScalar(0.5),q:qFrom(d),s:[0.22,d.length(),0.2],c:'#e6dbbf'})}
-    /* Via Roma: the ledge is road plates behind orange site fencing */
-    else if(lastTop&&plate){const d=top.clone().sub(lastTop);for(const[dy,c]of[[0,'#ff6a1a'],[-0.3,'#ff8a2a'],[-0.6,'#ff6a1a']])rails.push({p:lastTop.clone().add(top).multiplyScalar(0.5).setY((lastTop.y+top.y)/2+dy),q:qFrom(d),s:[0.07,d.length(),0.07],c})}
-    else if(lastTop){const a=lastTop;for(let k=0;k<6;k++){const m=t=>a.clone().lerp(top,t).setY(a.y+(top.y-a.y)*t-Math.sin(Math.PI*t)*0.22);rope.push(m(k/6),m((k+1)/6))}}lastTop=top;
-    if(i%24===0){const lp=pp.clone().setY(p.y+1.08);lan.push({p:lp,s:[1,1,1],c:'#ffd58a'});glowAt(g,lp,'#ffbe6a',2.4)}}}
+ }
   else if(kind==='slabs'||kind==='road'){tiles.push({p:onLedge(p.th,rc,0,p.y-0.22),s:[step+0.03,0.44,depth],c:pick(STONES[L])});
    /* the roundabouts: asphalt with a dashed white line and a red-and-white kerb on the pit side */
    if(kind==='road'){if(i%2===0)tiles.push({p:onLedge(p.th,rc+0.35,0,p.y+0.005),s:[step*0.6,0.02,0.14],c:'#f2f2ec'});tiles.push({p:onLedge(p.th,LEDGE_IN+0.12,0,p.y+0.06),s:[step-0.02,0.16,0.26],c:i%2?'#d8202a':'#f2f2ec'})}
@@ -445,10 +440,8 @@ function buildLevel(L,sg,th0,y0){if(LVG)dropGroup(LVG);const g=LVG=new THREE.Gro
    if(i%2===0){const a=onLedge(p.th,rc,0,p.y-0.2),b=onLedge(p.th,wr,0,p.y-2.6),d=b.clone().sub(a);struts.push({p:a.clone().add(b).multiplyScalar(0.5),q:qFrom(d),s:[0.22,d.length(),0.22],c:'#d8e8d0'})}}}
  /* broken plank ends at the edge of each missing step */
  if(wood)holes.forEach(([a,b])=>[[a,0.7],[b,-0.7]].forEach(([s,rz])=>{const p=pathPt(P,s);tiles.push({p:onLedge(p.th,24.4,0,p.y-0.22),s:[0.32,0.12,2.6],c:pick(WD),rz})}));
- addTo(g,rails,new THREE.BoxGeometry(1,1,1),toon({}));
  addTo(g,tiles,kind==='caps'?new THREE.CylinderGeometry(0.5,0.42,0.2,10):new THREE.BoxGeometry(1,1,1),toon({}));
  addTo(g,struts,new THREE.BoxGeometry(1,1,1),toon({}));addTo(g,posts,new THREE.CylinderGeometry(0.05,0.06,1,5),toon({}));addTo(g,lan,new THREE.SphereGeometry(0.13,8,6),new THREE.MeshBasicMaterial({}));
- if(rope.length)g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(rope),new THREE.LineBasicMaterial({color:'#2e1f12'})));
  sign(st.sign,th0+0.1,y0+2.0,g);(sg.dares||[]).forEach(d=>{d.s=SPEED*(d.a+d.b)/2;const q=pathPt(P,d.s);dareDoor(q.th,q.y,g)});clearLedge(P,len);
  /* what each note puts on the ledge */
  sg.notes.forEach(n=>{if(n.boss)return;const s=SPEED*n.at;n.pos=pathPt(P,s);
