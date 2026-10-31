@@ -63,7 +63,12 @@ H = int(sys.argv[3]) if len(sys.argv) > 3 and not one and not grid else 384
 a = np.asarray(Image.open(src).convert('RGB')).astype(np.float32)
 r, g, b = a[..., 0], a[..., 1], a[..., 2]
 # how green a pixel is: 0 on the character, 1 on the background, soft in between (JPEG edges)
-k = np.clip(((g - np.maximum(r, b)) - 40) / 50, 0, 1)
+gx = g - np.maximum(r, b)
+# the background's greenness, from the image's border: Gemini's "pure green" is sometimes a softer green,
+# so the threshold scales down with it (unchanged for a full green)
+gb = np.median(np.concatenate([gx[0], gx[-1], gx[:, 0], gx[:, -1]]))
+lo, span = min(40, 0.45 * gb), min(50, 0.5 * gb)
+k = np.clip((gx - lo) / span, 0, 1)
 alpha = 1 - k
 # despill: pull green fringes back to the other channels
 a[..., 1] = np.where(k > 0, np.minimum(g, np.maximum(r, b) + 10), g)
