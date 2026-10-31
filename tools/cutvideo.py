@@ -92,8 +92,9 @@ for i, (a, al, gr) in enumerate(frames):
     # only paler green (seen through plastic): a gap between the bag and a leg is the full background green
     hole = ~solid & ~outside(solid) & (grs < 0.8)
     lum = px[..., :3].astype(np.float32).mean(2, keepdims=True)
-    plastic = np.clip(170 + (lum - lum[hole].mean() if hole.any() else 0) * 0.5, 120, 235)
-    px[hole, :3] = np.repeat(plastic, 3, 2)[hole].astype(np.uint8)
-    px[hole, 3] = 235
+    if hole.any():
+        plastic = np.clip(170 + (lum - lum[hole].mean()) * 0.5, 120, 235)
+        px[hole, :3] = np.repeat(plastic, 3, 2)[hole].astype(np.uint8)
+        px[hole, 3] = 235
     Image.fromarray(px, 'RGBA').save(f'{out}-{i}.png', optimize=True)
     print(f'{out}-{i}.png', im.size, int(hole.sum()), 'hole px')

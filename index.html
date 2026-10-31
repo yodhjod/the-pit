@@ -267,15 +267,15 @@ const toon=(o)=>new THREE.MeshToonMaterial(Object.assign({gradientMap:toonGrad},
 const BPMS=[98,108,116,124,132,140,144,104,112,120,126,134],SPBL=BPMS.map(b=>60/b),TYPES={t:'tap',u:'up',d:'duck',h:'hold',k:'kick',b:'brace',w:'both',l:'duck',c:'duck',p:'duck',J:'up',L:'up'};
 const CHART=[
  [[0,'t'],[1,'t'],[2,'u'],[4,'t'],[5,'t'],[6,'u'],[8,'k'],[9,'t'],[10,'t'],[10.5,'t'],[11,'d'],[12,'u'],[13,'t'],[14,'t'],[15,'d'],[16,'b'],[17,'t'],[18,'w'],[19,'t'],[20,'u'],[21,'t'],[22,'d'],[23,'t'],[24,'k'],[25,'t'],[26,'w'],[28,'h',2],[31,'b']],
- [[0,'t'],[1,'t'],[2,'u'],[4,'h',3],[8,'t'],[9,'t'],[9.5,'t'],[10,'d'],[11,'t'],[12,'u'],[13,'d'],[14,'t'],[14.5,'t'],[15,'t'],[16,'h',3],[20,'l'],[23,'t'],[24,'t'],[24.5,'t'],[25,'t'],[26,'p'],[27,'t'],[28,'u'],[29,'d'],[30,'t'],[30.5,'t'],[31,'t']],
- [[0,'t'],[1,'t'],[2,'t'],[3,'t'],[4,'t'],[5,'u'],[6,'d'],[7,'t'],[8,'c'],[12,'p'],[13,'t'],[14,'u'],[15,'t'],[16,'t'],[17,'t'],[18,'t'],[18.5,'t'],[19,'u'],[20,'h',2],[23,'t'],[24,'d'],[25,'u'],[26,'t'],[27,'t'],[28,'d'],[29,'u'],[30,'t'],[31,'t']],
- [[0,'t'],[1,'u'],[2,'d'],[3,'t'],[3.5,'t'],[4,'h',2],[7,'u'],[8,'p'],[9,'t'],[9.5,'t'],[10,'u'],[11,'d'],[12,'h',3],[16,'c'],[19,'t'],[19.5,'t'],[20,'u'],[21,'t'],[22,'t'],[23,'u'],[24,'h',2],[27,'t'],[27.5,'t'],[28,'t'],[29,'u'],[30,'t'],[31,'t']],
- [[0,'d'],[1,'t'],[2,'u'],[3,'t'],[4,'h',3],[8,'t'],[8.5,'t'],[9,'t'],[10,'u'],[11,'t'],[12,'p'],[13,'u'],[14,'t'],[14.5,'t'],[15,'t'],[16,'u'],[17,'d'],[18,'h',2],[21,'t'],[22,'u'],[23,'d'],[24,'t'],[24.5,'t'],[25,'u'],[26,'t'],[27,'t'],[28,'h',2],[31,'u']]];
+ [[0,'t'],[1,'t'],[2,'u'],[4,'h',3],[8,'k'],[10,'d'],[12,'u'],[13,'t'],[14,'b'],[16,'h',3],[20,'l'],[23,'t'],[24,'k'],[26,'p'],[28,'u'],[30,'t'],[30.5,'t'],[31,'b']],
+ [[0,'t'],[1,'t'],[2,'k'],[4,'t'],[5,'u'],[6,'d'],[8,'c'],[12,'p'],[14,'u'],[15,'t'],[16,'b'],[18,'t'],[18.5,'t'],[19,'u'],[20,'h',2],[24,'d'],[25,'u'],[26,'k'],[28,'d'],[29,'u'],[30,'b']],
+ [[0,'t'],[1,'u'],[2,'d'],[3.5,'t'],[4,'h',2],[7,'u'],[8,'p'],[9.5,'k'],[11,'d'],[12,'h',3],[16,'c'],[19,'t'],[19.5,'t'],[20,'u'],[21,'b'],[23,'u'],[24,'h',2],[27,'t'],[28,'k'],[29,'u'],[30,'t'],[31,'b']],
+ [[0,'d'],[1.5,'t'],[2,'u'],[3,'b'],[4,'h',3],[8,'t'],[8.5,'t'],[9,'k'],[10,'u'],[12,'p'],[13,'u'],[14,'t'],[14.5,'t'],[15,'b'],[16,'u'],[17,'d'],[18,'h',2],[21,'k'],[22,'u'],[23,'d'],[24.5,'t'],[25,'u'],[26,'b'],[27,'t'],[28,'h',2],[31,'k']]];
 /* hand-built full levels (beats from 0, no looping), used instead of looping CHART[L]. Dares sit at beats 48 and 80, with the side ledge's fork 4 beats before: keep 44-48 and 76-80 empty.
    The Bastione is built from short phrases (ta . ta ta JUMP) and its ledge is part of the game: platform hops and a ladder, then gulls, the zipline and a deadly leap over the pit, then the barricade, the rock and the cart */
 const CHART_FULL={0:[
- [0,'t'],[2,'t'],[3,'t'],[4,'u'],[6,'t'],[8,'t'],[9,'t'],[10,'u'],[12,'J',1,-1.2],[14,'t'],[15,'t'],[16,'J',1,1],[18,'t'],[20,'t'],[21,'t'],[22,'u'],[24,'J',1,-1.5],[26,'t'],[27,'t'],[28,'L',3,2.4],
- [32,'d'],[34,'u'],[36,'t'],[37,'t'],[38,'u'],[40,'d'],[42,'u'],[49,'h',2],[52,'t'],[53,'t'],[54,'J',2,-1.5],[57,'u'],[59,'p'],[61,'u'],[62,'J',1,-1],
+ [0,'t'],[2,'t'],[3,'t'],[4,'u'],[6,'t'],[8,'t'],[9,'t'],[10,'u'],[12,'J',1,-1.2],[14,'t'],[15,'t'],[16,'J',1,1],[18,'t'],[20,'k'],[22,'u'],[24,'J',1,-1.5],[26,'t'],[27,'t'],[28,'L',3,2.4],
+ [32,'d'],[34,'u'],[36,'t'],[37,'t'],[38,'u'],[40,'d'],[42,'u'],[49,'h',2],[52,'b'],[54,'J',2,-1.5],[57,'u'],[59,'p'],[61,'u'],[62,'J',1,-1],
  [64,'t'],[66,'k'],[67,'t'],[68,'u'],[70,'b'],[73,'d'],[75,'u'],[81,'w'],[83,'t'],[84,'t'],[85,'u'],[86,'L',2,1.6],[89,'k'],[90,'t'],[91,'J',1,-1.5],[93,'b'],[94,'t'],[95,'t']]};
 /* a song is everything a level needs, in level seconds (0 = the level starts): beats, notes, first note, end.
    built-in songs are generated beat by beat by musicBeat; songs from music files come from makeChart */
@@ -348,7 +348,7 @@ const BOSS_CHART=[[0,'t'],[1,'t'],[2,'d'],[3,'t'],[4,'t'],[5,'u'],[6,'t'],[6.5,'
  [16,'t'],[16.5,'t'],[17,'t'],[18,'d'],[19,'u'],[20,'t'],[21,'d'],[22,'t'],[22.5,'t'],[23,'t'],[24,'h',3],[28,'u'],[29,'d'],[30,'t'],[31,'t']];
 
 /* ---------- world constants ---------- */
-const RP=27,TOP=3,BOTTOM=-140,TH0=-Math.PI/2,DT=1.5/23.9,SY=0.62,HR=23.9,FOE_R=HR-0.6;
+const RP=27,TOP=3,BOTTOM=-140,TH0=-Math.PI/2,DT=1.5/23.9,SY=0.8,/* layer depth scale: deep enough for ~9 units between turns, room for the 3-tall hero on a dare side ledge */HR=23.9,FOE_R=HR-0.6;
 function wallR(th,y){const c=Math.cos(th),sn=Math.sin(th);const v=y*0.3+fbm(c*1.3+9,y*0.05,sn*1.3+9)*2.2;const f=v-Math.floor(v);const terr=(f<0.22?f/0.22:1)*0.95;return RP+(fbm(c*2.6+5,y*0.16,sn*2.6+5)-0.5)*3.0-terr+Math.sin(y*1.1+th*3)*0.15}
 function wallPos(th,y,inset){const r=wallR(th,y)-inset;return new THREE.Vector3(Math.cos(th)*r,y,Math.sin(th)*r)}
 const LAYERS=[
@@ -423,7 +423,7 @@ function addGlow(arr,p,c){arr.push({p:p.clone(),c:new THREE.Color(c)})}
 /* ---------- the ledge: built for each level from its chart; the explorer walks it at a steady pace ---------- */
 /* s = distance along the ledge from the level's start. A note at level time t sits at s = SPEED·t, so the explorer reaches it on its beat.
    The ledge winds down the pit; long songs wind round more than once, dropping at least MINPITCH so the turns never touch */
-let SPEED=3;const PACE=2.1,MINPITCH=5.4/(Math.PI*2*HR),CABR=HR-0.55,LEDGE_IN=22.9;
+let SPEED=3;const PACE=2.1,MINPITCH=8.5/(Math.PI*2*HR),CABR=HR-0.55,LEDGE_IN=22.9;
 const WOODS=['#9a6b3e','#8a5d34','#a77a4a','#7c532e'],LIMES=['#e3d3b0','#d8c6a0','#eadcbc','#cfbb92'],STONES=[null,['#767d82','#646b70','#858c91','#5a6064'],['#e6d6ad','#d6c393','#efe3c2','#c9b27f'],['#3b3b40','#34343a','#44444a','#2f2f34'],['#9a958c','#8a857c','#a8a399','#7c776f']];
 const FIRE_L=new THREE.PointLight(0xff9a50,0,9,1.6);S.add(FIRE_L);
 let LVG=null,CAMPG=null;
@@ -464,7 +464,7 @@ function buildLevel(L,sg,th0,y0){if(LVG)dropGroup(LVG);const g=LVG=new THREE.Gro
  addTo(g,tiles,kind==='caps'?new THREE.CylinderGeometry(0.5,0.42,0.2,10):new THREE.BoxGeometry(1,1,1),toon({}));
  addTo(g,struts,new THREE.BoxGeometry(1,1,1),toon({}));addTo(g,posts,new THREE.CylinderGeometry(0.05,0.06,1,5),toon({}));addTo(g,lan,new THREE.SphereGeometry(0.13,8,6),new THREE.MeshBasicMaterial({}));
  sign(st.sign,th0+0.1,y0+2.0,g);/* dares: a side ledge DRISE above the path, from a beat after the fork to the drop back down, with the DARE? door in the middle */
- P.clr=[];(sg.dares||[]).forEach(d=>{d.s=SPEED*(d.a+d.b)/2;const side=[],z0=pathPt(P,SPEED*d.a-0.6),z1=pathPt(P,SPEED*d.b+0.4);P.clr.push({th0:z0.th-0.06,th1:z1.th+0.06,y0:Math.min(z0.y,z1.y)+DRISE-0.6,y1:Math.max(z0.y,z1.y)+DRISE+3.4});for(let s=SPEED*d.a-0.6;s<SPEED*d.b+0.4;s+=step){const p=pathPt(P,s),y=p.y+DRISE,wr=wallR(p.th,y);side.push({p:onLedge(p.th,(LEDGE_IN+wr+0.5)/2,0,y-0.08),s:[step-0.05,0.3,wr+0.5-LEDGE_IN],c:pick(WD)})}
+ P.clr=[];(sg.dares||[]).forEach(d=>{d.s=SPEED*(d.a+d.b)/2;const side=[],z0=pathPt(P,SPEED*d.a-0.6),z1=pathPt(P,SPEED*d.b+0.4);P.clr.push({th0:z0.th-0.06,th1:z1.th+0.06,y0:Math.min(z0.y,z1.y)+DRISE-0.6,y1:Math.max(z0.y,z1.y)+DRISE+4.4});for(let s=SPEED*d.a-0.6;s<SPEED*d.b+0.4;s+=step){const p=pathPt(P,s),y=p.y+DRISE,wr=wallR(p.th,y);side.push({p:onLedge(p.th,(LEDGE_IN+wr+0.5)/2,0,y-0.08),s:[step-0.05,0.3,wr+0.5-LEDGE_IN],c:pick(WD)})}
   addTo(g,side,new THREE.BoxGeometry(1,1,1),toon({}));const q=pathPt(P,d.s);dareDoor(q.th,q.y+DRISE,g)});clearLedge(P,len);
  /* ladders: two rails and rungs against the rock, from the lower ledge to the upper one */
  P.lad.forEach(e=>{const a=pathPt(P,e.s0),h=Math.abs(e.rise),y0=a.y+Math.min(0,e.rise),lg=new THREE.Group(),wd=toon({color:city?'#8a6a44':'#6b4a2a'});lg.position.set(Math.cos(a.th)*(HR+0.45),y0,Math.sin(a.th)*(HR+0.45));lg.lookAt(0,y0,0);
@@ -473,7 +473,7 @@ function buildLevel(L,sg,th0,y0){if(LVG)dropGroup(LVG);const g=LVG=new THREE.Gro
  /* what each note puts on the ledge */
  sg.notes.forEach(n=>{if(n.boss)return;const s=SPEED*n.at;n.pos=pathPt(P,s);
   if(n.type==='up'){n.mid=pathPt(P,SPEED*(n.at+n.w/2));if(!n.gap&&!n.climb){const o=obstacle(L,vIdx(n,4,3)),m=n.mid;o.position.set(m.x,m.y-0.05,m.z);o.lookAt(0,m.y-0.05,0);g.add(o);n.obj=o;if(L>=3)glowAt(g,o.position.clone().add(new THREE.Vector3(0,0.7,0)),L===3?'#2fd6b8':'#b48cff',2.2)}}
-  else if(n.type==='hold'){const a=n.pos,b=pathPt(P,SPEED*(n.at+n.len)),A=a.y+2.7,B=b.y+2.2,pts=[];n.cable=[];
+  else if(n.type==='hold'){const a=n.pos,b=pathPt(P,SPEED*(n.at+n.len)),A=a.y+3,B=b.y+2.6,/* high enough for the painted hero's feet to clear the ledge */pts=[];n.cable=[];
    for(let k=0;k<=24;k++){const t=k/24,th=a.th+(b.th-a.th)*t,y=A+(B-A)*t-Math.sin(Math.PI*t)*0.45;n.cable.push({th,y});pts.push(new THREE.Vector3(Math.cos(th)*CABR,y,Math.sin(th)*CABR))}
    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:'#24160c'})));
    [[a,2.85],[b,2.35]].forEach(([p,h])=>{const post=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.1,h,6),toon({color:'#5b3d22'}));post.position.set(Math.cos(p.th)*(CABR-0.1),p.y+h/2,Math.sin(p.th)*(CABR-0.1));g.add(post);
@@ -481,8 +481,8 @@ function buildLevel(L,sg,th0,y0){if(LVG)dropGroup(LVG);const g=LVG=new THREE.Gro
   else if(n.thr){const b=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,alphaTest:0.1}));b.visible=false;g.add(b);n.bot=b}
   else if(n.type==='duck'){const bv=n.piz?BATVAR[0][1]:BATVAR[L][vIdx(n,BATVAR[L].length,1)],b=new THREE.Sprite(new THREE.SpriteMaterial({map:bv.frames?bv.frames[0]:bv.t,alphaTest:0.5}));b.userData.sz=bv.frames?bv.fsz:bv.sz;b.userData.fr=bv.frames;b.userData.v=bv;b.scale.set(b.userData.sz[0],b.userData.sz[1],1);b.visible=false;g.add(b);n.bat=b;
    if(n.piz){const z=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,alphaTest:0.1}));z.visible=false;g.add(z);n.pz=z}}
-  else if(n.type==='kick'||n.type==='both'){n.fpos=pathPt(P,s+(n.type==='kick'?0.6:0.75));const o=n.type==='kick'?barricade(L===0?vIdx(n,3,4):0):cart(vIdx(n,2,5)),p=n.fpos;o.position.set(p.x,p.y,p.z);o.lookAt(0,p.y,0);g.add(o);n[n.type==='kick'?'wall':'cart']=o}
-  else if(n.type==='brace'){const r=L===0?potRock(vIdx(n,4,6)):new THREE.Mesh(new THREE.DodecahedronGeometry(0.42,0),toon({color:ROCKCOL[L]}));r.visible=false;g.add(r);n.rock=r;
+  else if(n.type==='kick'||n.type==='both'){n.fpos=pathPt(P,s+(n.type==='kick'?0.6:0.75));const o=n.type==='kick'?barricade(vIdx(n,3,4)):cart(vIdx(n,2,5)),p=n.fpos;o.position.set(p.x,p.y,p.z);o.lookAt(0,p.y,0);g.add(o);n[n.type==='kick'?'wall':'cart']=o}
+  else if(n.type==='brace'){const r=L===0||L===1||L===4?potRock(vIdx(n,4,6)):new THREE.Mesh(new THREE.DodecahedronGeometry(0.42,0),toon({color:ROCKCOL[L]}));r.visible=false;g.add(r);n.rock=r;
    const sh=new THREE.Mesh(new THREE.CircleGeometry(0.5,12),new THREE.MeshBasicMaterial({color:'#000',transparent:true,opacity:0,depthWrite:false}));sh.rotation.x=-Math.PI/2;sh.position.set(n.pos.x,n.pos.y+0.08,n.pos.z);g.add(sh);n.rsh=sh}
   else{const fv=n.lanc?FOES[n.lanc]:FOEVAR[L][vIdx(n,FOEVAR[L].length,2)],f=new THREE.Sprite(new THREE.SpriteMaterial({map:fv.frames?fv.frames[0]:fv.t,transparent:true,alphaTest:0.1}));const fz=f.userData.sz=fv.frames?fv.fsz:fv.sz;f.userData.fr=fv.frames;f.userData.hit=fv.hit;f.userData.hsz=fv.hsz;f.userData.parts=fv.hitParts;f.userData.atk=fv.atk;f.userData.asz=fv.asz;f.userData.acx=fv.acx;f.userData.v=fv;f.center.set(0.5,fz[2]);f.scale.set(fz[0],fz[1],1);n.fpos=pathPt(P,s+0.8);n.fpos.x*=FOE_R/HR;n.fpos.z*=FOE_R/HR;f.position.set(n.fpos.x,n.fpos.y,n.fpos.z);g.add(f);n.foe=f}});
  return P}
@@ -494,13 +494,13 @@ function buildCamp(th,y){if(CAMPG)dropGroup(CAMPG);const g=CAMPG=new THREE.Group
  glowAt(g,fire.position.clone().add(new THREE.Vector3(0,0.3,0)),'#ff9a3c',3);FIRE_L.position.copy(fire.position).add(new THREE.Vector3(0,1,0));FIRE_L.intensity=0.9;window.__fire=fire}
 
 /* the dare: a dark doorway in the wall (a black box sunk into the rock, its face just in front of the wall's nearest bump), a stone frame, a faint red glow and the DARE? sign above */
-function dareDoor(th,y,g){let r0=99;for(const dy of[0.2,1.4,2.6])for(const o of[-0.9,0,0.9])r0=Math.min(r0,wallR(th+o/HR,y+dy));r0-=0.1;const rw=r0;
+function dareDoor(th,y,g){let r0=99;for(const dy of[0.2,1.8,3.4])for(const o of[-1.1,0,1.1])r0=Math.min(r0,wallR(th+o/HR,y+dy));r0-=0.1;const rw=r0;
  /* in front of any house front or sign the door overlaps, or they show inside the dark */
- const T=Math.PI*2,hw=1.4/HR;for(const[t,a,y0,y1,rf]of WFR){let d=t-th;d-=Math.round(d/T)*T;if(Math.abs(d)<a+hw&&y0<y+3&&y1>y-0.2)r0=Math.min(r0,rf-0.35)}
- const dark=new THREE.Mesh(new THREE.BoxGeometry(1.8,2.8,3),new THREE.MeshBasicMaterial({color:'#050307'}));dark.position.copy(onLedge(th,r0+1.5,0,y+1.3));dark.lookAt(0,y+1.3,0);g.add(dark);
- const st=toon({color:'#4a4038'}),D=Math.max(0.6,rw-r0+0.5);[[-1.1,1.4,0.4,3],[1.1,1.4,0.4,3],[0,2.95,2.6,0.45]].forEach(([o,h,w,hh])=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,hh,D),st);b.position.copy(onLedge(th,r0-0.5+D/2,o,y+h));b.lookAt(0,y+h,0);g.add(b)});
- const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:'#ff3b2a',transparent:true,opacity:0.45,blending:THREE.AdditiveBlending,depthWrite:false}));gl.position.copy(onLedge(th,r0+0.3,0,y+1.1));gl.scale.set(2.2,2.6,1);g.add(gl);
- sign('DARE?',th,y+3.9,g);return r0}
+ const T=Math.PI*2,hw=1.7/HR;for(const[t,a,y0,y1,rf]of WFR){let d=t-th;d-=Math.round(d/T)*T;if(Math.abs(d)<a+hw&&y0<y+3.9&&y1>y-0.2)r0=Math.min(r0,rf-0.35)}
+ const dark=new THREE.Mesh(new THREE.BoxGeometry(2.2,3.6,3),new THREE.MeshBasicMaterial({color:'#050307'}));dark.position.copy(onLedge(th,r0+1.5,0,y+1.7));dark.lookAt(0,y+1.7,0);g.add(dark);
+ const st=toon({color:'#4a4038'}),D=Math.max(0.6,rw-r0+0.5);[[-1.3,1.8,0.4,3.8],[1.3,1.8,0.4,3.8],[0,3.75,3,0.45]].forEach(([o,h,w,hh])=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,hh,D),st);b.position.copy(onLedge(th,r0-0.5+D/2,o,y+h));b.lookAt(0,y+h,0);g.add(b)});
+ const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:'#ff3b2a',transparent:true,opacity:0.45,blending:THREE.AdditiveBlending,depthWrite:false}));gl.position.copy(onLedge(th,r0+0.3,0,y+1.4));gl.scale.set(2.7,3.3,1);g.add(gl);
+ sign('DARE?',th,y+4.4,g);return r0}
 /* ---------- signs ---------- */
 function sign(text,th,y,par){const t=canvasTex(320,110,(x,w,h)=>{x.fillStyle='#8a6238';x.fillRect(0,0,w,h);x.fillStyle='rgba(0,0,0,.18)';for(let i=0;i<5;i++)x.fillRect(0,i*22+20,w,2);x.strokeStyle='#4a3220';x.lineWidth=8;x.strokeRect(4,4,w-8,h-8);
   x.fillStyle='#2a1a0e';x.font='600 46px Georgia,serif';const fs=Math.min(46,46*(w-36)/x.measureText(text).width);x.font='600 '+fs+'px Georgia,serif';x.textAlign='center';x.textBaseline='middle';x.fillText(text,w/2,h/2+3)});t._own=true;
@@ -949,7 +949,9 @@ const POSES={
  hurt:{y:2,lean:-4,headX:-1,legF:[5,5,9,8],legB:[-3,7,-2,14],armF:[4,-2,7,-6],armB:[-2,-3,-4,-8],wave:3,lift:2,mouth:1,eye:1}};
 const FR={};for(const k in POSES){FR[k]=drawPose(POSES[k],false);if(['push','rise','fall','land','vault','stepReach','stepPlant','settle','sneakIdle','sneakIdle2','sneakLift','sneakReach','sneakPlant','sneakSettle'].includes(k))FR[k+'B']=drawPose(POSES[k],true)}
 /* the painted hero's walk frames; until they load (or if one fails) the drawn sneak stays */
-let HWALK=null;const HWH=3;/* as tall as the painted critters */{const ld=new THREE.TextureLoader();Promise.all([0,1,2,3,4,5,6,7].map(i=>new Promise(r=>ld.load('art/hero/walk-'+i+'.png',t=>r(sharp(t)),undefined,()=>r(null))))).then(t=>{if(t.every(Boolean))HWALK=t})}
+let HWALK=null,HSWING=null,HDUCK=null,HJUMP=null,HZIP=null,HCLIMB=null,HBRACE=null;const HWH=3;/* as tall as the painted critters */{const ld=new THREE.TextureLoader(),clip=(nm,k,n=8)=>Promise.all([...Array(n).keys()].map(i=>new Promise(r=>ld.load('art/hero/'+nm+'-'+i+'.png',t=>r(sharp(t)),undefined,()=>r(null))))).then(t=>{if(t.every(Boolean))k(t)});
+ clip('walk',t=>HWALK=t);clip('swing',t=>HSWING=t);clip('duck',t=>HDUCK=t);clip('jump',t=>HJUMP=t);clip('zip',t=>HZIP=t);clip('climb',t=>HCLIMB=t);clip('brace',t=>HBRACE=t,2)/* 0-2 wind-up (bag going back), 3-7 hit and follow-through; feet at x 0.46; duck: 0-1 dropping, 2-5 crouched, 6-7 rising, feet at x 0.3; jump: 0 crouch, 1 take-off, 2-6 flailing in the air (pinned on the head, the code does the arc), 7 landing; feet at x 0.63, 6.8% up the image, which is 294/274 of standing height; zip: a 1.33 s loop of kicking on the cable, fists at x 0.433, gripping the cable 12 px from the top; sized by his face, the image is 2.8 tall; climb: one cycle per two rungs, 2.7 tall, feet on the bottom edge; brace: two Gemini stills, bag over his head (2.8 tall, feet x 0.556) and the flinch as the rock hits (2.65, 0.524) */}
+const jfr=u=>u<0.12?1:u>0.9?7:2+Math.min(4,Math.floor((u-0.12)/0.78*5));
 const HERO=new THREE.Sprite(new THREE.SpriteMaterial({map:FR.idle,alphaTest:0.5}));HERO.center.set(0.5,3/SH);const HH=2.8;HERO.scale.set(HH*SW/SH,HH,1);S.add(HERO);
 const HSH=new THREE.Mesh(new THREE.CircleGeometry(0.55,18),new THREE.MeshBasicMaterial({color:'#000',transparent:true,opacity:0.35,depthWrite:false}));HSH.rotation.x=-Math.PI/2;S.add(HSH);
 const HGLOW=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:'#ffd58a',transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,opacity:0}));HGLOW.scale.set(2.2,2.2,1);S.add(HGLOW);
@@ -1350,11 +1352,11 @@ const REC={tap:0.24,up:0.55,duck:0.42,kick:0.3,brace:0.4,both:0.4};
 function freeAct(mv,t,id){if(t<G.busy)return;const c=clock();if(mv==='tap'){G.fp={t,id};G.atk=c}else if(mv==='both'){G.atk=-9;G.heave=c}else if(mv==='up')G.jump=c;else if(mv==='duck')G.duck=c;else if(mv==='kick')G.kick=c;else G.brace=c;
  G.lock=t+(clock()<G.grace?0:REC[mv]);if(mv==='up')branchTry(t);dareTry(t);if(AC)nz(AC.currentTime,0.12,0.07,'bandpass',1800,2);flourish(t)}
 /* the fork before a dare: a swipe up on its beat climbs onto the side ledge (no judgement either way; walking on is fine) */
-const DRISE=2.4;
+const DRISE=3.6;
 function branchTry(t){const d=LV&&LV.song.dares;if(!d||G.mode!=='descent')return;const lt=levelAt(t),x=d.find(x=>x.br==null&&Math.abs(lt-x.f0)<=W_S+0.05);if(!x)return;x.br=true;judgeShow('Side ledge','#e8a0a0','the DARE? door is up here','p');if(AC)nz(AC.currentTime,0.15,0.2,'bandpass',1400,3)}
 /* height above the path while on a side ledge: up at the fork, along it, then the drop back down. [offset, standing on it] */
 function brOff(lc){const d=LV&&LV.song.dares;if(!d)return null;for(const x of d){if(!x.br||lc<x.f0||lc>x.j1)continue;if(lc<x.a){const u=(lc-x.f0)/(x.a-x.f0);return[DRISE*smooth(u)+Math.sin(Math.PI*u)*0.8,0]}if(lc<x.b)return[DRISE,1];return[DRISE*(1-((lc-x.b)/(x.j1-x.b))**2),0]}return null}
-function dareTry(t){const d=LV&&LV.song.dares;if(!d||G.mode!=='descent')return;const lt=levelAt(t),x=d.find(x=>x.br&&x.on==null&&lt>=x.a-W_G&&lt<x.b);if(!x)return;x.on=true;if(AC)nz(AC.currentTime,0.2,0.3,'bandpass',900,3);enterDare(x,lt)}
+function dareTry(t){const d=LV&&LV.song.dares;if(!d||G.mode!=='descent')return;const lt=levelAt(t),x=d.find(x=>x.br&&x.on==null&&lt>=x.a-W_G&&lt<(x.a+x.b)/2+W_G)/* only until he's walked past the door, so a swipe on the way down doesn't pull him in */;if(!x)return;x.on=true;if(AC)nz(AC.currentTime,0.2,0.3,'bandpass',900,3);enterDare(x,lt)}
 /* accepting a dare: the level stops (G.state 'enter'), the explorer walks to the doorway (ENTER.walk s) and into the dark (ENTER.inn s), the view irises shut on them (ENTER.iris s, see irisFx) and the dare room opens. The main level waits (G.back).
    When the dare room ends (dareExit, G.state 'exit'), the view irises shut, the main level's ledge is rebuilt (dareBack) and the iris opens on the doorway: the explorer walks out of the dark (ENTER.inn s)
    and the level resumes from the door (resumePlay): its music comes back 4 beats before the door's level time while the explorer waits there, then they walk on */
@@ -1500,7 +1502,7 @@ S.traverse(o=>{if(!o.isInstancedMesh||o.userData.noCut)return;const g=o.geometry
  if(info.length)DECOR.push({o,orig,info})});
 /* big one-off props (a drowned bus, a floodlight) are groups, not instances: hidden whole when the walkway runs through them */
 const CUTG=[];S.children.forEach(o=>{if(!o.userData.cutG)return;const b=new THREE.Box3().setFromObject(o),c=b.getCenter(new THREE.Vector3());CUTG.push({o,th:Math.atan2(c.z,c.x),y0:b.min.y,y1:b.max.y})});
-function onWalk(P,len,th,y0,y1){const TAU=Math.PI*2,turn=TAU*HR;let d=th-P.th0;d-=Math.floor(d/TAU)*TAU;for(let s=d*HR-turn;s<len+2;s+=turn){if(s<-7)continue;const yp=pathPt(P,clamp(s,-5,len)).y;if(y0<yp+3&&y1>yp-0.6)return true}return false}
+function onWalk(P,len,th,y0,y1){const TAU=Math.PI*2,turn=TAU*HR;let d=th-P.th0;d-=Math.floor(d/TAU)*TAU;for(let s=d*HR-turn;s<len+2;s+=turn){if(s<-7)continue;const yp=pathPt(P,clamp(s,-5,len)).y;if(y0<yp+4.2&&y1>yp-0.6)return true}return false}
 /* clear zones off the walkway (P.clr: the dares' side ledges and doors), so house fronts don't poke through the door */
 function inClr(P,th,y0,y1){return(P.clr||[]).some(z=>{const T=Math.PI*2;let d=th-z.th0;d-=Math.floor(d/T)*T;return d<=z.th1-z.th0&&y0<z.y1&&y1>z.y0})}
 function clearLedge(P,len){DECOR.forEach(({o,orig,info})=>{const a=o.instanceMatrix.array;a.set(orig);
@@ -1721,7 +1723,7 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
  if(G.zip&&G.state==='play'){const n=G.zip.n;if(tn>n.endTime+W_G){G.lastSd=0;if(n.boss)G.atk=now;score(n,n.hj==='p'?'p':'g');holdFxEnd(n.j);G.ni++;G.zip=null}}
  /* hero: walks the ledge at a steady pace. Position is a pure function of level time, so the world stays on the beat whatever the player does;
     input only changes the outcome (a clean jump or a fall, a whack or a bite, riding the line or dropping into the chasm) */
- let wf=-1,hTh,hy,shY,rad=HR,pose=(Math.floor(tt/0.45)%2?'sneakIdle2':'sneakIdle');
+ let wf=-1,jf=-1,zf=-1,cf=-1,pan=false,hTh,hy,shY,rad=HR,pose=(Math.floor(tt/0.45)%2?'sneakIdle2':'sneakIdle');
  if(G.state==='loading'&&G.hl){({hTh,hy,shY}=G.hl)}
  else if(G.mode==='boss'&&G.camp&&G.state!=='title'){hTh=G.camp.th;hy=shY=G.camp.y}
  /* miniboss: the explorer stands at the end of the ledge; the game picks the dodge for each answered strike: low sweep → jump, high swipe → duck, a slam from one side → hop to the other, a beam → brace while the hold lasts */
@@ -1741,26 +1743,33 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
   if(G.state==='play'&&lt>(G.resumeLt||0)&&lt<sg.end){const bi=bIdx(sg.beats,lt),b0=sg.beats[bi],b1=sg.beats[bi+1]||b0+sp,st=sp<0.42?2:1;let ph=(bi+clamp((lt-b0)/(b1-b0),0,1))/st;const si=Math.floor(ph);ph-=si;
    const A=si%2?'B':'',Bn=(si+1)%2?'B':'';pose=ph<0.22?'sneakPlant'+A:ph<0.5?'sneakSettle'+A:ph<0.75?'sneakLift'+Bn:'sneakReach'+Bn;wf=Math.floor(((si%2)+ph)*4)%8}
   if(on)for(let k=Math.max(0,G.ni-4);k<Math.min(ACT.length,G.ni+2);k++){const n=ACT[k],d=lt-n.at;
-   if(n.type==='up'&&!n.climb){if(d>=-0.16&&d<0&&!n.j)pose='crouch';else if(d>=0&&d<n.w){const u=d/n.w;
-     if(n.j==='p'||n.j==='g'){hy=base.y+Math.sin(Math.PI*u)*(1.35+(n.plat?0.45*(n.plat.beats-1):0));shY=n.gap?-999:base.y;pose=(u<0.15?'push':u<0.75?'vault':'fall')+(k%2?'B':'')}
-     else if(n.j==='m'){if(n.gap){hy=base.y-Math.sin(Math.PI*u)*1.3;shY=-999}pose='hurt'}}}
+   if(n.type==='up'&&!n.climb){if(d>=-0.16&&d<0&&!n.j){pose='crouch';jf=0}else if(d>=0&&d<n.w){const u=d/n.w;
+     if(n.j==='p'||n.j==='g'){hy=base.y+Math.sin(Math.PI*u)*(1.35+(n.plat?0.45*(n.plat.beats-1):0));shY=n.gap?-999:base.y;pose=(u<0.15?'push':u<0.75?'vault':'fall')+(k%2?'B':'');jf=jfr(u)}
+     else if(n.j==='m'){if(n.gap){hy=base.y-Math.sin(Math.PI*u)*1.3;shY=-999;pan=true}pose='hurt'}}}
    else if(n.type==='hold'&&d>=0&&d<=n.len+0.12){const u=clamp(d/n.len,0,1),riding=G.zip&&G.zip.n===n;
-    if(riding||n.j==='p'||n.j==='g'||(!n.j&&d<W_G)){const c=cablePt(n,u);hTh=c.th;hy=c.y-1.7;rad=CABR;shY=-999;pose=Math.floor(tt/0.22)%2?'hang':'hang2';
+    if(riding||n.j==='p'||n.j==='g'||(!n.j&&d<W_G)){const c=cablePt(n,u);hTh=c.th;hy=c.y-1.7;rad=CABR;shY=-999;pose=Math.floor(tt/0.22)%2?'hang':'hang2';zf=Math.floor(tt/0.1667)%8;
      if(u<0.1){const e=smooth(u/0.1);hy=base.y+(hy-base.y)*e;rad=HR+(CABR-HR)*e}else if(u>0.92){const e=smooth((u-0.92)/0.08);hy=hy+(base.y-hy)*e;rad=CABR+(HR-CABR)*e;pose='land'}}
-    else if(n.j==='m'){hy=base.y-Math.sin(Math.PI*u)*2.4;shY=-999;pose='hurt'}}
-   else if(n.type==='tap'&&d>=-0.16&&d<0&&!n.j)pose='windup'}}
+    else if(n.j==='m'){hy=base.y-Math.sin(Math.PI*u)*2.4;shY=-999;pose='hurt';pan=true}}
+   else if(n.type==='tap'&&d>=-0.16&&d<0&&!n.j){pose='windup';wf=Math.min(2,Math.floor((d+0.16)/0.16*3))}}}
  else{hTh=TH0;hy=shY=1.5}
  /* on a ladder: hands over hands, one rung per beat; a missed rung slips */
- if(LV&&LV.path&&LV.path.lad&&G.state==='play'){const sl=SPEED*clamp(lt,0,sg.end),le=LV.path.lad.find(e=>sl>e.s0&&sl<e.s1);if(le){shY=-999;rad=HR+0.15;pose=Math.floor((sl-le.s0)/(SPEED*sp))%2?'hang2':'hang';
+ if(LV&&LV.path&&LV.path.lad&&G.state==='play'){const sl=SPEED*clamp(lt,0,sg.end),le=LV.path.lad.find(e=>sl>e.s0&&sl<e.s1);if(le){shY=-999;rad=HR+0.15;pose=Math.floor((sl-le.s0)/(SPEED*sp))%2?'hang2':'hang';cf=Math.floor((((sl-le.s0)/(SPEED*sp))%2)*4)%8;
    const m=ACT.find(n=>n.climb&&n.j==='m'&&lt-n.at>=0&&lt-n.at<0.35);if(m){hy-=0.35*Math.sin(Math.PI*(lt-m.at)/0.35);pose='hurt'}}}
- if(G.dead!=null){const e=now-G.dead;hy-=14*e*e;shY=-999;pose='fall'}
+ if(G.dead!=null){const e=now-G.dead;hy-=14*e*e;shY=-999;pose='fall';pan=true}
  G.hl={hTh,hy,shY};
  const ducking=now-G.duck<REC.duck,hurt=now-G.hurt<0.5;
- if(hurt&&pose!=='hang'&&pose!=='hang2')pose='hurt';else if(ducking)pose='duck';else if(now-G.trip<0.32)pose='trip';else if(now-G.atk<REC.tap)pose='strike';else if(now-G.kick<REC.kick)pose='kick';else if(now-G.brace<REC.brace)pose='brace';else if(now-G.heave<REC.both)pose='heave';
- else if(now-G.jump<REC.up){pose='vault';hy+=Math.sin(Math.PI*(now-G.jump)/REC.up)*1.4}
+ if(hurt&&pose!=='hang'&&pose!=='hang2')pose='hurt';else if(ducking){pose='duck';const e=now-G.duck;/* down at once so a gull on the beat passes over him */wf=e<0.035?1:e<0.3?2+Math.min(3,Math.floor((e-0.035)/0.265*4)):e<0.36?6:7}else if(now-G.trip<0.32)pose='trip';else if(now-G.atk<REC.tap){pose='strike';wf=3+Math.min(4,Math.floor((now-G.atk)/REC.tap*5))}else if(now-G.kick<REC.kick)pose='kick';else if(now-G.brace<REC.brace){pose='brace';const e=now-G.brace;wf=e>0.08&&e<0.3?1:0}else if(now-G.heave<REC.both)pose='heave';
+ else if(now-G.jump<REC.up){pose='vault';jf=jfr((now-G.jump)/REC.up);hy+=Math.sin(Math.PI*(now-G.jump)/REC.up)*1.4}
  const hx=Math.cos(hTh)*rad,hz=Math.sin(hTh)*rad;
  /* the painted walk (art/hero, cut from a video by tools/cutvideo.py): 8 frames over two steps, a foot landing on frames 0 and 4; other moves still use the drawn sprite */
- if(HWALK&&pose.startsWith('sneak')){HERO.material.map=HWALK[wf>=0?wf:2];HERO.center.set(0.5,3/399);HERO.scale.set(HWH*HWALK[0].image.width/HWALK[0].image.height,HWH,1)}
+ if(HBRACE&&pose==='brace'&&wf>=0){const bh=(wf?2.65:2.8)*HWH/3,t=HBRACE[wf];HERO.material.map=t;HERO.center.set(wf?0.524:0.556,0);HERO.scale.set(bh*t.image.width/t.image.height,bh,1)}
+ else if(HJUMP&&pan){const jh=HWH*294/274;HERO.material.map=HJUMP[2+Math.floor(tt/0.09)%5];HERO.center.set(0.63,0.068);HERO.scale.set(jh*HJUMP[0].image.width/HJUMP[0].image.height,jh,1)}
+ else if(HCLIMB&&cf>=0&&G.dead==null&&/^hang/.test(pose)){const ch=2.7*HWH/3;HERO.material.map=HCLIMB[cf];HERO.center.set(0.5,0);HERO.scale.set(ch*HCLIMB[0].image.width/HCLIMB[0].image.height,ch,1)}
+ else if(HZIP&&zf>=0&&G.dead==null&&/^(hang|land)/.test(pose)){const zh=2.8*HWH/3;HERO.material.map=HZIP[zf];HERO.center.set(0.433,350/362-1.7/zh);HERO.scale.set(zh*HZIP[0].image.width/HZIP[0].image.height,zh,1)}
+ else if(HJUMP&&jf>=0&&G.dead==null&&/^(crouch|push|vault|fall)/.test(pose)){HERO.material.map=HJUMP[jf];HERO.center.set(0.63,0.068);HERO.scale.set(HWH*294/274*HJUMP[0].image.width/HJUMP[0].image.height,HWH*294/274,1)}
+ else if(HDUCK&&pose==='duck'&&wf>=0){HERO.material.map=HDUCK[wf];HERO.center.set(0.3,0);HERO.scale.set(HWH*HDUCK[0].image.width/HDUCK[0].image.height,HWH,1)}
+ else if(HSWING&&(pose==='windup'||pose==='strike')){HERO.material.map=HSWING[wf>=0?wf:3];HERO.center.set(0.46,0);HERO.scale.set(HWH*HSWING[0].image.width/HSWING[0].image.height,HWH,1)}
+ else if(HWALK&&pose.startsWith('sneak')){HERO.material.map=HWALK[wf>=0?wf:2];HERO.center.set(0.5,3/399);HERO.scale.set(HWH*HWALK[0].image.width/HWALK[0].image.height,HWH,1)}
  else{HERO.material.map=FR[pose];HERO.center.set(0.5,3/SH);HERO.scale.set(HH*SW/SH,HH,1)}HSH.position.set(hx,shY+0.03,hz);
  HERO.position.set(hx,hy,hz);irisFx(now);HERO.material.rotation=hurt?Math.sin(tt*30)*0.08:0;
  HGLOW.position.set(hx+0.12,hy+(pose==='duck'?1.25:1.85),hz);const ra=Math.atan2(hz,hx);lamp.position.set(hx-Math.cos(ra)*1.5,hy+2.2,hz-Math.sin(ra)*1.5);
@@ -1810,9 +1819,9 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
   /* kicked boards fly into the pit; a missed barricade just falls apart */
   if(n.wall&&n.j){const a=now-n.jt,f=n.j==='m'?0.35:1;if(a>1.3)n.wall.visible=false;else n.wall.children.forEach(c=>{const u=c.userData,v=u.v;c.position.set(u.p0.x+v.x*a*f,u.p0.y+v.y*a*f-7*a*a,u.p0.z+v.z*a*f);c.rotation.set(u.r0.x+a*v.z*f,u.r0.y,u.r0.z+a*v.x*3*f)})}
   /* the rock drops onto the explorer's head on the beat (its shadow grows first); braced, it bounces off into the pit */
-  if(n.rock){const r=n.rock,P=n.pos,R0=Math.hypot(P.x,P.z),u=(n.time-tn)/(sp*1.6);let show=G.state==='play'&&!!n.time&&u<1;
-   if(!n.j){if(show){const y=P.y+1.9+9*Math.max(0,u)**2;r.position.set(P.x,y,P.z);r.rotation.set(tt*3,tt*2,0)}}
-   else{const a=now-n.jt,ok=n.j!=='m';if(a>1.4)show=false;else{const ri=R0-(ok?a*5:a*0.8),y=P.y+(ok?1.9+a*3.5-a*a*11:Math.max(0.4,1.9-a*a*14)-Math.max(0,a-0.7)*6);r.position.set(Math.cos(P.th)*ri,y,Math.sin(P.th)*ri);r.rotation.set(tt*7,tt*5,0)}}
+  if(n.rock){const r=n.rock,P=n.pos,R0=Math.hypot(P.x,P.z),u=(n.time-tn)/(sp*1.6),RH=2.9/* the top of the bag he holds over his head */;let show=G.state==='play'&&!!n.time&&u<1;
+   if(!n.j){if(show){const y=P.y+RH+9*Math.max(0,u)**2;r.position.set(P.x,y,P.z);r.rotation.set(tt*3,tt*2,0)}}
+   else{const a=now-n.jt,ok=n.j!=='m';if(a>1.4)show=false;else{const ri=R0-(ok?a*5:a*0.8),y=P.y+(ok?RH+a*3.5-a*a*11:Math.max(0.4,RH-a*a*14)-Math.max(0,a-0.7)*6);r.position.set(Math.cos(P.th)*ri,y,Math.sin(P.th)*ri);r.rotation.set(tt*7,tt*5,0)}}
    r.visible=show;n.rsh.material.opacity=show&&!n.j?0.55*clamp(1-u,0,1):0}
   /* the cart rolls over the edge when shoved; a missed one only creaks over after you bump it */
   if(n.cart&&n.j){const a=now-n.jt,c=n.cart,p=n.fpos;if(a>1.8)c.visible=false;else{const d=n.j==='m'?Math.max(0,a-0.35)*0.7:a,R0=Math.hypot(p.x,p.z),ri=R0-d*d*6,y=p.y-Math.max(0,d-0.3)**2*16;
@@ -1905,7 +1914,7 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
  const rc=HR-D-pw*14,thc=fTh+CAMA;let tp=new THREE.Vector3(Math.cos(thc)*rc,fY+3.1+pw*5,Math.sin(thc)*rc),tl=new THREE.Vector3(Math.cos(fTh+CAML)*(HR+1),fY-0.7-pw*3,Math.sin(fTh+CAML)*(HR+1));
  if((bossOn||miniOn)&&G.state!=='end'){const tb=fTh+0.09;tp.set(Math.cos(tb)*(HR-D-4),fY+3.6,Math.sin(tb)*(HR-D-4));tl.set(Math.cos(tb)*(HR-2),fY+1.4,Math.sin(tb)*(HR-2))}
  if(G.state==='title'){const [ip,il]=introPose(tt*0.05);envAt(1.5);camPos.copy(ip);camLook.copy(il)}
- else if(G.state==='play'&&G.intro&&now<G.goT+0.6){const s=smooth(clamp((now-G.startT)/(G.goT-G.startT+0.3),0,1));const [ip,il]=introPose(G.startT*0.05);camPos.copy(ip.lerp(tp,s));camLook.copy(il.lerp(tl,s))}
+ else if(G.state==='play'&&G.intro&&now<G.goT+0.6){const s=smooth(clamp((now-G.startT)/Math.max(2,G.goT-G.startT-1.6),0,1));/* settles 1.6 s before the first note so the player can get ready */const [ip,il]=introPose(G.startT*0.05);camPos.copy(ip.lerp(tp,s));camLook.copy(il.lerp(tl,s))}
  else if(G.snapCam){G.snapCam=0;camPos.copy(tp);camLook.copy(tl)}else{camPos.lerp(tp,1-Math.exp(-rdt*5));camLook.lerp(tl,1-Math.exp(-rdt*6))}
  G.shake=Math.max(0,(G.shake||0)-dt);C.position.copy(camPos);if(G.shake>0)C.position.add(new THREE.Vector3((Math.random()-0.5)*G.shake*0.6,(Math.random()-0.5)*G.shake*0.6,0));C.lookAt(camLook);
  $('shake').style.opacity=G.shake>0?G.shake*0.8:0;
