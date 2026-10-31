@@ -12,11 +12,18 @@ python tools/cutsheet.py --one [--flip] <image> <output file> <scale>
 python tools/cutsheet.py --n <N> <sheet image> <output prefix> [height]
   -> same as the first form, for sheets where neighbouring figures touch or overlap in x: the N biggest blobs are the
      figures, smaller ones (smoke, a loose cigarette) go with the nearest figure.
+python tools/cutsheet.py --grid <rows> <cols> <sheet image> <output prefix> <scale>
+  -> for flying things (no feet): the sheet is a grid of figures, read row by row; each frame is aligned on what it carries in
+     its beak (orange: a pizzetta), else on its leftmost part, so only the wings move between frames.
 """
 import sys
 import numpy as np
 from PIL import Image
 
+grid = None
+if sys.argv[1] == '--grid':
+    grid = (int(sys.argv[2]), int(sys.argv[3]))
+    del sys.argv[1:4]
 nfig = 0
 if sys.argv[1] == '--n':
     nfig = int(sys.argv[2])
@@ -52,7 +59,7 @@ def blobs(m):
         sizes.append(n)
     return lab, sizes
 src, out = sys.argv[1], sys.argv[2]
-H = int(sys.argv[3]) if len(sys.argv) > 3 and not one else 384
+H = int(sys.argv[3]) if len(sys.argv) > 3 and not one and not grid else 384
 a = np.asarray(Image.open(src).convert('RGB')).astype(np.float32)
 r, g, b = a[..., 0], a[..., 1], a[..., 2]
 # how green a pixel is: 0 on the character, 1 on the background, soft in between (JPEG edges)
@@ -61,6 +68,53 @@ alpha = 1 - k
 # despill: pull green fringes back to the other channels
 a[..., 1] = np.where(k > 0, np.minimum(g, np.maximum(r, b) + 10), g)
 solid = alpha > 0.5
+
+if grid:
+    R, C = grid
+    Hh, Ww = solid.shape
+    cells = []
+    for i in range(R * C):
+        y0, x0 = i // C * Hh // R, i % C * Ww // C
+        m = solid[y0:(i // C + 1) * Hh // R, x0:(i % C + 1) * Ww // C]
+        lab, sizes = blobs(m[::4, ::4])  # only the cell's main figure: bits of neighbours poking in are dropped
+        keep = np.repeat(np.repeat(lab == int(np.argmax(sizes)), 4, 0), 4, 1)[:m.shape[0], :m.shape[1]]
+        keep = np.pad(keep, ((0, m.shape[0] - keep.shape[0]), (0, m.shape[1] - keep.shape[1])))
+        for _ in range(3):
+            keep = keep | np.roll(keep, 1, 0) | np.roll(keep, -1, 0) | np.roll(keep, 1, 1) | np.roll(keep, -1, 1)
+        m = m & keep
+        solid[y0:y0 + m.shape[0], x0:x0 + m.shape[1]] = m
+        alpha[y0:y0 + m.shape[0], x0:x0 + m.shape[1]] *= keep
+        ys, xs = np.nonzero(m)
+        c = a[y0:y0 + m.shape[0], x0:x0 + m.shape[1]]
+        # anchor: whatever it carries (orange: a pizzetta), else its leftmost part
+        org = m & (c[..., 0] > 170) & (c[..., 1] > 90) & (c[..., 1] < 185) & (c[..., 2] < 90)
+        if org.sum() > 200:
+            oy, ox = np.nonzero(org)
+            ax, ay = ox.mean(), oy.mean()
+        else:
+            near = xs < xs.min() + m.shape[1] * 0.08
+            ax, ay = xs.min(), ys[near].mean()
+        cells.append((y0, x0, ys.min(), ys.max() + 1, xs.min(), xs.max() + 1, ay, ax))
+    # canvas around the anchor (left edge x, anchor y) big enough for every frame
+    up = int(max(c[6] - c[2] for c in cells)) + 4
+    dn = int(max(c[3] - c[6] for c in cells)) + 4
+    lf = int(max(c[7] - c[4] for c in cells)) + 4
+    rt = int(max(c[5] - c[7] for c in cells)) + 4
+    W, Hs, sc = lf + rt, up + dn, float(sys.argv[3])
+    for i, (y0, x0, ya, yb, lx, rx, ay, ax) in enumerate(cells):
+        img = np.zeros((Hs, W, 4), np.uint8)
+        sy, sx = int(round(y0 + ay)) - up, int(round(x0 + ax)) - lf
+        for dy in range(Hs):
+            yy = sy + dy
+            if not (y0 + ya <= yy < y0 + yb):
+                continue
+            xs0, xs1 = max(sx, x0 + lx), min(sx + W, x0 + rx)
+            img[dy, xs0 - sx:xs1 - sx, :3] = a[yy, xs0:xs1]
+            img[dy, xs0 - sx:xs1 - sx, 3] = alpha[yy, xs0:xs1] * 255
+        im = Image.fromarray(img, 'RGBA').resize((round(W * sc), round(Hs * sc)), Image.LANCZOS)
+        im.save(f'{out}-{i}.png', optimize=True)
+        print(f'{out}-{i}.png', im.size)
+    sys.exit()
 
 if one:
     rows, cols = np.where(solid.sum(1) > 3)[0], np.where(solid.sum(0) > 3)[0]
