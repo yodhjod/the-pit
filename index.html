@@ -307,7 +307,7 @@ const RUN=[
  {kind:'descent',L:3,diff:0.7,lore:'You went round the roundabout four times looking for the exit. There is no exit. There is a flowerbed, and another roundabout.'},
  {kind:'vendor',name:'The Spore Pawnshop',lore:'Everything here was found on delvers who stopped descending. The shopkeeper hums along with the walls. Try not to recognise anything.',stock:[[1,1],[2,2],[3,1]]},
  {kind:'descent',L:4,diff:0.85,lore:'A TCS microphone lies on a bench, still switched on. In Sant\'Elia someone always listened to the people nobody else heard. Down here the dark has paperwork.'},
- {kind:'boss',name:'The Inspector'}];
+ /* bosses are off until they're reworked: {kind:'boss',name:'The Inspector'} */];
 const nodeName=i=>i>=RUN.length?'the end of chapter 1':RUN[i].kind==='descent'?LAYERS[RUN[i].L].name:RUN[i].name;
 /* upgrades last one run. tier 1 shows up first; tiers 2-3 cost more than you can usually afford early, by design */
 const UPG=[
@@ -1399,7 +1399,7 @@ function resetRun(){Object.assign(G,{coins:0,up:{},hearts:5,maxH:5,windUsed:fals
 function newRun(){audioInit();trackStop();showOnly(null);G.custom=false;resetRun();G.node=Math.min(DEV.node,RUN.length-1);G.coins=DEV.coins;coinsUI();
  RUN.forEach(nd=>{if(nd.track)loadTrack(nd.track).catch(()=>{})});startNode(G.node===0)}
 function startNode(first){const nd=RUN[G.node];if(!nd)return;saveBest(G.node);if(nd.kind==='descent')startLevel(nd,first);else if(nd.kind==='vendor')openVendor(nd);else startBoss()}
-function nextNode(){if(G.state!=='clear'&&G.state!=='vendor')return;if(G.custom){playCustom();return}showOnly(null);G.node=Math.min(G.node+1,RUN.length-1);startNode(false)}
+function nextNode(){if(G.state!=='clear'&&G.state!=='vendor')return;if(G.custom){playCustom();return}showOnly(null);if(G.node+1>=RUN.length){saveBest(RUN.length);finish();return}G.node++;startNode(false)}
 function relight(){G.hearts=Math.min(G.maxH,G.hearts+(G.up.oil?2:1))}
 /* anchor the level: level time 0 plays a moment from now; music files start there, built-in songs count in first */
 function beginPlay(intro){const sg=LV.song;G.errs=[];G.jtxt='';Object.assign(G,{state:'play',dead:null,trip:-9,zip:null,combo:0,pullT:-99,shake:0,cd:0,duck:-9,hurt:-9,atk:-9,jump:-9,kick:-9,brace:-9,heave:-9,both:null,lock:-9,busy:-9,fp:null,tier:GROW.start,gs:0,chain:0,lastHit:null,fevNew:false,grace:0,flB:-1,hatUsed:false,lvCoins:0,lvMax:0,ni:0,freezeLt:null,resumeLt:null});
@@ -1430,7 +1430,7 @@ async function startLevel(nd,first){const id=++loadId;G.mode='descent';G.state='
  if(first){beginPlay(true);$('card').classList.remove('show');setTimeout(()=>{if(G.state==='play'&&LV.song===song)showCard(L,4200)},1400)}
  else{beginPlay(false);if(nd.dare){G.enter=null;G.irisOpen=clock();cardText('A dare','The side passage','no refunds, no way back',3000)}else showCard(L,3000)}}
 /* a descent level's end: the miniboss waits there (not after your own song). The end of a dare room leads back to the level it left */
-function levelEnd(){if(G.custom)levelClear();else if(LV.nd.dare)G.back?dareExit():levelClear();else startMini()}
+function levelEnd(){if(G.custom)levelClear();else if(LV.nd.dare)G.back?dareExit():levelClear();else levelClear()/* minibosses off until reworked: startMini() */}
 const MINI={L:0,hp:4,max:4,dead:-1,hitT:-9};
 /* the fight as a song: a bar's breather, then MINI_PH phrases of call bar + answer bar, MINI_CYC times. Call notes become cues (sg.cues, not judged); answer notes are judged.
    Both carry the phrase's strike kinds (picked per note, fixed per run), ph (phrase index), and the answer's callT (its call's start, level s) */
@@ -1454,7 +1454,7 @@ function levelClear(){G.state='clear';const nd=LV.nd;$('clBack').hidden=!G.custo
  if(G.custom){const tot=Math.max(1,G.p+G.g+G.m);$('clN').textContent=CU.name;$('clL').textContent='The pit listened to the whole thing. It has notes.';
   $('clS').textContent='Accuracy '+Math.round((G.p+G.g*0.6)/tot*100)+'% · best combo '+G.lvMax+' · '+G.m+' stumbles';$('clGo').textContent='Play it again';showOnly('clear');return}
  const nx=RUN[G.node+1];$('clN').textContent=nd.dare?'The side passage':LAYERS[nd.L].name;$('clL').textContent=nd.dare?'You made it through. Your prize is pending review by the committee.':nd.lore;$('clS').textContent='+'+G.lvCoins+' coins · best combo '+G.lvMax;
- $('clGo').textContent=nx.kind==='vendor'?'Visit the rest stop':nx.kind==='boss'?'Face what waits below':'Keep descending';showOnly('clear')}
+ $('clGo').textContent=!nx?'Finish the chapter':nx.kind==='vendor'?'Visit the rest stop':nx.kind==='boss'?'Face what waits below':'Keep descending';showOnly('clear')}
 function openVendor(nd){G.state='vendor';const stock=[];
  const take=(t,k)=>{const p=UPG.filter(u=>u.tier===t&&!G.up[u.id]&&!stock.includes(u));for(let i=0;i<k&&p.length;i++)stock.push(p.splice(Math.floor(Math.random()*p.length),1)[0])};
  nd.stock.forEach(([t,k])=>take(t,k));stock.forEach(u=>u.sold=false);G.stock=stock;
