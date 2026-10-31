@@ -948,7 +948,9 @@ const POSES={
  trip:{y:1,lean:6,legF:[5,6,9,10],legB:[-1,7,-3,15],armF:[5,1,9,-1],armB:[-3,1,-7,-2],wave:3,lift:2,mouth:1,eye:1},
  hurt:{y:2,lean:-4,headX:-1,legF:[5,5,9,8],legB:[-3,7,-2,14],armF:[4,-2,7,-6],armB:[-2,-3,-4,-8],wave:3,lift:2,mouth:1,eye:1}};
 const FR={};for(const k in POSES){FR[k]=drawPose(POSES[k],false);if(['push','rise','fall','land','vault','stepReach','stepPlant','settle','sneakIdle','sneakIdle2','sneakLift','sneakReach','sneakPlant','sneakSettle'].includes(k))FR[k+'B']=drawPose(POSES[k],true)}
-const HERO=new THREE.Sprite(new THREE.SpriteMaterial({map:FR.idle,alphaTest:0.5}));HERO.center.set(0.5,3/SH);const HH=2.35;HERO.scale.set(HH*SW/SH,HH,1);S.add(HERO);
+/* the painted hero's walk frames; until they load (or if one fails) the drawn sneak stays */
+let HWALK=null;const HWH=3;/* as tall as the painted critters */{const ld=new THREE.TextureLoader();Promise.all([0,1,2,3,4,5,6,7].map(i=>new Promise(r=>ld.load('art/hero/walk-'+i+'.png',t=>r(sharp(t)),undefined,()=>r(null))))).then(t=>{if(t.every(Boolean))HWALK=t})}
+const HERO=new THREE.Sprite(new THREE.SpriteMaterial({map:FR.idle,alphaTest:0.5}));HERO.center.set(0.5,3/SH);const HH=2.8;HERO.scale.set(HH*SW/SH,HH,1);S.add(HERO);
 const HSH=new THREE.Mesh(new THREE.CircleGeometry(0.55,18),new THREE.MeshBasicMaterial({color:'#000',transparent:true,opacity:0.35,depthWrite:false}));HSH.rotation.x=-Math.PI/2;S.add(HSH);
 const HGLOW=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:'#ffd58a',transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,opacity:0}));HGLOW.scale.set(2.2,2.2,1);S.add(HGLOW);
 
@@ -1719,7 +1721,7 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
  if(G.zip&&G.state==='play'){const n=G.zip.n;if(tn>n.endTime+W_G){G.lastSd=0;if(n.boss)G.atk=now;score(n,n.hj==='p'?'p':'g');holdFxEnd(n.j);G.ni++;G.zip=null}}
  /* hero: walks the ledge at a steady pace. Position is a pure function of level time, so the world stays on the beat whatever the player does;
     input only changes the outcome (a clean jump or a fall, a whack or a bite, riding the line or dropping into the chasm) */
- let hTh,hy,shY,rad=HR,pose=(Math.floor(tt/0.45)%2?'sneakIdle2':'sneakIdle');
+ let wf=-1,hTh,hy,shY,rad=HR,pose=(Math.floor(tt/0.45)%2?'sneakIdle2':'sneakIdle');
  if(G.state==='loading'&&G.hl){({hTh,hy,shY}=G.hl)}
  else if(G.mode==='boss'&&G.camp&&G.state!=='title'){hTh=G.camp.th;hy=shY=G.camp.y}
  /* miniboss: the explorer stands at the end of the ledge; the game picks the dodge for each answered strike: low sweep → jump, high swipe → duck, a slam from one side → hop to the other, a beam → brace while the hold lasts */
@@ -1727,17 +1729,17 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
   for(let k=Math.max(0,G.ni-3);k<Math.min(ACT.length,G.ni+2);k++){const n=ACT[k],ok=n.j==='p'||n.j==='g'||(n.kind==='beam'&&G.zip&&G.zip.n===n),r=ok&&dodge(n.kind,lt-n.at,n.len);
    if(r){pose=r[0];hy+=r[1];hTh+=r[2]/HR}}}
  else if(G.state==='enter'&&G.enter){const e=G.enter,el=now-e.t0,f=smooth(clamp(el/ENTER.walk,0,1));hTh=e.a.th+(e.b.th-e.a.th)*f;hy=shY=e.a.y+(e.b.y-e.a.y)*f;rad=HR+(e.r1-HR)*smooth(clamp((el-ENTER.walk)/ENTER.inn,0,1));
-  let ph=el/0.4;const si=Math.floor(ph);ph-=si;const A=si%2?'B':'',Bn=(si+1)%2?'B':'';pose=ph<0.22?'sneakPlant'+A:ph<0.5?'sneakSettle'+A:ph<0.75?'sneakLift'+Bn:'sneakReach'+Bn;
+  let ph=el/0.4;const si=Math.floor(ph);ph-=si;const A=si%2?'B':'',Bn=(si+1)%2?'B':'';pose=ph<0.22?'sneakPlant'+A:ph<0.5?'sneakSettle'+A:ph<0.75?'sneakLift'+Bn:'sneakReach'+Bn;wf=Math.floor(((si%2)+ph)*4)%8;
   if(el>ENTER.walk+ENTER.inn*0.5+ENTER.iris+0.2&&!e.go){e.go=1;startDare()}}
  /* back from a dare room: the explorer stands where the room ended until the iris shuts, then walks out of the main level's doorway */
  else if(G.state==='exit'&&G.exit){const e=G.exit,el=now-e.t0-ENTER.iris-0.25;if(!e.b)({hTh,hy,shY}=G.hl);else{const f=smooth(clamp(el/ENTER.inn,0,1));hTh=e.b.th;hy=shY=e.b.y;rad=e.r1+(HR-e.r1)*f;
-   if(f<1){let ph=Math.max(0,el)/0.4;const si=Math.floor(ph);ph-=si;const A=si%2?'B':'',Bn=(si+1)%2?'B':'';pose=ph<0.22?'sneakPlant'+A:ph<0.5?'sneakSettle'+A:ph<0.75?'sneakLift'+Bn:'sneakReach'+Bn}}
+   if(f<1){let ph=Math.max(0,el)/0.4;const si=Math.floor(ph);ph-=si;const A=si%2?'B':'',Bn=(si+1)%2?'B':'';pose=ph<0.22?'sneakPlant'+A:ph<0.5?'sneakSettle'+A:ph<0.75?'sneakLift'+Bn:'sneakReach'+Bn;wf=Math.floor(((si%2)+ph)*4)%8}}
   if(!e.b&&now-e.t0>=ENTER.iris)dareBack();else if(e.b&&el>=ENTER.inn+0.2)resumePlay()}
  else if(LV&&LV.path){const P=LV.path,on=G.state!=='title';let lc=on?clamp(lt,0,sg.end):0;if(on&&G.resumeLt!=null)lc=Math.max(lc,G.resumeLt);if(G.state==='fallen'&&G.freezeLt!=null)lc=Math.min(lc,Math.max(0,G.freezeLt));
   const base=pathPt(P,SPEED*lc);hTh=base.th;hy=shY=base.y;const bo=on&&brOff(lc);if(bo){hy+=bo[0];shY=bo[1]?shY+bo[0]:-999}
   /* walk cycle locked to the song's beats: the foot lands on each beat (every other beat when the song is fast) */
   if(G.state==='play'&&lt>(G.resumeLt||0)&&lt<sg.end){const bi=bIdx(sg.beats,lt),b0=sg.beats[bi],b1=sg.beats[bi+1]||b0+sp,st=sp<0.42?2:1;let ph=(bi+clamp((lt-b0)/(b1-b0),0,1))/st;const si=Math.floor(ph);ph-=si;
-   const A=si%2?'B':'',Bn=(si+1)%2?'B':'';pose=ph<0.22?'sneakPlant'+A:ph<0.5?'sneakSettle'+A:ph<0.75?'sneakLift'+Bn:'sneakReach'+Bn}
+   const A=si%2?'B':'',Bn=(si+1)%2?'B':'';pose=ph<0.22?'sneakPlant'+A:ph<0.5?'sneakSettle'+A:ph<0.75?'sneakLift'+Bn:'sneakReach'+Bn;wf=Math.floor(((si%2)+ph)*4)%8}
   if(on)for(let k=Math.max(0,G.ni-4);k<Math.min(ACT.length,G.ni+2);k++){const n=ACT[k],d=lt-n.at;
    if(n.type==='up'&&!n.climb){if(d>=-0.16&&d<0&&!n.j)pose='crouch';else if(d>=0&&d<n.w){const u=d/n.w;
      if(n.j==='p'||n.j==='g'){hy=base.y+Math.sin(Math.PI*u)*(1.35+(n.plat?0.45*(n.plat.beats-1):0));shY=n.gap?-999:base.y;pose=(u<0.15?'push':u<0.75?'vault':'fall')+(k%2?'B':'')}
@@ -1757,7 +1759,9 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
  if(hurt&&pose!=='hang'&&pose!=='hang2')pose='hurt';else if(ducking)pose='duck';else if(now-G.trip<0.32)pose='trip';else if(now-G.atk<REC.tap)pose='strike';else if(now-G.kick<REC.kick)pose='kick';else if(now-G.brace<REC.brace)pose='brace';else if(now-G.heave<REC.both)pose='heave';
  else if(now-G.jump<REC.up){pose='vault';hy+=Math.sin(Math.PI*(now-G.jump)/REC.up)*1.4}
  const hx=Math.cos(hTh)*rad,hz=Math.sin(hTh)*rad;
- HERO.material.map=FR[pose];HSH.position.set(hx,shY+0.03,hz);
+ /* the painted walk (art/hero, cut from a video by tools/cutvideo.py): 8 frames over two steps, a foot landing on frames 0 and 4; other moves still use the drawn sprite */
+ if(HWALK&&pose.startsWith('sneak')){HERO.material.map=HWALK[wf>=0?wf:2];HERO.center.set(0.5,3/399);HERO.scale.set(HWH*HWALK[0].image.width/HWALK[0].image.height,HWH,1)}
+ else{HERO.material.map=FR[pose];HERO.center.set(0.5,3/SH);HERO.scale.set(HH*SW/SH,HH,1)}HSH.position.set(hx,shY+0.03,hz);
  HERO.position.set(hx,hy,hz);irisFx(now);HERO.material.rotation=hurt?Math.sin(tt*30)*0.08:0;
  HGLOW.position.set(hx+0.12,hy+(pose==='duck'?1.25:1.85),hz);const ra=Math.atan2(hz,hx);lamp.position.set(hx-Math.cos(ra)*1.5,hy+2.2,hz-Math.sin(ra)*1.5);
  /* cues: a fixed marker where the next move happens, a flash there as its beat hits, calm icons */
