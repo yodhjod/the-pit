@@ -264,13 +264,19 @@ const toon=(o)=>new THREE.MeshToonMaterial(Object.assign({gradientMap:toonGrad},
 /* ---------- chart: built-in levels, used when a level has no music file ---------- */
 /* t = whack a critter (tap), u = jump a gap or an obstacle (swipe up), d = duck a swooper (swipe down), h = ride a zipline (hold),
    k = kick through a barricade (swipe forward), b = brace for a falling rock (swipe back), w = shove a cart with both thumbs (two-finger tap). [beat, type, holdBeats] */
-const BPMS=[98,108,116,124,132,140,144,104,112,120,126,134],SPBL=BPMS.map(b=>60/b),TYPES={t:'tap',u:'up',d:'duck',h:'hold',k:'kick',b:'brace',w:'both',l:'duck'};
+const BPMS=[98,108,116,124,132,140,144,104,112,120,126,134],SPBL=BPMS.map(b=>60/b),TYPES={t:'tap',u:'up',d:'duck',h:'hold',k:'kick',b:'brace',w:'both',l:'duck',J:'up',L:'up'};
 const CHART=[
  [[0,'t'],[1,'t'],[2,'u'],[4,'t'],[5,'t'],[6,'u'],[8,'k'],[9,'t'],[10,'t'],[10.5,'t'],[11,'d'],[12,'u'],[13,'t'],[14,'t'],[15,'d'],[16,'b'],[17,'t'],[18,'w'],[19,'t'],[20,'u'],[21,'t'],[22,'d'],[23,'t'],[24,'k'],[25,'t'],[26,'w'],[28,'h',2],[31,'b']],
  [[0,'t'],[1,'t'],[2,'u'],[4,'h',3],[8,'t'],[9,'t'],[9.5,'t'],[10,'d'],[11,'t'],[12,'u'],[13,'d'],[14,'t'],[14.5,'t'],[15,'t'],[16,'h',3],[20,'l'],[23,'t'],[24,'t'],[24.5,'t'],[25,'t'],[26,'d'],[27,'t'],[28,'u'],[29,'d'],[30,'t'],[30.5,'t'],[31,'t']],
  [[0,'t'],[1,'t'],[2,'d'],[3,'t'],[4,'t'],[5,'u'],[6,'d'],[7,'d'],[8,'t'],[8.5,'t'],[9,'t'],[10,'u'],[12,'d'],[13,'t'],[14,'u'],[15,'t'],[16,'t'],[17,'d'],[18,'t'],[18.5,'t'],[19,'u'],[20,'h',2],[23,'t'],[24,'d'],[25,'u'],[26,'t'],[27,'t'],[28,'d'],[29,'u'],[30,'t'],[31,'t']],
  [[0,'t'],[1,'u'],[2,'d'],[3,'t'],[3.5,'t'],[4,'h',2],[7,'u'],[8,'d'],[9,'t'],[9.5,'t'],[10,'u'],[11,'d'],[12,'h',3],[16,'t'],[17,'u'],[18,'d'],[19,'t'],[19.5,'t'],[20,'u'],[21,'t'],[22,'d'],[23,'u'],[24,'h',2],[27,'t'],[27.5,'t'],[28,'d'],[29,'u'],[30,'t'],[31,'d']],
  [[0,'d'],[1,'t'],[2,'u'],[3,'t'],[4,'h',3],[8,'d'],[8.5,'d'],[9,'t'],[10,'u'],[11,'t'],[12,'d'],[13,'u'],[14,'t'],[14.5,'t'],[15,'t'],[16,'u'],[17,'d'],[18,'h',2],[21,'t'],[22,'u'],[23,'d'],[24,'t'],[24.5,'t'],[25,'u'],[26,'d'],[27,'t'],[28,'h',2],[31,'u']]];
+/* hand-built full levels (beats from 0, no looping), used instead of looping CHART[L]. Dares sit at beats 48 and 80, with the side ledge's fork 4 beats before: keep 44-48 and 76-80 empty.
+   The Bastione is built from short phrases (ta . ta ta JUMP) and its ledge is part of the game: platform hops and a ladder, then gulls, the zipline and a deadly leap over the pit, then the barricade, the rock and the cart */
+const CHART_FULL={0:[
+ [0,'t'],[2,'t'],[3,'t'],[4,'u'],[6,'t'],[8,'t'],[9,'t'],[10,'u'],[12,'J',1,-1.2],[14,'t'],[15,'t'],[16,'J',1,1],[18,'t'],[20,'t'],[21,'t'],[22,'u'],[24,'J',1,-1.5],[26,'t'],[27,'t'],[28,'L',3,2.4],
+ [32,'d'],[34,'d'],[35,'t'],[36,'u'],[38,'u'],[40,'t'],[41,'t'],[42,'d'],[43,'t'],[49,'h',2],[52,'t'],[53,'t'],[54,'J',2,-1.5],[57,'t'],[58,'d'],[59,'t'],[60,'u'],[62,'J',1,-1],
+ [64,'t'],[66,'k'],[67,'t'],[68,'u'],[70,'b'],[72,'t'],[73,'d'],[74,'t'],[75,'t'],[81,'w'],[83,'t'],[84,'t'],[85,'u'],[86,'L',2,1.6],[89,'k'],[90,'t'],[91,'J',1,-1.5],[93,'b'],[94,'t'],[95,'t']]};
 /* a song is everything a level needs, in level seconds (0 = the level starts): beats, notes, first note, end.
    built-in songs are generated beat by beat by musicBeat; songs from music files come from makeChart */
 /* ramp: tempo factor per seg beats (each loop of the chart plays faster than the last); beats are no longer evenly spaced, so use sg.beats or sg.spbAt(t) */
@@ -278,8 +284,13 @@ const RAMP=[1,1.06,1.12];
 function procSong(L,chart,len,lead,boss,ramp,seg=32){const spb=SPBL[L],R=ramp||[1],sp=i=>spb/R[Math.min(R.length-1,i)],
  bt=x=>{if(x<0)return(x+lead)*spb;let t=lead*spb,i=0;while(x>=seg){t+=seg*sp(i);x-=seg;i++}return t+x*sp(i)},beats=[];for(let k=-lead;k<=len+4;k++)beats.push(bt(k));
  /* 'l' (gaggio lanciatore) becomes two notes: his bottle on the beat (a duck, or a tap to bat it back: thr) and him, 2 beats on, to be whacked (lanc) */
- const ch=chart.flatMap(([o,ty,hl],i)=>ty==='l'?[[o,ty,0,i],[o+2,'t',0,i,1]]:[[o,ty,hl,i]]).sort((a,b)=>a[0]-b[0]);
- const notes=ch.map(([o,ty,hl,i,fo])=>({k:o,at:bt(o),type:TYPES[ty],len:hl?bt(o+hl)-bt(o):0,boss:!!boss,gap:!boss&&ty==='u'&&h3(i,L,31)<(LSTYLE[L]||LSTYLE[0]).gap,thr:ty==='l',lanc:!!fo}));
+ /* the ledge as gameplay: J = [beat,'J',beats,rise,deadly] a jump over a gap to a platform rise higher (a 2+ beat leap is over the open pit: missing it is deadly);
+    L = [beat,'L',rungs,rise] a ladder, one swipe up per rung on the beat */
+ const ch=chart.flatMap(([o,ty,hl,a4,a5],i)=>ty==='l'?[[o,ty,0,i],[o+2,'t',0,i,1]]:ty==='L'?Array.from({length:hl},(_,r)=>[o+r,ty,0,i,0,{rung:r,rungs:hl,rise:a4,b0:o}])
+  :ty==='J'?[[o,ty,0,i,0,{beats:hl,rise:a4||0,deadly:!!a5||hl>=2}]]:[[o,ty,hl,i]]).sort((a,b)=>a[0]-b[0]);
+ const notes=ch.map(([o,ty,hl,i,fo,x])=>{if(x)x.end=bt(ty==='J'?o+x.beats:ty==='L'?x.b0+x.rungs:o+1);
+  return{k:o,at:bt(o),type:TYPES[ty],len:hl&&ty==='h'||hl&&!x&&ty!=='l'?bt(o+hl)-bt(o):0,boss:!!boss,gap:!boss&&(ty==='J'||ty==='u'&&h3(i,L,31)<(LSTYLE[L]||LSTYLE[0]).gap),thr:ty==='l',lanc:!!fo,
+   plat:ty==='J'?x:null,climb:ty==='L'?x:null,deadly:!!(x&&x.deadly)}});
  notes.forEach((n,i)=>{if(n.thr){const f=notes.find((m,j)=>j>i&&m.lanc&&!m.thrN);if(f){f.thrN=n;n.fol=f}}});
  return{proc:L,bpm:BPMS[L],spb,beats,lead,bar0:0,notes,first:lead*spb,end:bt(len),spbAt:t=>{const i=bIdx(beats,t);return(beats[i+1]||beats[i]+spb)-beats[i]}}}
 
@@ -417,17 +428,20 @@ let LVG=null,CAMPG=null;
 function dropGroup(g){S.remove(g);g.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(o.material.map&&o.material.map._own)o.material.map.dispose();o.material.dispose()}})}
 /* stairs: flat landings, then a short steep flight; same average drop as a ramp */
 function stairProf(s){const P=7.2,F=1.8,k=Math.floor(s/P),f=s-k*P;return k*P+(f<P-F?0:(f-(P-F))/F*P)}
-function pathPt(P,s){const th=P.th0+s/HR;return{th,y:P.y0-P.slope*(P.stairs?stairProf(s):s),x:Math.cos(th)*HR,z:Math.sin(th)*HR}}
+/* P.ev: height changes along the ledge, sorted by s0: platforms change height over [s0,s1] (in the air), ladders (lad) too but with no forward travel */
+function pathPt(P,s){let a=s,o=0;if(P.ev)for(const e of P.ev){if(s<=e.s0)break;o+=e.rise*Math.min(1,(s-e.s0)/(e.s1-e.s0));if(e.lad)a-=Math.min(s,e.s1)-e.s0}
+ const th=P.th0+a/HR;return{th,y:P.y0-P.slope*(P.stairs?stairProf(a):a)+o,x:Math.cos(th)*HR,z:Math.sin(th)*HR}}
 function onLedge(th,r,o,y){return new THREE.Vector3(Math.cos(th)*r-Math.sin(th)*o,y,Math.sin(th)*r+Math.cos(th)*o)}
 function addTo(g,list,geo,mat){if(!list.length)return;const m=inst(geo,mat,list);S.remove(m);g.add(m)}
 function glowAt(g,p,c,sz){const s=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:c,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,opacity:0.75}));s.position.copy(p);s.scale.set(sz,sz,1);g.add(s)}
 /* w = how long a jump lasts: it takes off on the note and lands before the next one */
-function prepNotes(sg){const N=sg.notes;N.forEach((n,i)=>{const nx=N[i+1];n.w=n.type==='up'?Math.min(clamp(sg.spb*0.9,0.36,0.62),nx?nx.at-n.at-0.04:9):0;n.j=n.hj=null;n.bonk=0;n.jt=0;n.snd=0})}
+function prepNotes(sg){const N=sg.notes;N.forEach((n,i)=>{const nx=N[i+1];n.w=n.plat?n.plat.end-n.at-0.04:n.climb?0.25:n.type==='up'?Math.min(clamp(sg.spb*0.9,0.36,0.62),nx?nx.at-n.at-0.04:9):0;n.j=n.hj=null;n.bonk=0;n.jt=0;n.snd=0})}
 function buildLevel(L,sg,th0,y0){if(LVG)dropGroup(LVG);const g=LVG=new THREE.Group();S.add(g);const st=LSTYLE[L],kind=st.path;
  prepNotes(sg);const len=SPEED*sg.end+3;
  const P={th0,y0,stairs:kind==='stairs',slope:clamp((y0-layerTop(L+1))/len,MINPITCH,0.12)};
  /* holes: missing steps to jump over, chasms under the ziplines */
- const holes=[];sg.notes.forEach(n=>{const s=SPEED*n.at;if(n.type==='up'&&n.gap)holes.push([s+0.2,SPEED*(n.at+n.w)-0.2]);if(n.type==='hold')holes.push([s+0.55,SPEED*(n.at+n.len)-0.55])});
+ P.ev=[];sg.notes.forEach(n=>{const s0=SPEED*n.at;if(n.plat)P.ev.push({s0,s1:SPEED*n.plat.end,rise:n.plat.rise});else if(n.climb&&n.climb.rung===0)P.ev.push({s0,s1:SPEED*n.climb.end,rise:n.climb.rise,lad:1});});P.ev.sort((a,b)=>a.s0-b.s0);P.lad=P.ev.filter(e=>e.lad);
+ const holes=P.ev.map(e=>e.lad?[e.s0+0.05,e.s1-0.05]:[e.s0+0.15,e.s1-0.15]);sg.notes.forEach(n=>{const s=SPEED*n.at;if(n.type==='up'&&n.gap)holes.push([s+0.2,SPEED*(n.at+n.w)-0.2]);if(n.type==='hold')holes.push([s+0.55,SPEED*(n.at+n.len)-0.55])});
  const inHole=s=>holes.some(h=>s>h[0]&&s<h[1]);
  const tiles=[],struts=[],posts=[],lan=[],city=L===0,plate=kind==='plates',WD=city?LIMES:plate?STONES[1]:WOODS;const step=kind==='caps'?0.9:0.62,wood=kind==='planks'||kind==='stairs'||plate;
  for(let s=-5,i=0;s<len+4;s+=step,i++){if(inHole(s))continue;const p=pathPt(P,s),wr=wallR(p.th,p.y),outer=wr+0.5,depth=outer-LEDGE_IN,rc=(LEDGE_IN+outer)/2;
@@ -445,10 +459,16 @@ function buildLevel(L,sg,th0,y0){if(LVG)dropGroup(LVG);const g=LVG=new THREE.Gro
  if(wood)holes.forEach(([a,b])=>[[a,0.7],[b,-0.7]].forEach(([s,rz])=>{const p=pathPt(P,s);tiles.push({p:onLedge(p.th,24.4,0,p.y-0.22),s:[0.32,0.12,2.6],c:pick(WD),rz})}));
  addTo(g,tiles,kind==='caps'?new THREE.CylinderGeometry(0.5,0.42,0.2,10):new THREE.BoxGeometry(1,1,1),toon({}));
  addTo(g,struts,new THREE.BoxGeometry(1,1,1),toon({}));addTo(g,posts,new THREE.CylinderGeometry(0.05,0.06,1,5),toon({}));addTo(g,lan,new THREE.SphereGeometry(0.13,8,6),new THREE.MeshBasicMaterial({}));
- sign(st.sign,th0+0.1,y0+2.0,g);(sg.dares||[]).forEach(d=>{d.s=SPEED*(d.a+d.b)/2;const q=pathPt(P,d.s);dareDoor(q.th,q.y,g)});clearLedge(P,len);
+ sign(st.sign,th0+0.1,y0+2.0,g);/* dares: a side ledge DRISE above the path, from a beat after the fork to the drop back down, with the DARE? door in the middle */
+ P.clr=[];(sg.dares||[]).forEach(d=>{d.s=SPEED*(d.a+d.b)/2;const side=[],z0=pathPt(P,SPEED*d.a-0.6),z1=pathPt(P,SPEED*d.b+0.4);P.clr.push({th0:z0.th-0.06,th1:z1.th+0.06,y0:Math.min(z0.y,z1.y)+DRISE-0.6,y1:Math.max(z0.y,z1.y)+DRISE+3.4});for(let s=SPEED*d.a-0.6;s<SPEED*d.b+0.4;s+=step){const p=pathPt(P,s),y=p.y+DRISE,wr=wallR(p.th,y);side.push({p:onLedge(p.th,(LEDGE_IN+wr+0.5)/2,0,y-0.08),s:[step-0.05,0.3,wr+0.5-LEDGE_IN],c:pick(WD)})}
+  addTo(g,side,new THREE.BoxGeometry(1,1,1),toon({}));const q=pathPt(P,d.s);dareDoor(q.th,q.y+DRISE,g)});clearLedge(P,len);
+ /* ladders: two rails and rungs against the rock, from the lower ledge to the upper one */
+ P.lad.forEach(e=>{const a=pathPt(P,e.s0),h=Math.abs(e.rise),y0=a.y+Math.min(0,e.rise),lg=new THREE.Group(),wd=toon({color:city?'#8a6a44':'#6b4a2a'});lg.position.set(Math.cos(a.th)*(HR+0.45),y0,Math.sin(a.th)*(HR+0.45));lg.lookAt(0,y0,0);
+  for(const x of[-0.38,0.38]){const r=new THREE.Mesh(new THREE.BoxGeometry(0.09,h+0.9,0.09),wd);r.position.set(x,(h+0.9)/2-0.2,0);lg.add(r)}
+  for(let y=0.2;y<h+0.6;y+=0.42){const r=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.07,0.07),wd);r.position.set(0,y,0);lg.add(r)}g.add(lg)});
  /* what each note puts on the ledge */
  sg.notes.forEach(n=>{if(n.boss)return;const s=SPEED*n.at;n.pos=pathPt(P,s);
-  if(n.type==='up'){n.mid=pathPt(P,SPEED*(n.at+n.w/2));if(!n.gap){const o=obstacle(L,vIdx(n,4,3)),m=n.mid;o.position.set(m.x,m.y-0.05,m.z);o.lookAt(0,m.y-0.05,0);g.add(o);n.obj=o;if(L>=3)glowAt(g,o.position.clone().add(new THREE.Vector3(0,0.7,0)),L===3?'#2fd6b8':'#b48cff',2.2)}}
+  if(n.type==='up'){n.mid=pathPt(P,SPEED*(n.at+n.w/2));if(!n.gap&&!n.climb){const o=obstacle(L,vIdx(n,4,3)),m=n.mid;o.position.set(m.x,m.y-0.05,m.z);o.lookAt(0,m.y-0.05,0);g.add(o);n.obj=o;if(L>=3)glowAt(g,o.position.clone().add(new THREE.Vector3(0,0.7,0)),L===3?'#2fd6b8':'#b48cff',2.2)}}
   else if(n.type==='hold'){const a=n.pos,b=pathPt(P,SPEED*(n.at+n.len)),A=a.y+2.7,B=b.y+2.2,pts=[];n.cable=[];
    for(let k=0;k<=24;k++){const t=k/24,th=a.th+(b.th-a.th)*t,y=A+(B-A)*t-Math.sin(Math.PI*t)*0.45;n.cable.push({th,y});pts.push(new THREE.Vector3(Math.cos(th)*CABR,y,Math.sin(th)*CABR))}
    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:'#24160c'})));
@@ -469,9 +489,11 @@ function buildCamp(th,y){if(CAMPG)dropGroup(CAMPG);const g=CAMPG=new THREE.Group
  glowAt(g,fire.position.clone().add(new THREE.Vector3(0,0.3,0)),'#ff9a3c',3);FIRE_L.position.copy(fire.position).add(new THREE.Vector3(0,1,0));FIRE_L.intensity=0.9;window.__fire=fire}
 
 /* the dare: a dark doorway in the wall (a black box sunk into the rock, its face just in front of the wall's nearest bump), a stone frame, a faint red glow and the DARE? sign above */
-function dareDoor(th,y,g){let r0=99;for(const dy of[0.2,1.4,2.6])for(const o of[-0.9,0,0.9])r0=Math.min(r0,wallR(th+o/HR,y+dy));r0-=0.1;
+function dareDoor(th,y,g){let r0=99;for(const dy of[0.2,1.4,2.6])for(const o of[-0.9,0,0.9])r0=Math.min(r0,wallR(th+o/HR,y+dy));r0-=0.1;const rw=r0;
+ /* in front of any house front or sign the door overlaps, or they show inside the dark */
+ const T=Math.PI*2,hw=1.4/HR;for(const[t,a,y0,y1,rf]of WFR){let d=t-th;d-=Math.round(d/T)*T;if(Math.abs(d)<a+hw&&y0<y+3&&y1>y-0.2)r0=Math.min(r0,rf-0.35)}
  const dark=new THREE.Mesh(new THREE.BoxGeometry(1.8,2.8,3),new THREE.MeshBasicMaterial({color:'#050307'}));dark.position.copy(onLedge(th,r0+1.5,0,y+1.3));dark.lookAt(0,y+1.3,0);g.add(dark);
- const st=toon({color:'#4a4038'});[[-1.1,1.4,0.4,3],[1.1,1.4,0.4,3],[0,2.95,2.6,0.45]].forEach(([o,h,w,hh])=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,hh,0.6),st);b.position.copy(onLedge(th,r0-0.2,o,y+h));b.lookAt(0,y+h,0);g.add(b)});
+ const st=toon({color:'#4a4038'}),D=Math.max(0.6,rw-r0+0.5);[[-1.1,1.4,0.4,3],[1.1,1.4,0.4,3],[0,2.95,2.6,0.45]].forEach(([o,h,w,hh])=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,hh,D),st);b.position.copy(onLedge(th,r0-0.5+D/2,o,y+h));b.lookAt(0,y+h,0);g.add(b)});
  const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:'#ff3b2a',transparent:true,opacity:0.45,blending:THREE.AdditiveBlending,depthWrite:false}));gl.position.copy(onLedge(th,r0+0.3,0,y+1.1));gl.scale.set(2.2,2.6,1);g.add(gl);
  sign('DARE?',th,y+3.9,g);return r0}
 /* ---------- signs ---------- */
@@ -653,6 +675,8 @@ function cart(v){const g=new THREE.Group(),add=(geo,mat,x,y,z,rx,rz)=>{const m=n
  add(new THREE.BoxGeometry(0.34,0.3,0.24),toon({color:'#f2c230'}),0.3,1.2,0.1);return g}
 function cablePt(n,u){const c=n.cable;const f=clamp(u,0,1)*(c.length-1),i=Math.min(c.length-2,Math.floor(f)),r=f-i;return{th:c[i].th+(c[i+1].th-c[i].th)*r,y:c[i].y+(c[i+1].y-c[i].y)*r}}
 
+/* WFR: every flat spot on the wall (house fronts, signs, tombs), so a DARE? door can come out in front of them */
+const WFR=[];
 /* ---------- layer 0: the rim (Castello & Marina, Cagliari) ---------- */
 /* the pit cut straight through the Marina: house fronts stick out of the rock, with green shutters, balconies, laundry, Four Moors flags and signs */
 const MORI=canvasTex(48,32,(x,w,h)=>{x.fillStyle='#fff';x.fillRect(0,0,w,h);x.fillStyle='#d21f2b';x.fillRect(21,0,6,h);x.fillRect(0,13,w,6);
@@ -666,7 +690,7 @@ const PLAQ=[['Ichnusa','ANIMA SARDA','#d8202a','#fff',2.6,1.2],['VIETATO DAR DA 
  /* houses in columns round the pit, stacked down the wall, so their fronts don't overlap */
  const cells=[];for(let a=0;a<Math.PI*2-0.12;){const w=rr(3,5.6);let y=TOP+0.8;while(true){const h=rr(3.4,6.5);if(y-h<layerTop(1)-3)break;cells.push([a+w/2/RP,w,h,y-h/2]);y-=h+rr(0.1,0.7)}a+=(w+rr(0.15,0.9))/RP}
  for(const [th,w,h,yc] of cells){
-  let rmin=1e9;for(let a=-1;a<=1;a+=0.5)for(let v=-1;v<=1;v+=0.5)rmin=Math.min(rmin,wallR(th+a*w/2/RP,yc+v*h/2));const rf=Math.max(24.9,rmin-0.15);
+  let rmin=1e9;for(let a=-1;a<=1;a+=0.5)for(let v=-1;v<=1;v+=0.5)rmin=Math.min(rmin,wallR(th+a*w/2/RP,yc+v*h/2));const rf=Math.max(24.9,rmin-0.15);WFR.push([th,w/2/RP,yc-h/2,yc+h/2,rf]);
   const t=new THREE.Vector3(-Math.sin(th),0,Math.cos(th)),nrm=new THREE.Vector3(-Math.cos(th),0,-Math.sin(th)),c=new THREE.Vector3(Math.cos(th)*rf,yc,Math.sin(th)*rf);
   const look=new THREE.Vector3(0,yc,0);fac.push({p:flat(c,t,nrm,0,0,-1),s:[w,h,2],c:pick(PL),look});
   const cols=Math.max(1,Math.floor(w/1.55)),rows=Math.max(1,Math.floor(h/1.85)),sc=pick(SH),hasBal=rnd()<0.55;
@@ -689,7 +713,7 @@ const PLAQ=[['Ichnusa','ANIMA SARDA','#d8202a','#fff',2.6,1.2],['VIETATO DAR DA 
 /* ---------- wall decor helpers (layers 1-4): flat frames on the rock, signs, house fronts ---------- */
 const UPV=new THREE.Vector3(0,1,0);
 /* a flat spot on the wall, just in front of the rock over its whole width and height */
-function wallFrame(th,yc,w,h){let rmin=1e9;for(let a=-1;a<=1;a+=0.5)for(let v=-1;v<=1;v+=0.5)rmin=Math.min(rmin,wallR(th+a*w/2/RP,yc+v*h/2));const rf=Math.max(24.9,rmin-0.15);
+function wallFrame(th,yc,w,h){let rmin=1e9;for(let a=-1;a<=1;a+=0.5)for(let v=-1;v<=1;v+=0.5)rmin=Math.min(rmin,wallR(th+a*w/2/RP,yc+v*h/2));const rf=Math.max(24.9,rmin-0.15);WFR.push([th,w/2/RP,yc-h/2,yc+h/2,rf]);
  return{t:new THREE.Vector3(-Math.sin(th),0,Math.cos(th)),n:new THREE.Vector3(-Math.cos(th),0,-Math.sin(th)),c:new THREE.Vector3(Math.cos(th)*rf,yc,Math.sin(th)*rf),look:new THREE.Vector3(0,yc,0)}}
 const fpt=(F,ox,oy,oz)=>F.c.clone().addScaledVector(F.t,ox).addScaledVector(UPV,oy).addScaledVector(F.n,oz);
 function plaque(t1,t2,bg,fg,w,h){return{w,h,tex:canvasTex(Math.round(w*80),Math.round(h*80),(x,W,H)=>{x.fillStyle=bg;x.fillRect(0,0,W,H);x.strokeStyle=fg;x.lineWidth=5;x.strokeRect(5,5,W-10,H-10);x.fillStyle=fg;x.textAlign='center';x.textBaseline='middle';
@@ -1261,7 +1285,7 @@ const DMGCUT=[20000,8000,4500,2600,1600];
 function heartsUI(){const lost=clamp(G.maxH-G.hearts,0,4);document.body.style.setProperty('--dmg',lost/4);if(AC)[musP,musT].forEach(b=>b&&b.dmg&&b.dmg.frequency.setTargetAtTime(DMGCUT[lost],AC.currentTime,0.4));const h=$('hearts');h.innerHTML='';for(let i=0;i<G.maxH;i++){const d=document.createElement('i');d.className='ht'+(i<G.hearts?'':' off');h.appendChild(d)}}
 const HINTS={tap:['Tap to whack the critter','Press Space to whack the critter'],up:['Swipe up to jump','Press ↑ to jump'],duck:['Swipe down to duck','Press ↓ to duck'],hold:['Press and hold to ride the line. Let go as you land.','Hold Space to ride the line. Let go as you land.'],
  kick:['Swipe '+FWD+' to kick it down','Press '+(FWD==='right'?'→':'←')+' to kick it down'],brace:['Rock! Swipe '+BACK+' to brace','Rock! Press '+(BACK==='left'?'←':'→')+' to brace'],both:['Tap with both thumbs at once to shove it','Press two keys at once to shove it'],
- bosstap:['Tap on the beat to strike','Press Space on the beat to strike'],bossup:['It sweeps low: swipe up to jump','It sweeps low: press ↑ to jump'],bossduck:['It swipes high: swipe down to duck','It swipes high: press ↓ to duck'],bottleduck:['Bottle! Swipe down to duck it, or tap to bat it back','Bottle! Press ↓ to duck it, or Space to bat it back'],bosshold:['Hold to charge a big strike. Let go on the ring.','Hold Space to charge a big strike. Let go on the ring.'],
+ bosstap:['Tap on the beat to strike','Press Space on the beat to strike'],bossup:['It sweeps low: swipe up to jump','It sweeps low: press ↑ to jump'],bossduck:['It swipes high: swipe down to duck','It swipes high: press ↓ to duck'],branch:['A side ledge: swipe up on the beat to climb to the DARE? door, or walk on','A side ledge: press ↑ on the beat to climb to the DARE? door, or walk on'],climbup:['A ladder: swipe up on every beat to climb','A ladder: press ↑ on every beat to climb'],platup:['A gap: swipe up to jump to the next platform','A gap: press ↑ to jump to the next platform'],bottleduck:['Bottle! Swipe down to duck it, or tap to bat it back','Bottle! Press ↓ to duck it, or Space to bat it back'],bosshold:['Hold to charge a big strike. Let go on the ring.','Hold Space to charge a big strike. Let go on the ring.'],
  minitap:['Watch its rhythm, then tap it back to dodge','Watch its rhythm, then press Space on it to dodge'],minihold:['A beam: hold for as long as it held','A beam: hold Space for as long as it held']};
 function showHint(key){const tx=HINTS[key][G.kb?1:0];
  const el=$('hint');el.textContent=tx;el.classList.add('show');clearTimeout(showHint.t);showHint.t=setTimeout(()=>el.classList.remove('show'),3600)}
@@ -1287,9 +1311,11 @@ function loseHeart(){if(clock()<G.grace)return;G.grace=clock()+Math.max(GRACE_MI
  G.hearts=Math.max(0,G.hearts-1);if(G.hearts<=0&&G.up.wind&&!G.windUsed){G.windUsed=true;G.hearts=2;G.jsub='second wind'}heartsUI();if(G.hearts<=0)setTimeout(fallOut,450)}
 function hit(n,q){score(n,q);n.jt=clock();if(n.type==='tap'&&!n.mini)G.atk=clock();else if(n.type==='up'&&n.boss)G.jump=clock();else if(n.type==='duck')G.duck=clock();else if(n.type==='kick')G.kick=clock();else if(n.type==='brace')G.brace=clock();else if(n.type==='both')G.heave=clock();if(n.type==='up'&&!n.boss)G.busy=n.time+n.w;
  if(n.fpos)burst(new THREE.Vector3(n.fpos.x,n.fpos.y+0.5,n.fpos.z),q==='p'?12:7,'#ffe2a0');G.ni++}
+/* a deadly drop (a leap over the open pit) ends the run whatever the lanterns: the explorer falls out of sight first */
+function deathFall(){G.hearts=0;heartsUI();G.dead=clock();judgeShow('Into the pit','#f08a8a','some falls are for keeps','m');setTimeout(()=>fallOut(),900)}
 function fail(n,why){n.j='m';n.jt=clock();G.m++;G.combo=0;G.chain=0;G.lastHit=null;thud();glitch();fxResult('m');G.shake=0.35;judgeShow(why||'Missed','#f08a8a','','m');addErr(G.lastSd==null?0.25:G.lastSd,'m');G.lastSd=null;G.ni++;
  if(n.type==='tap'){if(n.boss){G.trip=clock();creak()}else G.hurt=clock()}else if(n.type==='up'){if(n.obj)n.obj.userData.hitT=clock();G.hurt=clock()}else if(n.type==='duck'){G.hurt=clock();n.bonk=clock()}else G.hurt=clock();
- if(G.up.cape&&n.type!=='tap'&&n.type!=='hold'){G.jsub='the cape caught you';return}loseHeart()}
+ if(n.deadly&&!G.custom){deathFall();return}if(G.up.cape&&n.type!=='tap'&&n.type!=='hold'){G.jsub='the cape caught you';return}loseHeart()}
 function holdStart(n,q,id){n.hj=q;G.holdPtr=id;G.zip={n,state:'ride'};chime(n);fxResult(q,true);addErr(G.lastSd||0,q);judgeShow('Hold…',q==='p'?'#f2c46d':'#bfe6ef','let go on the ring',q)}
 function holdRelease(t){const z=G.zip;if(!z||z.state!=='ride')return;const n=z.n;const d=t-n.endTime;
  if(d<-W_G){G.zip=null;n.j='m';G.m++;G.combo=0;thud();glitch();fxResult('m');holdFxEnd('m');G.shake=0.3;judgeShow('Let go too early','#f08a8a','','m');G.ni++;loseHeart()}
@@ -1301,22 +1327,27 @@ function curNote(){return ACT[G.ni]}
 /* free moves: input away from any note's window still moves the explorer (REC = how long each move lasts). A whiff leaves them off balance for that long, and no input counts until it's over */
 const REC={tap:0.24,up:0.55,duck:0.42,kick:0.3,brace:0.4,both:0.4};
 function freeAct(mv,t,id){if(t<G.busy)return;const c=clock();if(mv==='tap'){G.fp={t,id};G.atk=c}else if(mv==='both'){G.atk=-9;G.heave=c}else if(mv==='up')G.jump=c;else if(mv==='duck')G.duck=c;else if(mv==='kick')G.kick=c;else G.brace=c;
- G.lock=t+(clock()<G.grace?0:REC[mv]);dareTry(t);if(AC)nz(AC.currentTime,0.12,0.07,'bandpass',1800,2);flourish(t)}
-function dareTry(t){const d=LV&&LV.song.dares;if(!d||G.mode!=='descent')return;const lt=levelAt(t),x=d.find(x=>x.on==null&&lt>=x.a-W_G&&lt<x.b);if(!x)return;x.on=true;if(AC)nz(AC.currentTime,0.2,0.3,'bandpass',900,3);enterDare(x,lt)}
+ G.lock=t+(clock()<G.grace?0:REC[mv]);if(mv==='up')branchTry(t);dareTry(t);if(AC)nz(AC.currentTime,0.12,0.07,'bandpass',1800,2);flourish(t)}
+/* the fork before a dare: a swipe up on its beat climbs onto the side ledge (no judgement either way; walking on is fine) */
+const DRISE=2.4;
+function branchTry(t){const d=LV&&LV.song.dares;if(!d||G.mode!=='descent')return;const lt=levelAt(t),x=d.find(x=>x.br==null&&Math.abs(lt-x.f0)<=W_S+0.05);if(!x)return;x.br=true;judgeShow('Side ledge','#e8a0a0','the DARE? door is up here','p');if(AC)nz(AC.currentTime,0.15,0.2,'bandpass',1400,3)}
+/* height above the path while on a side ledge: up at the fork, along it, then the drop back down. [offset, standing on it] */
+function brOff(lc){const d=LV&&LV.song.dares;if(!d)return null;for(const x of d){if(!x.br||lc<x.f0||lc>x.j1)continue;if(lc<x.a){const u=(lc-x.f0)/(x.a-x.f0);return[DRISE*smooth(u)+Math.sin(Math.PI*u)*0.8,0]}if(lc<x.b)return[DRISE,1];return[DRISE*(1-((lc-x.b)/(x.j1-x.b))**2),0]}return null}
+function dareTry(t){const d=LV&&LV.song.dares;if(!d||G.mode!=='descent')return;const lt=levelAt(t),x=d.find(x=>x.br&&x.on==null&&lt>=x.a-W_G&&lt<x.b);if(!x)return;x.on=true;if(AC)nz(AC.currentTime,0.2,0.3,'bandpass',900,3);enterDare(x,lt)}
 /* accepting a dare: the level stops (G.state 'enter'), the explorer walks to the doorway (ENTER.walk s) and into the dark (ENTER.inn s), the view irises shut on them (ENTER.iris s, see irisFx) and the dare room opens. The main level waits (G.back).
    When the dare room ends (dareExit, G.state 'exit'), the view irises shut, the main level's ledge is rebuilt (dareBack) and the iris opens on the doorway: the explorer walks out of the dark (ENTER.inn s)
    and the level resumes from the door (resumePlay): its music comes back 4 beats before the door's level time while the explorer waits there, then they walk on */
 const ENTER={walk:0.7,inn:1.0,iris:0.7};
-function enterDare(x,lt){G.back={nd:LV.nd,song:LV.song,L:LV.L,th0:LV.path.th0,y0:LV.path.y0,t:(x.a+x.b)/2,lvCoins:G.lvCoins,lvMax:G.lvMax};const P=LV.path,a=pathPt(P,SPEED*clamp(lt,0,LV.song.end)),b=pathPt(P,x.s);let r1=99;for(const dy of[0.2,1.4,2.6])r1=Math.min(r1,wallR(b.th,b.y+dy));G.state='enter';G.enter={t0:clock(),a,b,s:x.s,r1:r1+0.8};
+function enterDare(x,lt){G.back={nd:LV.nd,song:LV.song,L:LV.L,th0:LV.path.th0,y0:LV.path.y0,t:(x.a+x.b)/2,lvCoins:G.lvCoins,lvMax:G.lvMax};const P=LV.path,a=pathPt(P,SPEED*clamp(lt,0,LV.song.end)),b=pathPt(P,x.s);a.y+=DRISE;b.y+=DRISE;let r1=99;for(const dy of[0.2,1.4,2.6])r1=Math.min(r1,wallR(b.th,b.y+dy));G.state='enter';G.enter={t0:clock(),a,b,s:x.s,r1:r1+0.8};
  if(AC){const c=AC.currentTime;nz(c+ENTER.walk,0.9,0.25,'lowpass',260,1,[rev]);voice('sine',55,c+ENTER.walk,0.2,1.4,0.12,[rev])}}
 function startDare(){G.pathEnd=pathPt(LV.path,G.enter.s);startLevel(Object.assign({},LV.nd,{dare:true}),false)}
 function dareExit(){G.state='exit';G.exit={t0:clock()};if(AC)nz(AC.currentTime,0.6,0.2,'lowpass',300,1,[rev])}
 /* behind the closed iris: the main level's ledge is rebuilt as it was, its notes before the door count as done, and the explorer waits inside the doorway */
 function dareBack(){const B=G.back,e=G.exit,sg=B.song;SPEED=clamp(PACE*sg.bpm/60,3,6);const path=buildLevel(B.L,sg,B.th0,B.y0);LV={L:B.L,song:sg,path,nd:B.nd};G.pathEnd=pathPt(path,SPEED*sg.end);
- sg.notes.forEach(n=>{if(n.at<B.t){n.j='p';n.jt=-99}});const b=pathPt(path,SPEED*B.t);let r1=99;for(const dy of[0.2,1.4,2.6])r1=Math.min(r1,wallR(b.th,b.y+dy));e.b=b;e.r1=r1+0.8;G.snapCam=1;
+ sg.notes.forEach(n=>{if(n.at<B.t){n.j='p';n.jt=-99}});const b=pathPt(path,SPEED*B.t);b.y+=DRISE;let r1=99;for(const dy of[0.2,1.4,2.6])r1=Math.min(r1,wallR(b.th,b.y+dy));e.b=b;e.r1=r1+0.8;G.snapCam=1;
  if(AC)voice('sine',55,AC.currentTime+0.2,0.2,1.2,0.1,[rev]);cardText('Back on the ledge',LAYERS[B.L].name,'the side passage lets you go. For now.',2600)}
 /* the main level goes on from the door: level time restarts 4 beats before it (the music plays, the explorer waits at the door, G.resumeLt), then the walk and the notes go on */
-function resumePlay(){const B=G.back,sg=LV.song,cnt=4*sg.spbAt(B.t);Object.assign(G,{state:'play',trip:-9,zip:null,pullT:-99,shake:0,cd:0,duck:-9,hurt:-9,atk:-9,jump:-9,kick:-9,brace:-9,heave:-9,both:null,lock:-9,busy:-9,fp:null,grace:0,chain:0,lastHit:null,freezeLt:null,resumeLt:B.t,exit:null,back:null});
+function resumePlay(){const B=G.back,sg=LV.song,cnt=4*sg.spbAt(B.t);Object.assign(G,{state:'play',dead:null,trip:-9,zip:null,pullT:-99,shake:0,cd:0,duck:-9,hurt:-9,atk:-9,jump:-9,kick:-9,brace:-9,heave:-9,both:null,lock:-9,busy:-9,fp:null,grace:0,chain:0,lastHit:null,freezeLt:null,resumeLt:B.t,exit:null,back:null});
  G.lvCoins+=B.lvCoins;G.lvMax=Math.max(G.lvMax,B.lvMax);anchorT=ctxNow()+0.1+cnt-B.t;WARPS=[];ACT=sg.notes;retime();G.ni=ACT.findIndex(n=>n.at>=B.t);if(G.ni<0)G.ni=ACT.length;G.flI=G.ni;
  nextBeat=bIdx(sg.beats,B.t-cnt*0.99);G.goT=timeOf(B.t);G.startT=clock();G.intro=false;judgeShow('','#fff','')}
 /* a free move on a beat, with no note due within a beat, is a flourish (Runner's dance): a coin and a note in the music. Once per beat */
@@ -1355,7 +1386,7 @@ function startNode(first){const nd=RUN[G.node];if(!nd)return;saveBest(G.node);if
 function nextNode(){if(G.state!=='clear'&&G.state!=='vendor')return;if(G.custom){playCustom();return}showOnly(null);G.node=Math.min(G.node+1,RUN.length-1);startNode(false)}
 function relight(){G.hearts=Math.min(G.maxH,G.hearts+(G.up.oil?2:1))}
 /* anchor the level: level time 0 plays a moment from now; music files start there, built-in songs count in first */
-function beginPlay(intro){const sg=LV.song;G.errs=[];G.jtxt='';Object.assign(G,{state:'play',trip:-9,zip:null,combo:0,pullT:-99,shake:0,cd:0,duck:-9,hurt:-9,atk:-9,jump:-9,kick:-9,brace:-9,heave:-9,both:null,lock:-9,busy:-9,fp:null,tier:GROW.start,gs:0,chain:0,lastHit:null,fevNew:false,grace:0,flB:-1,hatUsed:false,lvCoins:0,lvMax:0,ni:0,freezeLt:null,resumeLt:null});
+function beginPlay(intro){const sg=LV.song;G.errs=[];G.jtxt='';Object.assign(G,{state:'play',dead:null,trip:-9,zip:null,combo:0,pullT:-99,shake:0,cd:0,duck:-9,hurt:-9,atk:-9,jump:-9,kick:-9,brace:-9,heave:-9,both:null,lock:-9,busy:-9,fp:null,tier:GROW.start,gs:0,chain:0,lastHit:null,fevNew:false,grace:0,flB:-1,hatUsed:false,lvCoins:0,lvMax:0,ni:0,freezeLt:null,resumeLt:null});
  anchorT=ctxNow()+(intro?0.45:0.55);WARPS=[];nextBeat=0;ACT=sg.notes;retime();G.goT=timeOf(sg.first);G.startT=clock();G.intro=intro;heartsUI();judgeShow('','#fff','');if(sg.buf)trackPlay(sg,anchorT)}
 /* a level plays its music file when it has one; otherwise (or if the file fails) the built-in chart and procedural music */
 async function songFor(nd,first){
@@ -1367,10 +1398,11 @@ async function songFor(nd,first){
    const sg=trackSong(T,ch);if(nd.stems)try{sg.stems=await Promise.all(nd.stems.map(async x=>({buf:await loadBuf(x.src),lv:x.lv||0})))}catch(e){console.warn('Could not load the stems of '+nd.track+', playing the mix.',e)}
    return sg}
   catch(e){console.warn('Could not use '+nd.track+', playing the built-in level instead.',e)}}
- /* a built-in level plays its 32-beat chart PROC_LOOPS times, long enough for the music to grow through its tiers */
+ /* a built-in level plays its 32-beat chart PROC_LOOPS times (or its CHART_FULL, 32 beats per loop), long enough for the music to grow through its tiers */
  /* dares: from the second loop on, mid-loop, 3 empty beats with a DARE? sign; a free move there leaves the level for the dare room (startDare) */
- const ch=[],gates=[];for(let k=0;k<PROC_LOOPS;k++){const g=k*32+16;if(k)gates.push(g);CHART[nd.L].forEach(([o,ty,hl])=>{const b=k*32+o;if(k&&b<g&&b+(hl||0)>=g-3)return;ch.push([b,ty,hl])})}
- const lead=first?8:4,sg=procSong(nd.L,ch,PROC_LOOPS*32,lead,false,RAMP);sg.dares=gates.map(g=>({a:sg.beats[g-3+lead],b:sg.beats[g+lead],on:null}));return sg}
+ const full=CHART_FULL[nd.L],ch=[],gates=[];for(let k=0;k<PROC_LOOPS;k++){const g=k*32+16;if(k)gates.push(g);(full?full.filter(([o])=>o>=k*32&&o<k*32+32).map(([o,...r])=>[o-k*32,...r]):CHART[nd.L]).forEach(([o,ty,hl,...r])=>{const b=k*32+o;if(k&&b<=g&&b+(+hl||0)>=g-4)return;ch.push([b,ty,hl,...r])})}
+ const lead=first?8:4,sg=procSong(nd.L,ch,PROC_LOOPS*32,lead,false,RAMP);/* each dare: the fork (f0, a beat before the window), the window on the side ledge [a,b) with the door, and the drop back onto the ledge, landing at j1 */
+ sg.dares=gates.map(g=>({f0:sg.beats[g-4+lead],a:sg.beats[g-3+lead],b:sg.beats[g+lead],j1:sg.beats[g+1+lead],on:null,br:null}));return sg}
 const PROC_LOOPS=3;
 let loadId=0;
 async function startLevel(nd,first){const id=++loadId;G.mode='descent';G.state='loading';
@@ -1448,11 +1480,13 @@ S.traverse(o=>{if(!o.isInstancedMesh||o.userData.noCut)return;const g=o.geometry
 /* big one-off props (a drowned bus, a floodlight) are groups, not instances: hidden whole when the walkway runs through them */
 const CUTG=[];S.children.forEach(o=>{if(!o.userData.cutG)return;const b=new THREE.Box3().setFromObject(o),c=b.getCenter(new THREE.Vector3());CUTG.push({o,th:Math.atan2(c.z,c.x),y0:b.min.y,y1:b.max.y})});
 function onWalk(P,len,th,y0,y1){const TAU=Math.PI*2,turn=TAU*HR;let d=th-P.th0;d-=Math.floor(d/TAU)*TAU;for(let s=d*HR-turn;s<len+2;s+=turn){if(s<-7)continue;const yp=pathPt(P,clamp(s,-5,len)).y;if(y0<yp+3&&y1>yp-0.6)return true}return false}
+/* clear zones off the walkway (P.clr: the dares' side ledges and doors), so house fronts don't poke through the door */
+function inClr(P,th,y0,y1){return(P.clr||[]).some(z=>{const T=Math.PI*2;let d=th-z.th0;d-=Math.floor(d/T)*T;return d<=z.th1-z.th0&&y0<z.y1&&y1>z.y0})}
 function clearLedge(P,len){DECOR.forEach(({o,orig,info})=>{const a=o.instanceMatrix.array;a.set(orig);
-  info.forEach(([i,th,y0,y1])=>{if(onWalk(P,len,th,y0,y1))a.fill(0,i*16,i*16+16)});
-  o.instanceMatrix.needsUpdate=true});CUTG.forEach(c=>c.o.visible=!onWalk(P,len,c.th,c.y0,c.y1))}
+  info.forEach(([i,th,y0,y1])=>{if(onWalk(P,len,th,y0,y1)||inClr(P,th,y0,y1))a.fill(0,i*16,i*16+16)});
+  o.instanceMatrix.needsUpdate=true});CUTG.forEach(c=>c.o.visible=!onWalk(P,len,c.th,c.y0,c.y1)&&!inClr(P,c.th,c.y0,c.y1))}
 /* the title screen shows the first built-in level's ledge */
-function titleLevel(){const sg=procSong(0,CHART[0],32,8);LV={L:0,song:sg,path:buildLevel(0,sg,TH0,1.5),nd:RUN[0]}}
+function titleLevel(){const sg=procSong(0,CHART_FULL[0].filter(([o])=>o<32),32,8);LV={L:0,song:sg,path:buildLevel(0,sg,TH0,1.5),nd:RUN[0]}}
 function toTitle(){trackStop();loadId++;G.state='title';G.custom=false;G.mode='descent';showOnly('start');$('gauge').hidden=$('depth').hidden=$('boss').hidden=true;
  if(CAMPG){dropGroup(CAMPG);CAMPG=null}FIRE_L.intensity=0;titleLevel();bestUI()}
 titleLevel();
@@ -1468,7 +1502,10 @@ $('sgFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)r
  catch(err){console.warn(err);$('sgInfo').textContent='Could not read that file. Try an MP3, M4A, WAV or OGG.'}};
 [['sgDiff','diff',Number],['sgLen','len',String],['sgTheme','theme',Number]].forEach(([id,key,cv])=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{
  CU[key]=cv(b.dataset.v);$(id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(CU.T)cuInfo()}));
-window.__pit={FOEVAR,BATVAR,FOES,batBack,dareExit,startMini,MINI,score,fail,dareTry,enterDare,step:()=>frame(true),HERO,GROW,analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},PV,get WARPS(){return WARPS},warpRate,levelAt,clock,onPress,onSwipe,G,S,C,CUT,GROW,growHit,growMiss};
+window.__pit={FOEVAR,BATVAR,FOES,batBack,
+ /* seek(t): jump the level to level time t (s); earlier notes count as done. For looking at a spot in the level */
+ seek:t=>{anchorT=clock()-t;WARPS=[];ACT.forEach(n=>{if(n.at<t){n.j='p';n.jt=-99}});G.ni=ACT.findIndex(n=>n.at>=t);if(G.ni<0)G.ni=ACT.length;retime();G.flI=G.ni;nextBeat=bIdx(LV.song.beats,t)},
+ dareExit,startMini,MINI,score,fail,dareTry,enterDare,step:()=>frame(true),HERO,GROW,analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},PV,get WARPS(){return WARPS},warpRate,levelAt,clock,onPress,onSwipe,G,S,C,CUT,GROW,growHit,growMiss};
 /* ---------- dev test helpers on window.__pit (the browser pane's tools run in an isolated world: inject a <script> and read results back from the DOM) ---------- */
 /* synth(o): a drum loop with a steady tone, rendered offline. song(buf,o): analyse it and start a custom level. measure(o): watch a music bus and
    report clean vs during-mistake loudness and spectrum peaks. report(x): put a short JSON on document.body.dataset.test. errs: errors since load */
@@ -1648,9 +1685,10 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
   const n=curNote();const swN=isSw(n);const pendOn=swN&&Object.keys(pend).some(k=>!pend[k].done),one=G.both&&G.both.n===n;
   if(one&&!n.j&&tn>G.both.t+BOTHW){G.both=null;G.lastSd=null;fail(n,'One thumb is not enough')}
   else if(n&&!n.j&&!(G.zip&&G.zip.n===n)&&tn>n.time+(swN?W_S+(pendOn?0.12:0):W_G+(one?BOTHW:0))){if(n.type==='hold'){n.j='m';n.jt=now;G.m++;G.combo=0;thud();glitch();judgeShow('Missed the line','#f08a8a','','m');addErr(0.25,'m');G.ni++;G.hurt=now;loseHeart()}
-   else{G.lastSd=null;fail(n,n.type==='duck'?(n.thr?'Missed · bottled':'Missed · hit by a bat'):n.type==='kick'?'Missed · bonk':n.type==='brace'?'Missed · rock to the head':n.type==='both'?'Missed · the cart held':n.type==='up'?(n.gap?'Missed · fell in':'Missed · bonk'):n.boss?'Missed':n.mini?'Missed · hit':'Missed · bitten')}}
+   else{G.lastSd=null;fail(n,n.type==='duck'?(n.thr?'Missed · bottled':'Missed · hit by a bat'):n.type==='kick'?'Missed · bonk':n.type==='brace'?'Missed · rock to the head':n.type==='both'?'Missed · the cart held':n.climb?'Missed · slipped':n.type==='up'?(n.gap?'Missed · fell in':'Missed · bonk'):n.boss?'Missed':n.mini?'Missed · hit':'Missed · bitten')}}
   /* first-time hints */
-  for(let i=G.ni;i<Math.min(ACT.length,G.ni+3);i++){const m=ACT[i];const key=(m.boss?'boss':m.mini?'mini':m.thr?'bottle':'')+m.type;if(HINTS[key]&&!G.seen[key]&&m.time-tn<Math.max(2.2,sp*4.5)){G.seen[key]=1;showHint(key)}}
+  const dd=LV&&LV.song.dares;if(dd&&!G.seen.branch&&G.mode==='descent'&&dd.some(x=>{const w=timeOf(x.f0)-tn;return w>0&&w<sp*4})){G.seen.branch=1;showHint('branch')}
+  for(let i=G.ni;i<Math.min(ACT.length,G.ni+3);i++){const m=ACT[i];const key=(m.boss?'boss':m.mini?'mini':m.thr?'bottle':m.climb?'climb':m.plat?'plat':'')+m.type;if(HINTS[key]&&!G.seen[key]&&m.time-tn<Math.max(2.2,sp*4.5)){G.seen[key]=1;showHint(key)}}
   if(G.mode==='descent'&&tn>timeOf(sg.end)+0.45&&!G.zip)levelEnd();else if(G.mode==='boss'&&G.ni>=ACT.length&&!G.zip)fallOut('The Inspector outlasted you');
   else if(G.mode==='mini'&&G.ni>=ACT.length&&!G.zip)fallOut(MINIS[MINI.L].name+' outlasted you');
   if(now<G.goT){const k=Math.ceil((G.goT-now)/sp);if(k<=4&&k!==G.cd){G.cd=k}}else if(G.cd){G.cd=0;judgeShow('Poba!','#f2c46d','')}}
@@ -1674,13 +1712,13 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
    if(f<1){let ph=Math.max(0,el)/0.4;const si=Math.floor(ph);ph-=si;const A=si%2?'B':'',Bn=(si+1)%2?'B':'';pose=ph<0.22?'sneakPlant'+A:ph<0.5?'sneakSettle'+A:ph<0.75?'sneakLift'+Bn:'sneakReach'+Bn}}
   if(!e.b&&now-e.t0>=ENTER.iris)dareBack();else if(e.b&&el>=ENTER.inn+0.2)resumePlay()}
  else if(LV&&LV.path){const P=LV.path,on=G.state!=='title';let lc=on?clamp(lt,0,sg.end):0;if(on&&G.resumeLt!=null)lc=Math.max(lc,G.resumeLt);if(G.state==='fallen'&&G.freezeLt!=null)lc=Math.min(lc,Math.max(0,G.freezeLt));
-  const base=pathPt(P,SPEED*lc);hTh=base.th;hy=shY=base.y;
+  const base=pathPt(P,SPEED*lc);hTh=base.th;hy=shY=base.y;const bo=on&&brOff(lc);if(bo){hy+=bo[0];shY=bo[1]?shY+bo[0]:-999}
   /* walk cycle locked to the song's beats: the foot lands on each beat (every other beat when the song is fast) */
   if(G.state==='play'&&lt>(G.resumeLt||0)&&lt<sg.end){const bi=bIdx(sg.beats,lt),b0=sg.beats[bi],b1=sg.beats[bi+1]||b0+sp,st=sp<0.42?2:1;let ph=(bi+clamp((lt-b0)/(b1-b0),0,1))/st;const si=Math.floor(ph);ph-=si;
    const A=si%2?'B':'',Bn=(si+1)%2?'B':'';pose=ph<0.22?'sneakPlant'+A:ph<0.5?'sneakSettle'+A:ph<0.75?'sneakLift'+Bn:'sneakReach'+Bn}
   if(on)for(let k=Math.max(0,G.ni-4);k<Math.min(ACT.length,G.ni+2);k++){const n=ACT[k],d=lt-n.at;
-   if(n.type==='up'){if(d>=-0.16&&d<0&&!n.j)pose='crouch';else if(d>=0&&d<n.w){const u=d/n.w;
-     if(n.j==='p'||n.j==='g'){hy=base.y+Math.sin(Math.PI*u)*1.35;shY=n.gap?-999:base.y;pose=(u<0.15?'push':u<0.75?'vault':'fall')+(k%2?'B':'')}
+   if(n.type==='up'&&!n.climb){if(d>=-0.16&&d<0&&!n.j)pose='crouch';else if(d>=0&&d<n.w){const u=d/n.w;
+     if(n.j==='p'||n.j==='g'){hy=base.y+Math.sin(Math.PI*u)*(1.35+(n.plat?0.45*(n.plat.beats-1):0));shY=n.gap?-999:base.y;pose=(u<0.15?'push':u<0.75?'vault':'fall')+(k%2?'B':'')}
      else if(n.j==='m'){if(n.gap){hy=base.y-Math.sin(Math.PI*u)*1.3;shY=-999}pose='hurt'}}}
    else if(n.type==='hold'&&d>=0&&d<=n.len+0.12){const u=clamp(d/n.len,0,1),riding=G.zip&&G.zip.n===n;
     if(riding||n.j==='p'||n.j==='g'||(!n.j&&d<W_G)){const c=cablePt(n,u);hTh=c.th;hy=c.y-1.7;rad=CABR;shY=-999;pose=Math.floor(tt/0.22)%2?'hang':'hang2';
@@ -1688,6 +1726,10 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
     else if(n.j==='m'){hy=base.y-Math.sin(Math.PI*u)*2.4;shY=-999;pose='hurt'}}
    else if(n.type==='tap'&&d>=-0.16&&d<0&&!n.j)pose='windup'}}
  else{hTh=TH0;hy=shY=1.5}
+ /* on a ladder: hands over hands, one rung per beat; a missed rung slips */
+ if(LV&&LV.path&&LV.path.lad&&G.state==='play'){const sl=SPEED*clamp(lt,0,sg.end),le=LV.path.lad.find(e=>sl>e.s0&&sl<e.s1);if(le){shY=-999;rad=HR+0.15;pose=Math.floor((sl-le.s0)/(SPEED*sp))%2?'hang2':'hang';
+   const m=ACT.find(n=>n.climb&&n.j==='m'&&lt-n.at>=0&&lt-n.at<0.35);if(m){hy-=0.35*Math.sin(Math.PI*(lt-m.at)/0.35);pose='hurt'}}}
+ if(G.dead!=null){const e=now-G.dead;hy-=14*e*e;shY=-999;pose='fall'}
  G.hl={hTh,hy,shY};
  const ducking=now-G.duck<REC.duck,hurt=now-G.hurt<0.5;
  if(hurt&&pose!=='hang'&&pose!=='hang2')pose='hurt';else if(ducking)pose='duck';else if(now-G.trip<0.32)pose='trip';else if(now-G.atk<REC.tap)pose='strike';else if(now-G.kick<REC.kick)pose='kick';else if(now-G.brace<REC.brace)pose='brace';else if(now-G.heave<REC.both)pose='heave';
