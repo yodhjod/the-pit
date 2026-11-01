@@ -1151,7 +1151,9 @@ function miniCue(k,t,v,len){if(!AC)return;v=v||1;t=Math.max(AC.currentTime,t);co
  nz(t,0.07,0.4*v,'bandpass',k==='high'?2600:k==='low'?500:1200,2)}
 /* a gull's "woo": a raspy sawtooth that swoops up then down through a nasal band-pass, wobbling */
 const DIVEH=2.8;
-function squawk(t,hi){if(!AC)return;t=Math.max(AC.currentTime,t);const f=hi?980:820,d=0.24,o=AC.createOscillator(),l=AC.createOscillator(),lg=AC.createGain(),bp=AC.createBiquadFilter(),g=AC.createGain();
+/* recorded calls (sfx/gull-0/1.mp3): the first for the call a beat before, the second for the one half a beat before; the synth until they load */
+const GULLB=[];
+function squawk(t,hi){if(!AC)return;t=Math.max(AC.currentTime,t);const gb=GULLB[hi?1:0];if(gb)return sample(gb,t,0.4,0.06);const f=hi?980:820,d=0.24,o=AC.createOscillator(),l=AC.createOscillator(),lg=AC.createGain(),bp=AC.createBiquadFilter(),g=AC.createGain();
  o.type='sawtooth';o.frequency.setValueAtTime(f*0.7,t);o.frequency.exponentialRampToValueAtTime(f*1.35,t+0.05);o.frequency.exponentialRampToValueAtTime(f*0.6,t+d);
  l.type='square';l.frequency.value=38;lg.gain.value=f*0.06;l.connect(lg);lg.connect(o.frequency);
  bp.type='bandpass';bp.frequency.value=1700;bp.Q.value=3;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.32,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+d);
@@ -1166,8 +1168,9 @@ function gruntSyn(t,k){const f=(k===2?92:150)*(0.9+Math.random()*0.2),d=k===2?0.
  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.5,t+0.015);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);
  for(const[ff,q,v]of k===2?[[560,5,1],[1050,7,0.5]]:[[720,5,1],[1250,7,0.6]]){const bp=AC.createBiquadFilter(),bg=AC.createGain();bp.type='bandpass';bp.frequency.value=ff;bp.Q.value=q;bg.gain.value=v;g.connect(bp);bp.connect(bg);bg.connect(OUT)}
  nz(t,0.08,0.12,'bandpass',k===2?900:1300,1.2);o.start(t);o.stop(t+d+0.05)}
-/* the rider's bicycle bell: three inharmonic partials ringing out, a quick double strike */
-function bell(t){if(!AC)return;t=Math.max(AC.currentTime,t);for(const d of[0,0.07])for(const[f,v]of[[2380,0.16],[3310,0.09],[5020,0.05]])voice('sine',f,t+d,0.002,0.3,v,[rev])}
+/* the rider's bicycle bell: a recorded double ring (sfx/bell.mp3); until it loads, three inharmonic partials struck twice */
+let BELLB=null;
+function bell(t){if(!AC)return;t=Math.max(AC.currentTime,t);if(BELLB)return sample(BELLB,t,0.35,0);for(const d of[0,0.07])for(const[f,v]of[[2380,0.16],[3310,0.09],[5020,0.05]])voice('sine',f,t+d,0.002,0.3,v,[rev])}
 /* the whack is a plastic bag hit (sfx/bag-*.mp3, cut from a freesound recording), taken in turn; the synth thud stands in until they load */
 const BAGB=[];let bagN=0;
 function sample(b,t,v,spread){const s=AC.createBufferSource(),g=AC.createGain();s.buffer=b;s.playbackRate.value=1-spread/2+Math.random()*spread;g.gain.value=v;s.connect(g);g.connect(OUT);s.start(t)}
@@ -1186,6 +1189,9 @@ const OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext,idle=()=>
 function fft(re,im){const n=re.length;for(let i=1,j=0;i<n;i++){let b=n>>1;for(;j&b;b>>=1)j^=b;j^=b;if(i<j){let t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t}}
  for(let len=2;len<=n;len<<=1){const a=-2*Math.PI/len,wr=Math.cos(a),wi=Math.sin(a),h=len>>1;for(let i=0;i<n;i+=len){let cr=1,ci=0;for(let k=0;k<h;k++){const p=i+k,q=p+h,xr=re[q]*cr-im[q]*ci,xi=re[q]*ci+im[q]*cr;re[q]=re[p]-xr;im[q]=im[p]-xi;re[p]+=xr;im[p]+=xi;const t=cr*wr-ci*wi;ci=cr*wi+ci*wr;cr=t}}}}
 function decodeAudio(ab){const ctx=AC||new OAC(1,1,44100);return new Promise((res,rej)=>{const p=ctx.decodeAudioData(ab,res,rej);if(p&&p.then)p.then(res,rej)})}
+for(const k of[0,1])fetch('sfx/gull-'+k+'.mp3').then(r=>r.arrayBuffer()).then(decodeAudio).then(b=>GULLB[k]=b).catch(()=>{});
+fetch('sfx/ough.mp3').then(r=>r.arrayBuffer()).then(decodeAudio).then(b=>OUGHB=b).catch(()=>{});
+fetch('sfx/bell.mp3').then(r=>r.arrayBuffer()).then(decodeAudio).then(b=>BELLB=b).catch(()=>{});
 for(const k of[0,1,2])fetch('sfx/bag-'+k+'.mp3').then(r=>r.arrayBuffer()).then(decodeAudio).then(b=>BAGB.push(b)).catch(()=>{});
 for(const L of Object.values(GRUNT))for(const n of L)fetch('sfx/grunt-'+n+'.mp3').then(r=>r.arrayBuffer()).then(decodeAudio).then(b=>GRB[n]=b).catch(()=>{});
 function monoAt(buf,sr){const oc=new OAC(1,Math.max(1,Math.ceil(buf.duration*sr)),sr),s=oc.createBufferSource();s.buffer=buf;s.connect(oc.destination);s.start(0);
@@ -1340,6 +1346,8 @@ function cardText(o,n,d,ms){$('cO').textContent=o;$('cN').textContent=n;$('cD').
 function chime(n,at){if(!AC||!LV||LV.song.proc===undefined)return;const t=Math.max(AC.currentTime,at||0);const ch=MUSIC[LV.song.proc].ch[Math.floor((((n.k||0)%16)+16)%16/4)];voice('sine',mtof(ch[G.combo%4]+24),t,0.003,0.6,0.09,[dly,rev]);nz(t,0.05,0.22,'bandpass',1100,3)}
 function creak(){if(!AC)return;const t=AC.currentTime;voice('sawtooth',320,t,0.01,0.28,0.05,null,170);nz(t,0.25,0.12,'bandpass',900,6)}
 function footstep(t,L){if(!AC)return;const f=[784,698,659,880,587,659,622][L];voice('triangle',f,t,0.002,0.07,0.05,[rev]);nz(t,0.02,0.07,'bandpass',3200,5)}
+/* the explorer's "ough" when a hit costs a lantern (sfx/ough.mp3) */
+let OUGHB=null;function ough(){if(AC&&OUGHB)sample(OUGHB,AC.currentTime,0.5,0.08)}
 function thud(){if(!AC)return;const t=AC.currentTime;nz(t,0.3,0.35,'lowpass',260);voice('sawtooth',90,t,0.005,0.25,0.05,null,45)}
 function praise(q){const sd=G.lastSd||0,f=G.fevNew;G.fevNew=false;if(f)return judgeShow('Arroddugò!','#ffb347','fever · coins ×2 until you miss','p');
  judgeShow(q==='p'?'Al burro!':(sd<0?'Good · early':'Good · late'),q==='p'?'#f2c46d':'#bfe6ef',G.chain>=3?'chain ×'+G.chain:G.combo>2?G.combo+' in a row':'',q)}
@@ -1352,7 +1360,7 @@ function score(n,q){if(q==='g'&&G.up.fork)q='p';addErr(G.lastSd||0,q);n.j=q;G[q]
  if(n.boss&&n.type!=='up'&&n.type!=='duck')bossDamage(n.type==='hold'?3:q==='p'?1.5:1);if(!n.snd){const at=n.type==='hold'?n.endTime:0;chime(n,at);if(n.mini&&n.type==='tap')miniCue(n.kind,0,1);else sfx(n.type,at)}praise(q);fxResult(q);if(n.mini&&n.last)miniPhrase(n)}
 /* grace: after losing a lantern (or the hat taking it), misses cost nothing more and don't warp the music again, and whiffs don't knock the explorer off balance, for GRACE beats (at least GRACE_MIN s). A mistake slows the song and moves the next notes late, so without it one miss in a dense stretch snowballs */
 const GRACE=3,GRACE_MIN=1.4;
-function loseHeart(){if(clock()<G.grace)return;G.grace=clock()+Math.max(GRACE_MIN,GRACE*spbNow());if(G.up.hat&&!G.hatUsed){G.hatUsed=true;G.jsub='the hat took it';return}
+function loseHeart(){if(clock()<G.grace)return;G.grace=clock()+Math.max(GRACE_MIN,GRACE*spbNow());if(G.up.hat&&!G.hatUsed){G.hatUsed=true;G.jsub='the hat took it';return}ough();
  G.hearts=Math.max(0,G.hearts-1);if(G.hearts<=0&&G.up.wind&&!G.windUsed){G.windUsed=true;G.hearts=2;G.jsub='second wind'}heartsUI();if(G.hearts<=0)setTimeout(fallOut,450)}
 function hit(n,q){score(n,q);n.jt=clock();if(n.type==='tap'&&!n.mini)G.atk=clock();else if(n.type==='up'&&n.boss)G.jump=clock();else if(n.type==='duck')G.duck=clock();else if(n.type==='kick')G.kick=clock();else if(n.type==='brace')G.brace=clock();else if(n.type==='both')G.heave=clock();if(n.type==='up'&&!n.boss)G.busy=n.time+n.w;
  if(n.fpos)burst(new THREE.Vector3(n.fpos.x,n.fpos.y+0.5,n.fpos.z),q==='p'?12:7,'#ffe2a0');G.ni++}
