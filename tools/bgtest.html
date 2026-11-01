@@ -1,0 +1,68 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Background test</title>
+<style>
+html,body{margin:0;height:100%;background:#9cc8e8;overflow:hidden;font:13px monospace}
+canvas{display:block;width:100%;height:100%}
+#ui{position:fixed;top:8px;left:8px;display:flex;gap:6px;flex-wrap:wrap}
+#ui button{font:inherit;padding:6px 10px;border-radius:6px;border:1px solid #333;background:#fff}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <button id="dim">Dim bg: off</button>
+  <button id="zin">Zoom +</button><button id="zout">Zoom −</button>
+  <button id="par">Parallax: 0.85</button>
+  <button id="pause">Pause</button>
+</div>
+<script>
+// Dev tool: painted backgrounds behind the hero and painted enemies, at game scale.
+// Backgrounds come from downloads/bgtest/ (git-ignored), keyed out of their magenta.
+const BG=['background1','background2'], BPM=108;
+// a door in the backgrounds is ~321 px tall at full res and should be ~1.3x the hero
+const HERO_IN_BG=321/1.3;
+const img=s=>{const i=new Image();i.src=s;return i};
+const bgs=BG.map(n=>img('../downloads/bgtest/'+n+'.png'));
+const walk=[...Array(8)].map((_,k)=>img('../art/hero/walk-'+k+'.png'));
+const foes=[['gaggio',3],['truzzo',3.2]].map(([n,h])=>({h,f:[img(`../art/enemies/${n}-0.png`),img(`../art/enemies/${n}-1.png`)]}));
+const c=document.getElementById('c'),x=c.getContext('2d');
+let zoom=0.2,dim=false,par=0.85,paused=false,t=0,last=performance.now();
+const $=id=>document.getElementById(id);
+$('dim').onclick=e=>{dim=!dim;e.target.textContent='Dim bg: '+(dim?'on':'off')};
+$('zin').onclick=()=>zoom=Math.min(0.5,zoom*1.2);
+$('zout').onclick=()=>zoom=Math.max(0.08,zoom/1.2);
+$('par').onclick=e=>{par=par>0.9?0.5:par>0.6?0.85:1;e.target.textContent='Parallax: '+par};
+$('pause').onclick=e=>{paused=!paused;e.target.textContent=paused?'Play':'Pause'};
+function frame(now){
+  const dt=(now-last)/1000;last=now;if(!paused)t+=dt;
+  const W=c.width=innerWidth*devicePixelRatio,H=c.height=innerHeight*devicePixelRatio;
+  const heroPx=H*zoom, u=heroPx/3;           // pixels per world unit (hero is 3 tall)
+  const groundY=H*0.86, speed=2.1*BPM/60*u;  // walk speed as in the game (PACE x bpm/60)
+  const g=x.createLinearGradient(0,0,0,groundY);g.addColorStop(0,'#7fb6e0');g.addColorStop(1,'#d8ecf5');
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+  // facades: alternate the pieces along the street
+  const k=heroPx/HERO_IN_BG; let bx=-(t*speed*par)%1e9, i=0;
+  x.filter=dim?'brightness(0.7) saturate(0.6)':'none';
+  // find first piece on screen
+  const ws=bgs.map(b=>b.width*k), cyc=ws.reduce((a,b)=>a+b,0)||1;
+  bx=((bx%cyc)+cyc)%cyc-cyc;
+  while(bx<W){const b=bgs[i%2];if(b.complete&&b.width){const w=b.width*k,h=b.height*k;x.drawImage(b,bx,groundY-h+4*k,w,h);bx+=w}else bx+=500;i++}
+  x.filter='none';
+  // pavement
+  x.fillStyle='#8a8378';x.fillRect(0,groundY,W,H-groundY);
+  x.fillStyle='#6d675e';x.fillRect(0,groundY,W,6*devicePixelRatio);
+  x.strokeStyle='#756f65';x.lineWidth=2;
+  const tile=1.6*u,off=-(t*speed)%tile;
+  for(let px=off;px<W;px+=tile){x.beginPath();x.moveTo(px,groundY);x.lineTo(px-tile*0.4,H);x.stroke()}
+  // enemies standing on the street, every ~9 units
+  const beat=t*BPM/60, gap=9*u, eoff=-(t*speed)%(gap*2);
+  for(let j=0,ex=eoff+W*0.5;ex<W+gap;ex+=gap,j++){
+    const f=foes[j%2], im=f.f[(beat%1)<0.4?1:0];
+    if(im.complete&&im.width){const h=f.h*u,w=im.width/im.height*h;x.drawImage(im,ex-w/2,groundY-h,w,h)}
+  }
+  // hero: one cycle = two steps = two beats
+  const wim=walk[Math.floor((beat/2%1)*8)];
+  if(wim.complete&&wim.width){const w=wim.width/wim.height*heroPx;x.drawImage(wim,W*0.3-w/2,groundY-heroPx,w,heroPx)}
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script></body></html>
