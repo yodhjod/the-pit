@@ -264,12 +264,12 @@ const toon=(o)=>new THREE.MeshToonMaterial(Object.assign({gradientMap:toonGrad},
 /* ---------- chart: built-in levels, used when a level has no music file ---------- */
 /* t = whack a critter (tap), u = jump a gap or an obstacle (swipe up), d = duck a swooper (swipe down), h = ride a zipline (hold),
    k = kick through a barricade (swipe forward), b = brace for a falling rock (swipe back), w = shove a cart with both thumbs (two-finger tap). [beat, type, holdBeats] */
-const BPMS=[98,108,116,124,132,140,144,104,112,120,126,134],SPBL=BPMS.map(b=>60/b),TYPES={t:'tap',u:'up',d:'duck',h:'hold',k:'kick',b:'brace',w:'both',l:'duck',c:'duck',p:'duck',J:'up',L:'up'};
+const BPMS=[98,108,116,124,132,140,144,104,112,120,126,134],SPBL=BPMS.map(b=>60/b),TYPES={t:'tap',u:'up',d:'duck',h:'hold',k:'kick',b:'brace',w:'both',l:'duck',c:'duck',p:'duck',J:'up',L:'up',r:'up'};
 const CHART=[
  [[0,'t'],[1,'t'],[2,'u'],[4,'t'],[5,'t'],[6,'u'],[8,'k'],[9,'t'],[10,'t'],[10.5,'t'],[11,'d'],[12,'u'],[13,'t'],[14,'t'],[15,'d'],[16,'b'],[17,'t'],[18,'w'],[19,'t'],[20,'u'],[21,'t'],[22,'d'],[23,'t'],[24,'k'],[25,'t'],[26,'w'],[28,'h',2],[31,'b']],
- [[0,'t'],[1,'t'],[2,'u'],[4,'h',3],[8,'k'],[10,'d'],[12,'u'],[13,'t'],[14,'b'],[16,'h',3],[20,'l'],[23,'t'],[24,'k'],[26,'p'],[28,'u'],[30,'t'],[30.5,'t'],[31,'b']],
+ [[0,'t'],[1,'t'],[2,'u'],[4,'h',3],[8,'k'],[10,'d'],[12,'r'],[13,'t'],[14,'b'],[16,'h',3],[20,'l'],[23,'t'],[24,'k'],[26,'p'],[28,'r'],[30,'t'],[30.5,'t'],[31,'b']],
  [[0,'t'],[1,'t'],[2,'k'],[4,'t'],[5,'u'],[6,'d'],[8,'c'],[12,'p'],[14,'u'],[15,'t'],[16,'b'],[18,'t'],[18.5,'t'],[19,'u'],[20,'h',2],[24,'d'],[25,'u'],[26,'k'],[28,'d'],[29,'u'],[30,'b']],
- [[0,'t'],[1,'u'],[2,'d'],[3.5,'t'],[4,'h',2],[7,'u'],[8,'p'],[9.5,'k'],[11,'d'],[12,'h',3],[16,'c'],[19,'t'],[19.5,'t'],[20,'u'],[21,'b'],[23,'u'],[24,'h',2],[27,'t'],[28,'k'],[29,'u'],[30,'t'],[31,'b']],
+ [[0,'t'],[1,'u'],[2,'d'],[3.5,'t'],[4,'h',2],[7,'u'],[8,'p'],[9.5,'k'],[11,'d'],[12,'h',3],[16,'c'],[19,'t'],[19.5,'t'],[20,'r'],[21,'b'],[23,'u'],[24,'h',2],[27,'t'],[28,'k'],[29,'u'],[30,'t'],[31,'b']],
  [[0,'d'],[1.5,'t'],[2,'u'],[3,'b'],[4,'h',3],[8,'t'],[8.5,'t'],[9,'k'],[10,'u'],[12,'p'],[13,'u'],[14,'t'],[14.5,'t'],[15,'b'],[16,'u'],[17,'d'],[18,'h',2],[21,'k'],[22,'u'],[23,'d'],[24.5,'t'],[25,'u'],[26,'b'],[27,'t'],[28,'h',2],[31,'k']]];
 /* hand-built full levels (beats from 0, no looping), used instead of looping CHART[L]. Dares sit at beats 48 and 80, with the side ledge's fork 4 beats before: keep 44-48 and 76-80 empty.
    The Bastione is built from short phrases (ta . ta ta JUMP) and its ledge is part of the game: platform hops and a ladder, then gulls, the zipline and a deadly leap over the pit, then the barricade, the rock and the cart */
@@ -283,6 +283,7 @@ const CHART_FULL={0:[
 const RAMP=[1,1.06,1.12];
 function procSong(L,chart,len,lead,boss,ramp,seg=32){const spb=SPBL[L],R=ramp||[1],sp=i=>spb/R[Math.min(R.length-1,i)],
  bt=x=>{if(x<0)return(x+lead)*spb;let t=lead*spb,i=0;while(x>=seg){t+=seg*sp(i);x-=seg;i++}return t+x*sp(i)},beats=[];for(let k=-lead;k<=len+4;k++)beats.push(bt(k));
+ /* 'r' (Deliveroo rider): a jump, but no obstacle: he rides down the ledge at the explorer and passes under him on the beat */
  /* 'p' (gull lanciatore): a gull flies over high and throws its pizzetta at the explorer's head, landing on the beat: duck it */
  /* 'c' (truzzo lanciatore) is the same with a flicked cigarette: tv/lanc name the thrower in FOES */
  /* 'l' (gaggio lanciatore) becomes two notes: his bottle on the beat (a duck, or a tap to bat it back: thr) and him, 2 beats on, to be whacked (lanc) */
@@ -291,7 +292,7 @@ function procSong(L,chart,len,lead,boss,ramp,seg=32){const spb=SPBL[L],R=ramp||[
  const ch=chart.flatMap(([o,ty,hl,a4,a5],i)=>ty==='l'||ty==='c'?[[o,ty,0,i],[o+2,'t',0,i,ty]]:ty==='L'?Array.from({length:hl},(_,r)=>[o+r,ty,0,i,0,{rung:r,rungs:hl,rise:a4,b0:o}])
   :ty==='J'?[[o,ty,0,i,0,{beats:hl,rise:a4||0,deadly:!!a5||hl>=2}]]:[[o,ty,hl,i]]).sort((a,b)=>a[0]-b[0]);
  const notes=ch.map(([o,ty,hl,i,fo,x])=>{if(x)x.end=bt(ty==='J'?o+x.beats:ty==='L'?x.b0+x.rungs:o+1);
-  return{k:o,at:bt(o),type:TYPES[ty],len:hl&&ty==='h'||hl&&!x&&ty!=='l'?bt(o+hl)-bt(o):0,boss:!!boss,gap:!boss&&(ty==='J'||ty==='u'&&h3(i,L,31)<(LSTYLE[L]||LSTYLE[0]).gap),thr:ty==='l'||ty==='c',tv:ty==='c'?'TL':ty==='l'?'GL':null,piz:ty==='p',lanc:fo?(fo==='c'?'TL':'GL'):null,
+  return{k:o,at:bt(o),type:TYPES[ty],len:hl&&ty==='h'||hl&&!x&&ty!=='l'?bt(o+hl)-bt(o):0,boss:!!boss,gap:!boss&&(ty==='J'||ty==='u'&&h3(i,L,31)<(LSTYLE[L]||LSTYLE[0]).gap),thr:ty==='l'||ty==='c',tv:ty==='c'?'TL':ty==='l'?'GL':null,piz:ty==='p',rid:ty==='r',lanc:fo?(fo==='c'?'TL':'GL'):null,
    plat:ty==='J'?x:null,climb:ty==='L'?x:null,deadly:!!(x&&x.deadly)}});
  notes.forEach((n,i)=>{if(n.thr){const f=notes.find((m,j)=>j>i&&m.lanc&&!m.thrN);if(f){f.thrN=n;n.fol=f}}});
  return{proc:L,bpm:BPMS[L],spb,beats,lead,bar0:0,notes,first:lead*spb,end:bt(len),spbAt:t=>{const i=bIdx(beats,t);return(beats[i+1]||beats[i]+spb)-beats[i]}}}
@@ -472,7 +473,8 @@ function buildLevel(L,sg,th0,y0){if(LVG)dropGroup(LVG);const g=LVG=new THREE.Gro
   for(let y=0.2;y<h+0.6;y+=0.42){const r=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.07,0.07),wd);r.position.set(0,y,0);lg.add(r)}g.add(lg)});
  /* what each note puts on the ledge */
  sg.notes.forEach(n=>{if(n.boss)return;const s=SPEED*n.at;n.pos=pathPt(P,s);
-  if(n.type==='up'){n.mid=pathPt(P,SPEED*(n.at+n.w/2));if(!n.gap&&!n.climb){const o=obstacle(L,vIdx(n,4,3)),m=n.mid;o.position.set(m.x,m.y-0.05,m.z);o.lookAt(0,m.y-0.05,0);g.add(o);n.obj=o;if(L>=3)glowAt(g,o.position.clone().add(new THREE.Vector3(0,0.7,0)),L===3?'#2fd6b8':'#b48cff',2.2)}}
+  if(n.type==='up'){n.mid=pathPt(P,SPEED*(n.at+n.w/2));if(n.rid){const r=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,alphaTest:0.1}));r.visible=false;g.add(r);n.rider=r}
+   else if(!n.gap&&!n.climb){const o=obstacle(L,vIdx(n,4,3)),m=n.mid;o.position.set(m.x,m.y-0.05,m.z);o.lookAt(0,m.y-0.05,0);g.add(o);n.obj=o;if(L>=3)glowAt(g,o.position.clone().add(new THREE.Vector3(0,0.7,0)),L===3?'#2fd6b8':'#b48cff',2.2)}}
   else if(n.type==='hold'){const a=n.pos,b=pathPt(P,SPEED*(n.at+n.len)),A=a.y+3,B=b.y+2.6,/* high enough for the painted hero's feet to clear the ledge */pts=[];n.cable=[];
    for(let k=0;k<=24;k++){const t=k/24,th=a.th+(b.th-a.th)*t,y=A+(B-A)*t-Math.sin(Math.PI*t)*0.45;n.cable.push({th,y});pts.push(new THREE.Vector3(Math.cos(th)*CABR,y,Math.sin(th)*CABR))}
    g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),new THREE.LineBasicMaterial({color:'#24160c'})));
@@ -584,7 +586,7 @@ const GU={t:bird(GULL),sz:[1.75,0.88]},GP={t:bird({...GULL,piz:true}),sz:[1.75,0
  PI={t:bird({body:'#a9aec2',wing:'#8a90a8',tip:'#4a4e5e',beak:'#3a3a40',eye:'#ff7a20',neck:['#4a9a7a','#8a5ab0'],bars:true,small:true}),sz:[1.35,0.68]};
 /* for now only the painted (reworked) enemies are placed; the full mix per layer was [[GU,GP,GY,PI],[GU,GP,PI],[PI,GY,PI],[GU,PI,GP],[GU,GY,PI]] */
 BATVAR=[0,1,2,3,4].map(()=>[GU,GP]);
-const MAN=[1.1,2.2,6/256],F={GA:{t:GA,sz:MAN},GL:{t:GA,sz:MAN},GW:{t:GW,sz:MAN},UL:{t:UL,sz:MAN},TR:{t:UL,sz:MAN},TL:{t:UL,sz:MAN,ps:2},TO:{t:TO,sz:MAN},T2:{t:T2,sz:MAN},FL:{t:FL,sz:[1.3,2.6,6/256]},RA:{t:RA,sz:[1.75,0.88,4/128]}};
+const MAN=[1.1,2.2,6/256],F={GA:{t:GA,sz:MAN,gr:1},GL:{t:GA,sz:MAN,gr:1},GW:{t:GW,sz:MAN},UL:{t:UL,sz:MAN},TR:{t:UL,sz:MAN,gr:2},TL:{t:UL,sz:MAN,ps:2,gr:2},TO:{t:TO,sz:MAN},T2:{t:T2,sz:MAN},FL:{t:FL,sz:[1.3,2.6,6/256]},RA:{t:RA,sz:[1.75,0.88,4/128]}};
 /* for now only the painted ones; the full mix was [[F.GA,F.GW,F.TR,F.TO,F.FL],[F.GA,F.RA,F.GW,F.TR],[F.RA,F.TO,F.T2,F.RA],[F.FL,F.GA,F.TR,F.GW],[F.GA,F.GW,F.TR,F.RA]] */
 FOEVAR=[0,1,2,3,4].map(()=>[F.GA,F.TR]);
 return{FOEVAR,BATVAR,FOES:F}})();
@@ -593,6 +595,7 @@ return{FOEVAR,BATVAR,FOES:F}})();
 /* painted critters: idle frames swapped on the beat, plus optional poses, each an image (with loose parts if it has a json):
    hit (whacked, anchored 35% up), atk (attacking when missed) and wind (wind-up in the beat before its note), both anchored at the feet:
    acx/wcx are where the feet are across the image (0-1), so they stay put when the pose changes */
+const RIDER={},RIDEV=2;
 const ART=[{v:FOES.GA,fr:['art/enemies/gaggio-0.png','art/enemies/gaggio-1.png'],hit:'art/enemies/gaggio-hit',h:3},
  /* the gaggio lanciatore: the same gaggio, but he throws an Ichnusa bottle from a distance (not placed in any layer yet) */
  {v:FOES.GL,fr:['art/enemies/gaggio-0.png','art/enemies/gaggio-1.png'],hit:'art/enemies/gaggio-hit',atk:'art/enemies/lanciatore-throw',ap:1,acx:0.49,wind:'art/enemies/lanciatore-wind',wcx:0.725,h:3},
@@ -600,6 +603,8 @@ const ART=[{v:FOES.GA,fr:['art/enemies/gaggio-0.png','art/enemies/gaggio-1.png']
  /* the truzzo lanciatore: the same truzzo, flicking his lit cigarette from a distance (chart type c); ps: the cigarette is drawn 2x so it reads in flight */
  {v:FOES.TL,fr:['art/enemies/truzzo-1.png','art/enemies/truzzo-2.png'],hit:'art/enemies/truzzo-hit',atk:'art/enemies/truzzo-flick',ap:1,acx:0.586,wind:'art/enemies/truzzo-wind',wcx:0.513,h:3.2},
  /* the gull (a swooper, cut with cutsheet.py --grid): four wingbeat frames, up, level, down, level; the plain gull and the pizzetta gull both use it */
+ /* the Deliveroo rider (chart type r): one pedal revolution from a Kling clip (every 3rd frame), played at the clip's speed while he crosses the screen */
+ {v:RIDER,fr:[0,1,2,3,4,5,6].map(k=>'art/enemies/rider-'+k+'.png'),h:3.5},
  ...[0,1].map(i=>({v:BATVAR[0][i],fr:[0,1,2,3].map(k=>'art/enemies/gull-'+k+'.png'),wind:'art/enemies/gull-dive',atk:'art/enemies/gull-atk',ap:1,h:2.2}))];
 /* painted art: no mipmaps, they blend in a half-size copy and the sprite goes soft at the size it shows on screen */
 const sharp=t=>{t.minFilter=THREE.LinearFilter;t.generateMipmaps=false;return t};
@@ -1151,6 +1156,14 @@ function squawk(t,hi){if(!AC)return;t=Math.max(AC.currentTime,t);const f=hi?980:
  l.type='square';l.frequency.value=38;lg.gain.value=f*0.06;l.connect(lg);lg.connect(o.frequency);
  bp.type='bandpass';bp.frequency.value=1700;bp.Q.value=3;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.32,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+d);
  o.connect(bp);bp.connect(g);g.connect(OUT);g.connect(rev);o.start(t);l.start(t);o.stop(t+d+0.05);l.stop(t+d+0.05)}
+/* a whacked gaggio (k 1, higher and nasal) or truzzo (k 2, deeper) grunts: a buzzy voice dropping in pitch through two vowel formants ("uh"), with a breathy push */
+function grunt(t,k){if(!AC)return;t=Math.max(AC.currentTime,t);const f=(k===2?92:150)*(0.9+Math.random()*0.2),d=k===2?0.26:0.2,o=AC.createOscillator(),g=AC.createGain();
+ o.type='sawtooth';o.frequency.setValueAtTime(f*1.25,t);o.frequency.exponentialRampToValueAtTime(f,t+0.04);o.frequency.exponentialRampToValueAtTime(f*0.7,t+d);
+ g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.5,t+0.015);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);
+ for(const[ff,q,v]of k===2?[[560,5,1],[1050,7,0.5]]:[[720,5,1],[1250,7,0.6]]){const bp=AC.createBiquadFilter(),bg=AC.createGain();bp.type='bandpass';bp.frequency.value=ff;bp.Q.value=q;bg.gain.value=v;g.connect(bp);bp.connect(bg);bg.connect(OUT)}
+ nz(t,0.08,0.12,'bandpass',k===2?900:1300,1.2);o.start(t);o.stop(t+d+0.05)}
+/* the rider's bicycle bell: three inharmonic partials ringing out, a quick double strike */
+function bell(t){if(!AC)return;t=Math.max(AC.currentTime,t);for(const d of[0,0.07])for(const[f,v]of[[2380,0.16],[3310,0.09],[5020,0.05]])voice('sine',f,t+d,0.002,0.3,v,[rev])}
 function sfx(type,at){if(!AC)return;const t=Math.max(AC.currentTime,at||0);
  if(type==='tap'){nz(t,0.07,0.32,'bandpass',1500,1.5);voice('triangle',190,t,0.002,0.09,0.12,null,90)}
  else if(type==='kick'){nz(t,0.18,0.4,'bandpass',900,2);voice('triangle',140,t,0.002,0.12,0.14,null,60)}else if(type==='brace')nz(t,0.12,0.35,'lowpass',500);
@@ -1525,7 +1538,7 @@ $('sgFile').onchange=async e=>{const f=e.target.files&&e.target.files[0];if(!f)r
  catch(err){console.warn(err);$('sgInfo').textContent='Could not read that file. Try an MP3, M4A, WAV or OGG.'}};
 [['sgDiff','diff',Number],['sgLen','len',String],['sgTheme','theme',Number]].forEach(([id,key,cv])=>$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{
  CU[key]=cv(b.dataset.v);$(id).querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));if(CU.T)cuInfo()}));
-window.__pit={FOEVAR,BATVAR,FOES,batBack,
+window.__pit={FOEVAR,BATVAR,FOES,RIDER,batBack,grunt,bell,
  /* seek(t): jump the level to level time t (s); earlier notes count as done. For looking at a spot in the level */
  seek:t=>{anchorT=clock()-t;WARPS=[];ACT.forEach(n=>{if(n.at<t){n.j='p';n.jt=-99}});G.ni=ACT.findIndex(n=>n.at>=t);if(G.ni<0)G.ni=ACT.length;retime();G.flI=G.ni;nextBeat=bIdx(LV.song.beats,t)},
  dareExit,startMini,MINI,score,fail,dareTry,enterDare,step:()=>frame(true),HERO,GROW,analyse,monoAt,readTrack,makeChart,bestWindow,CU,playCustom,get LV(){return LV},get TRK(){return TRK},get musT(){return musT},get musP(){return musP},PV,get WARPS(){return WARPS},warpRate,levelAt,clock,onPress,onSwipe,G,S,C,CUT,GROW,growHit,growMiss};
@@ -1700,7 +1713,7 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
   /* a miniboss's call: each strike's sound, scheduled ahead like the music */
   if(sg.cues)while(G.cueI<sg.cues.length){const c=sg.cues[G.cueI],ct=timeOf(c.at);if(ct>=ctxNow()+0.3)break;G.cueI++;if(ct>ctxNow()-0.05)miniCue(c.kind,ct,1,c.len)}}
   /* a painted gull calls "woo woo" a beat and half a beat before it reaches the explorer, as it dives: the cue to duck; a gull lanciatore calls once, as it throws */
- if(G.state==='play'&&AC&&G.mode==='descent')for(let i=G.ni;i<Math.min(ACT.length,G.ni+8);i++){const n=ACT[i];const nc=n.piz?1:2;if(!n.bat||!n.bat.userData.v.wind||n.sq>=nc)continue;
+ if(G.state==='play'&&AC&&G.mode==='descent')for(let i=G.ni;i<Math.min(ACT.length,G.ni+8);i++){const n=ACT[i];if(n.rider){if((n.sq||0)<2){const sb=sg.spbAt(n.at);for(let j=n.sq||0;j<2;j++){const ct=timeOf(n.at-sb*(j?0.5:1));if(ct>=ctxNow()+0.3)break;n.sq=j+1;if(ct>ctxNow()-0.05)bell(ct)}}continue}const nc=n.piz?1:2;if(!n.bat||!n.bat.userData.v.wind||n.sq>=nc)continue;
   const sb=sg.spbAt(n.at);for(let j=n.sq||0;j<nc;j++){const ct=timeOf(n.at-sb*(n.piz?THROWF:j?0.5:1));if(ct>=ctxNow()+0.3)break;n.sq=j+1;if(ct>ctxNow()-0.05)squawk(ct,j)}}
  if(G.state==='play'){
   if(DEV.auto){const n=curNote();if(n&&!n.j&&!G.zip&&tn>=n.time){G.lastSd=0;if(n.type==='hold')holdStart(n,'p');else hit(n,'p')}if(G.zip&&tn>=G.zip.n.endTime)holdRelease(tn)}
@@ -1783,6 +1796,11 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
   ICON.position.copy(ip);ICON.material.opacity=clamp(1.6-(vn.time-tn)/sp*0.5,0,1)}
  /* obstacles, swoopers, critters */
  if(G.mode==='descent')for(let k=0;k<ACT.length;k++){const n=ACT[k];
+  /* the rider: a pure function of level time, like the explorer; he rides back down the ledge at RIDEV times the walk speed, passes under him at the middle of his jump (where an obstacle would stand) and rides on out behind,
+     just behind the explorer's line so a jumping explorer is drawn over him */
+  if(n.rider){const r=n.rider,m=n.at+n.w/2,u=lt-m;if(G.state==='title'||!RIDER.frames||!LV||u<-sp*3||u>sp*2){r.visible=false;continue}
+   const q=pathPt(LV.path,SPEED*(m-RIDEV*u)),z=RIDER.fsz;r.visible=true;r.material.map=RIDER.frames[Math.floor(tt*8)%7];r.center.set(0.5,0.02);r.scale.set(z[0],z[1],1);
+   r.position.set(Math.cos(q.th)*(HR+0.25),q.y,Math.sin(q.th)*(HR+0.25));continue}
   if(n.obj){const h=now-(n.obj.userData.hitT||-9);n.obj.rotation.z=h<0.5?Math.sin(h*40)*0.2*(1-h/0.5):0}
   if(n.bat){const u=n.time?(tn-n.time)/(sp*2.2):0;if(G.state==='title'||!n.time||u<-1||u>0.8){n.bat.visible=false;if(n.pz)n.pz.visible=false;if(n.bits)for(const q of n.bits)q.sp.visible=false;continue}const P=n.pos;n.bat.visible=true;
    let th=P.th-u*0.22,y=P.y+1.3+Math.sin(tt*7+k)*0.08,r=HR-0.15;if(u>0&&n.j&&n.j!=='m'){y+=u*1.2}if(n.bonk&&u>0){y+=u*3;r-=u*2}
@@ -1829,7 +1847,7 @@ function frame(manual){if(manual!==true)requestAnimationFrame(frame);{const h=G.
   if(n.foe){const f=n.foe,p=n.fpos;
    if(n.j==='p'||n.j==='g'){const a=now-n.jt,ud=f.userData;if(a<0)continue;/* batted: knocked out once his bottle gets back to him */
     /* a painted critter shows its hit pose, holds it for a tenth of a second, then tumbles off forwards, turning slowly so the face stays readable */
-    if(ud.hit&&f.material.map!==ud.hit){f.material.map=ud.hit;f.center.set(0.5,0.35);f.scale.set(ud.hsz[0],ud.hsz[1],1);
+    if(ud.hit&&f.material.map!==ud.hit){f.material.map=ud.hit;if(ud.v.gr)grunt(0,ud.v.gr);f.center.set(0.5,0.35);f.scale.set(ud.hsz[0],ud.hsz[1],1);
      /* the loose bits (cap, phone, bottle) start where they were drawn and are thrown forwards, up and a little out over the pit, each with its own spin */
      if(ud.parts&&!n.bits){const R=new THREE.Vector3().setFromMatrixColumn(C.matrixWorld,0),tg=new THREE.Vector3(-Math.sin(p.th),0,Math.cos(p.th)),out=new THREE.Vector3(-Math.cos(p.th),0,-Math.sin(p.th)),o=new THREE.Vector3(p.x,p.y+ud.hsz[1]*0.35,p.z);
       n.bits=ud.parts.map((q,j)=>{const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:q.t,transparent:true,alphaTest:0.1}));sp.scale.set(q.w,q.h,1);f.parent.add(sp);

@@ -1,10 +1,11 @@
 """Cut frames from a green-screen video clip (the character animating in place, locked camera) into game frames.
 
-python tools/cutvideo.py <video> <output prefix> <scale> <frame> [<frame> ...]
+python tools/cutvideo.py [--clear] <video> <output prefix> <scale> <frame> [<frame> ...]
   -> <prefix>-0.png, <prefix>-1.png, ...: the listed video frames (numbered from 1, as ffmpeg numbers them),
      green keyed out, only the largest blob kept (drops watermarks), all cropped to the same box (the union of the figure in every frame, so nothing jumps:
      the camera was locked), resized by <scale>.
-  Paler green enclosed by the figure (seen through a clear plastic bag) is filled with pale grey plastic instead of being keyed out.
+  Paler green enclosed by the figure (seen through a clear plastic bag) is filled with pale grey plastic instead of being keyed out;
+  --clear skips that and keys every enclosed hole out (bike wheels: the green between the spokes).
   Needs ffmpeg on the PATH.
 """
 import os
@@ -14,6 +15,9 @@ import tempfile
 import numpy as np
 from PIL import Image
 
+clear = '--clear' in sys.argv
+if clear:
+    sys.argv.remove('--clear')
 src, out, sc = sys.argv[1], sys.argv[2], float(sys.argv[3])
 want = [int(x) for x in sys.argv[4:]]
 tmp = tempfile.mkdtemp()
@@ -92,6 +96,8 @@ for i, (a, al, gr) in enumerate(frames):
     # only paler green (seen through plastic): a gap between the bag and a leg is the full background green
     hole = ~solid & ~outside(solid) & (grs < 0.8)
     lum = px[..., :3].astype(np.float32).mean(2, keepdims=True)
+    if clear:
+        hole[:] = False
     if hole.any():
         plastic = np.clip(170 + (lum - lum[hole].mean()) * 0.5, 120, 235)
         px[hole, :3] = np.repeat(plastic, 3, 2)[hole].astype(np.uint8)
