@@ -1160,7 +1160,7 @@ function squawk(t,hi){if(!AC)return;t=Math.max(AC.currentTime,t);const f=hi?980:
 /* whacked critters grunt: recorded grunts (sfx/), taken in turn per voice so two in a row never sound the same; the synth stands in until they load */
 const GRUNT={1:[0,1,2,3].map(i=>'gaggio-'+i),2:[0,1,2].map(i=>'truzzo-'+i)},GRB={},grN={1:0,2:0};
 function grunt(t,k){if(!AC)return;t=Math.max(AC.currentTime,t);const L=GRUNT[k]||GRUNT[1],b=GRB[L[grN[k]++%L.length]];if(!b)return gruntSyn(t,k);
- sample(b,t,0.55,0.1)}
+ sample(b,t,0.42,0.1)}
 function gruntSyn(t,k){const f=(k===2?92:150)*(0.9+Math.random()*0.2),d=k===2?0.26:0.2,o=AC.createOscillator(),g=AC.createGain();
  o.type='sawtooth';o.frequency.setValueAtTime(f*1.25,t);o.frequency.exponentialRampToValueAtTime(f,t+0.04);o.frequency.exponentialRampToValueAtTime(f*0.7,t+d);
  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.5,t+0.015);g.gain.exponentialRampToValueAtTime(0.0001,t+d);o.connect(g);
@@ -1172,7 +1172,7 @@ function bell(t){if(!AC)return;t=Math.max(AC.currentTime,t);for(const d of[0,0.0
 const BAGB=[];let bagN=0;
 function sample(b,t,v,spread){const s=AC.createBufferSource(),g=AC.createGain();s.buffer=b;s.playbackRate.value=1-spread/2+Math.random()*spread;g.gain.value=v;s.connect(g);g.connect(OUT);s.start(t)}
 function sfx(type,at){if(!AC)return;const t=Math.max(AC.currentTime,at||0);
- if(type==='tap'){if(BAGB.length)return sample(BAGB[bagN++%BAGB.length],t,0.5,0.1);nz(t,0.07,0.32,'bandpass',1500,1.5);voice('triangle',190,t,0.002,0.09,0.12,null,90)}
+ if(type==='tap'){if(BAGB.length)return sample(BAGB[bagN++%BAGB.length],t,0.38,0.1);nz(t,0.07,0.32,'bandpass',1500,1.5);voice('triangle',190,t,0.002,0.09,0.12,null,90)}
  else if(type==='kick'){nz(t,0.18,0.4,'bandpass',900,2);voice('triangle',140,t,0.002,0.12,0.14,null,60)}else if(type==='brace')nz(t,0.12,0.35,'lowpass',500);
  else if(type==='both'){nz(t,0.35,0.3,'lowpass',380);voice('sawtooth',110,t,0.01,0.3,0.06,null,55)}
  else if(type==='up')nz(t,0.2,0.14,'bandpass',700,1.2);else if(type==='duck')nz(t,0.14,0.12,'highpass',3200);else nz(t,0.25,0.08,'bandpass',2600,4)}
