@@ -551,7 +551,8 @@ const bucketHat=x=>{sh(x,'#f4f4f0',PL(30,36,98,36,88,4,40,4));sh(x,'#f4f4f0',E(6
 /* scarf held up over the head, and the rossoblù crest */
 const scarf=x=>{for(let k=0;k<8;k++)sh(x,k%2?'#0d2f7a':'#c8102e',x=>x.rect(14+k*12.5,14,12.5,18),0);sh(x,null,x=>x.rect(14,14,100,18));for(let k=0;k<6;k++)ln(x,k%2?'#c8102e':'#0d2f7a',3,18+k*18,32,16+k*18,42)};
 const SKIN=['#e8b48a','#d9a074','#c98a5e','#f0c09a'];
-const GA=dude({skin:SKIN[1],top:'#18181c',pants:'#18181c',stripe:'#f4f4f0',shoes:'#f4f4f0',sole:'#bbb',eyes:'squint',mouth:'smirk',torso:gaggioKit('#3a3d44'),hair:cap('#18181c','#0d0d10','#f4f4f0')}),
+/* painted enemies are blank until their images load (the drawn gaggio they replaced is gone) */
+const BLANK=vtex(128,256,()=>{}),
  GW=dude({skin:SKIN[2],top:'#f0f0f2',pants:'#e4e4e8',stripe:'#1a1a1a',shoes:'#f4f4f0',sole:'#888',eyes:'squint',mouth:'smirk',torso:gaggioKit('#141414'),hair:fade('#2a1a12')}),
  UL=dude({skin:SKIN[0],halves:['#c8102e','#0d2f7a'],sleeve:['#c8102e','#0d2f7a'],pants:'#3b5a8a',shoes:'#2a2a2a',armsUp:true,eyes:'angry',mouth:'shout',torso:shirtV('#f4f4f0'),hair:fade('#4a3020'),extra:scarf}),
  TO=dude({skin:SKIN[3],top:'#2bb3a0',pants:'#d9c48f',shorts:true,socks:'#f4f4f4',shoes:'#7a4a2a',eyes:'shades',cheeks:'#ff8a7a',torso:tourKit('#ff7a3a'),hair:strawHat}),
@@ -586,7 +587,7 @@ const GU={t:bird(GULL),sz:[1.75,0.88]},GP={t:bird({...GULL,piz:true}),sz:[1.75,0
  PI={t:bird({body:'#a9aec2',wing:'#8a90a8',tip:'#4a4e5e',beak:'#3a3a40',eye:'#ff7a20',neck:['#4a9a7a','#8a5ab0'],bars:true,small:true}),sz:[1.35,0.68]};
 /* for now only the painted (reworked) enemies are placed; the full mix per layer was [[GU,GP,GY,PI],[GU,GP,PI],[PI,GY,PI],[GU,PI,GP],[GU,GY,PI]] */
 BATVAR=[0,1,2,3,4].map(()=>[GU,GP]);
-const MAN=[1.1,2.2,6/256],F={GA:{t:GA,sz:MAN,gr:1},GL:{t:GA,sz:MAN,gr:1},GW:{t:GW,sz:MAN},UL:{t:UL,sz:MAN},TR:{t:UL,sz:MAN,gr:2},TL:{t:UL,sz:MAN,ps:2,gr:2},TO:{t:TO,sz:MAN},T2:{t:T2,sz:MAN},FL:{t:FL,sz:[1.3,2.6,6/256]},RA:{t:RA,sz:[1.75,0.88,4/128]}};
+const MAN=[1.1,2.2,6/256],F={GA:{t:BLANK,sz:MAN,gr:1},GL:{t:BLANK,sz:MAN,gr:1},GW:{t:GW,sz:MAN},UL:{t:UL,sz:MAN},TR:{t:BLANK,sz:MAN,gr:2},TL:{t:BLANK,sz:MAN,ps:2,gr:2},TO:{t:TO,sz:MAN},T2:{t:T2,sz:MAN},FL:{t:FL,sz:[1.3,2.6,6/256]},RA:{t:RA,sz:[1.75,0.88,4/128]}};
 /* for now only the painted ones; the full mix was [[F.GA,F.GW,F.TR,F.TO,F.FL],[F.GA,F.RA,F.GW,F.TR],[F.RA,F.TO,F.T2,F.RA],[F.FL,F.GA,F.TR,F.GW],[F.GA,F.GW,F.TR,F.RA]] */
 FOEVAR=[0,1,2,3,4].map(()=>[F.GA,F.TR]);
 return{FOEVAR,BATVAR,FOES:F}})();
